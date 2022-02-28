@@ -32,12 +32,10 @@ import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.BucketEncryptionKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmBucketArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
-import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OzoneAclUtil;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.security.acl.RequestContext;
 import org.apache.hadoop.util.StringUtils;
-import org.apache.hadoop.util.Time;
 
 import com.google.common.base.Preconditions;
 import org.jetbrains.annotations.Nullable;
@@ -48,7 +46,6 @@ import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.BUCK
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.INTERNAL_ERROR;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.VOLUME_NOT_FOUND;
 import static org.apache.hadoop.ozone.om.lock.OzoneManagerLock.Resource.BUCKET_LOCK;
-import static org.apache.hadoop.ozone.om.lock.OzoneManagerLock.Resource.VOLUME_LOCK;
 
 /**
  * OM bucket manager.
@@ -105,92 +102,6 @@ public class BucketManagerImpl implements BucketManager {
    * BucketExistException
    * -> Else update MetadataDB with VolumeInfo.
    */
-
-  /**
-   * Creates a bucket.
-   *
-   * @param bucketInfo - OmBucketInfo.
-   */
-  @Override
-  public void createBucket(OmBucketInfo bucketInfo) throws IOException {
-    Preconditions.checkNotNull(bucketInfo);
-    String volumeName = bucketInfo.getVolumeName();
-    String bucketName = bucketInfo.getBucketName();
-    boolean acquiredBucketLock = false;
-    metadataManager.getLock().acquireWriteLock(VOLUME_LOCK, volumeName);
-    try {
-      acquiredBucketLock = metadataManager.getLock().acquireWriteLock(
-          BUCKET_LOCK, volumeName, bucketName);
-      String volumeKey = metadataManager.getVolumeKey(volumeName);
-      String bucketKey = metadataManager.getBucketKey(volumeName, bucketName);
-      OmVolumeArgs volumeArgs = metadataManager.getVolumeTable().get(volumeKey);
-
-      //Check if the volume exists
-      if (volumeArgs == null) {
-        LOG.debug("volume: {} not found ", volumeName);
-        throw new OMException("Volume doesn't exist",
-            VOLUME_NOT_FOUND);
-      }
-      //Check if bucket already exists
-      if (metadataManager.getBucketTable().get(bucketKey) != null) {
-        LOG.debug("bucket: {} already exists ", bucketName);
-        throw new OMException("Bucket already exist",
-            OMException.ResultCodes.BUCKET_ALREADY_EXISTS);
-      }
-
-      BucketEncryptionKeyInfo bek = bucketInfo.getEncryptionKeyInfo();
-
-      boolean hasSourceVolume = bucketInfo.getSourceVolume() != null;
-      boolean hasSourceBucket = bucketInfo.getSourceBucket() != null;
-
-      if (hasSourceBucket != hasSourceVolume) {
-        throw new OMException("Both source volume and source bucket are " +
-            "required for bucket links",
-            OMException.ResultCodes.INVALID_REQUEST);
-      }
-
-      if (bek != null && hasSourceBucket) {
-        throw new OMException("Encryption cannot be set for bucket links",
-            OMException.ResultCodes.INVALID_REQUEST);
-      }
-
-      BucketEncryptionKeyInfo.Builder bekb =
-          createBucketEncryptionKeyInfoBuilder(bek);
-
-      OmBucketInfo.Builder omBucketInfoBuilder = bucketInfo.toBuilder()
-          .setCreationTime(Time.now());
-
-      OzoneAclUtil.inheritDefaultAcls(omBucketInfoBuilder.getAcls(),
-          volumeArgs.getDefaultAcls());
-
-      if (bekb != null) {
-        omBucketInfoBuilder.setBucketEncryptionKey(bekb.build());
-      }
-
-      OmBucketInfo omBucketInfo = omBucketInfoBuilder.build();
-      commitBucketInfoToDB(omBucketInfo);
-      if (hasSourceBucket) {
-        LOG.debug("created link {}/{} to bucket: {}/{}",
-            volumeName, bucketName,
-            omBucketInfo.getSourceVolume(), omBucketInfo.getSourceBucket());
-      } else {
-        LOG.debug("created bucket: {} in volume: {}", bucketName,
-            volumeName);
-      }
-    } catch (IOException ex) {
-      if (!(ex instanceof OMException)) {
-        LOG.error("Bucket creation failed for bucket:{} in volume:{}",
-            bucketName, volumeName, ex);
-      }
-      throw ex;
-    } finally {
-      if (acquiredBucketLock) {
-        metadataManager.getLock().releaseWriteLock(BUCKET_LOCK, volumeName,
-            bucketName);
-      }
-      metadataManager.getLock().releaseWriteLock(VOLUME_LOCK, volumeName);
-    }
-  }
 
   @Nullable
   public BucketEncryptionKeyInfo.Builder createBucketEncryptionKeyInfoBuilder(
@@ -349,47 +260,6 @@ public class BucketManagerImpl implements BucketManager {
       if (!(ex instanceof OMException)) {
         LOG.error("Setting bucket property failed for bucket:{} in volume:{}",
             bucketName, volumeName, ex);
-      }
-      throw ex;
-    } finally {
-      metadataManager.getLock().releaseWriteLock(BUCKET_LOCK, volumeName,
-          bucketName);
-    }
-  }
-
-  /**
-   * Deletes an existing empty bucket from volume.
-   *
-   * @param volumeName - Name of the volume.
-   * @param bucketName - Name of the bucket.
-   * @throws IOException - on Failure.
-   */
-  @Override
-  public void deleteBucket(String volumeName, String bucketName)
-      throws IOException {
-    Preconditions.checkNotNull(volumeName);
-    Preconditions.checkNotNull(bucketName);
-    metadataManager.getLock().acquireWriteLock(BUCKET_LOCK, volumeName,
-        bucketName);
-    try {
-      //Check if bucket exists
-      String bucketKey = metadataManager.getBucketKey(volumeName, bucketName);
-      if (metadataManager.getBucketTable().get(bucketKey) == null) {
-        LOG.debug("bucket: {} not found ", bucketName);
-        throw new OMException("Bucket doesn't exist",
-            BUCKET_NOT_FOUND);
-      }
-      //Check if bucket is empty
-      if (!metadataManager.isBucketEmpty(volumeName, bucketName)) {
-        LOG.debug("bucket: {} is not empty ", bucketName);
-        throw new OMException("Bucket is not empty",
-            OMException.ResultCodes.BUCKET_NOT_EMPTY);
-      }
-      commitDeleteBucketInfoToOMDB(bucketKey);
-    } catch (IOException ex) {
-      if (!(ex instanceof OMException)) {
-        LOG.error("Delete bucket failed for bucket:{} in volume:{}", bucketName,
-            volumeName, ex);
       }
       throw ex;
     } finally {

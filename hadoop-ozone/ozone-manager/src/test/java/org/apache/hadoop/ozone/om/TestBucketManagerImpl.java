@@ -35,11 +35,9 @@ import org.apache.hadoop.ozone.om.helpers.OmBucketArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
+import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
 import org.apache.hadoop.ozone.om.request.OMRequestTestUtils;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
@@ -87,22 +85,25 @@ public class TestBucketManagerImpl {
   public void testCreateBucketWithoutVolume() throws Exception {
     thrown.expectMessage("Volume doesn't exist");
     OzoneConfiguration conf = createNewTestPath();
-    OmMetadataManagerImpl metaMgr =
-        new OmMetadataManagerImpl(conf);
+    //
+    OmTestManagers omTestManagers = new OmTestManagers(conf);
+    OzoneManagerProtocol writeClient;
     try {
-      BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+      BucketManager bucketManager = omTestManagers.getBucketManager();
+      writeClient = omTestManagers.getWriteClient();
+
       OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
           .setVolumeName("sampleVol")
           .setBucketName("bucketOne")
           .build();
-      bucketManager.createBucket(bucketInfo);
+      writeClient.createBucket(bucketInfo);
     } catch (OMException omEx) {
       Assert.assertEquals(ResultCodes.VOLUME_NOT_FOUND,
           omEx.getResult());
       throw omEx;
-    } finally {
-      metaMgr.getStore().close();
-    }
+    } //finally {
+      //metaMgr.getStore().close();
+    //}
   }
 
   @Test
@@ -120,15 +121,20 @@ public class TestBucketManagerImpl {
     Mockito.when(kmsProvider.getMetadata(testBekName)).thenReturn(mockMetadata);
     Mockito.when(mockMetadata.getCipher()).thenReturn(testCipherName);
 
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr,
-        kmsProvider);
+    //BucketManager bucketManager = new BucketManagerImpl(metaMgr, kmsProvider);
+
+    OzoneConfiguration conf = new OzoneConfiguration();
+    OmTestManagers omTestManagers = new OmTestManagers(conf);
+    BucketManager bucketManager = omTestManagers.getBucketManager();
+    OzoneManagerProtocol writeClient = omTestManagers.getWriteClient();
+
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
         .setVolumeName("sampleVol")
         .setBucketName("bucketOne")
         .setBucketEncryptionKey(new
             BucketEncryptionKeyInfo.Builder().setKeyName("key1").build())
         .build();
-    bucketManager.createBucket(bucketInfo);
+    writeClient.createBucket(bucketInfo);
     Assert.assertNotNull(bucketManager.getBucketInfo("sampleVol", "bucketOne"));
 
     OmBucketInfo bucketInfoRead =
@@ -143,17 +149,23 @@ public class TestBucketManagerImpl {
   @Test
   @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testCreateEncryptedBucket() throws Exception {
-    OmMetadataManagerImpl metaMgr = createSampleVol();
+    //OmMetadataManagerImpl metaMgr = createSampleVol();
 
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+    //BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+
+    OzoneConfiguration conf = new OzoneConfiguration();
+    OmTestManagers omTestManagers = new OmTestManagers(conf);
+    BucketManager bucketManager = omTestManagers.getBucketManager();
+    OzoneManagerProtocol writeClient = omTestManagers.getWriteClient();
+
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
         .setVolumeName("sampleVol")
         .setBucketName("bucketOne")
         .build();
-    bucketManager.createBucket(bucketInfo);
-    Assert.assertNotNull(bucketManager.getBucketInfo("sampleVol",
+    writeClient.createBucket(bucketInfo);
+    Assert.assertNotNull(writeClient.getBucketInfo("sampleVol",
         "bucketOne"));
-    metaMgr.getStore().close();
+    //metaMgr.getStore().close();
   }
 
   @Test
