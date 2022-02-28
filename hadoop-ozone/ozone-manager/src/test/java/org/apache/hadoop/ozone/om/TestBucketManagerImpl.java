@@ -85,7 +85,8 @@ public class TestBucketManagerImpl {
   public void testCreateBucketWithoutVolume() throws Exception {
     thrown.expectMessage("Volume doesn't exist");
     OzoneConfiguration conf = createNewTestPath();
-    //
+    //  OmMetadataManagerImpl metaMgr =
+    //        new OmMetadataManagerImpl(conf);
     OmTestManagers omTestManagers = new OmTestManagers(conf);
     OzoneManagerProtocol writeClient;
     try {
