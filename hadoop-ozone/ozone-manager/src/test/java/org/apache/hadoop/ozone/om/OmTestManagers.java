@@ -17,6 +17,7 @@
 
 package org.apache.hadoop.ozone.om;
 
+import org.apache.hadoop.crypto.key.KeyProviderCryptoExtension;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.HddsWhiteboxTestUtils;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
@@ -84,7 +85,7 @@ public final class OmTestManagers {
       blockClient =
           new ScmBlockLocationTestingClient(null, null, 0);
     }
-
+    
     conf.set(ScmConfigKeys.OZONE_SCM_CLIENT_ADDRESS_KEY, "127.0.0.1:0");
     DefaultMetricsSystem.setMiniClusterMode(true);
     OMStorage omStorage = new OMStorage(conf);

@@ -38,10 +38,7 @@ import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
 import org.apache.hadoop.ozone.om.request.OMRequestTestUtils;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
@@ -61,6 +58,7 @@ public class TestBucketManagerImpl {
 
   private OmTestManagers omTestManagers;
   private OzoneManagerProtocol writeClient;
+  private OzoneManager om;
 
   private OzoneConfiguration createNewTestPath() throws IOException {
     OzoneConfiguration conf = new OzoneConfiguration();
@@ -72,23 +70,26 @@ public class TestBucketManagerImpl {
     return conf;
   }
 
-  private OMMetadataManager createSampleVol() throws IOException, AuthenticationException {
+  private void createSampleVol() throws IOException, AuthenticationException {
     OzoneConfiguration conf = createNewTestPath();
-
     omTestManagers = new OmTestManagers(conf);
-    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
+    om = omTestManagers.getOzoneManager();
+    writeClient = omTestManagers.getWriteClient();
 
-    String volumeKey = metaMgr.getVolumeKey("sampleVol");
     // This is a simple hack for testing, we just test if the volume via a
     // null check, do not parse the value part. So just write some dummy value.
     OmVolumeArgs args =
         OmVolumeArgs.newBuilder()
-            .setVolume("sampleVol")
+            .setVolume("sample-vol")
             .setAdminName("bilbo")
             .setOwnerName("bilbo")
             .build();
-    metaMgr.getVolumeTable().put(volumeKey, args);
-    return metaMgr;
+    writeClient.createVolume(args);
+  }
+
+  //@After
+  public void cleanup() throws Exception {
+    om.stop();
   }
 
   @Test
@@ -101,11 +102,11 @@ public class TestBucketManagerImpl {
     OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
 
     try {
-      writeClient = omTestManagers.getWriteClient();
+      OzoneManagerProtocol writeClient = omTestManagers.getWriteClient();
 
       OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-          .setVolumeName("sampleVol")
-          .setBucketName("bucket")          //for "bucketOne" INVALID_BUCKET_NAME
+          .setVolumeName("sample-vol")
+          .setBucketName("bucket-one")
           .build();
       writeClient.createBucket(bucketInfo);
     } catch (OMException omEx) {
@@ -118,9 +119,10 @@ public class TestBucketManagerImpl {
   }
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testCreateBucket() throws Exception {
-    OMMetadataManager metaMgr = createSampleVol();
+
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
 
     KeyProviderCryptoExtension kmsProvider = Mockito.mock(
         KeyProviderCryptoExtension.class);
@@ -132,20 +134,19 @@ public class TestBucketManagerImpl {
     Mockito.when(kmsProvider.getMetadata(testBekName)).thenReturn(mockMetadata);
     Mockito.when(mockMetadata.getCipher()).thenReturn(testCipherName);
 
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr, kmsProvider);
-    writeClient = omTestManagers.getWriteClient();
+    BucketManager bucketManager = omTestManagers.getBucketManager();
 
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-        .setVolumeName("sampleVol")
-        .setBucketName("bucketOne")
+        .setVolumeName("sample-vol")
+        .setBucketName("bucket-one")
         .setBucketEncryptionKey(new
             BucketEncryptionKeyInfo.Builder().setKeyName("key1").build())
         .build();
     writeClient.createBucket(bucketInfo);
-    Assert.assertNotNull(bucketManager.getBucketInfo("sampleVol", "bucketOne"));
+    Assert.assertNotNull(bucketManager.getBucketInfo("sample-vol", "bucket-one"));
 
     OmBucketInfo bucketInfoRead =
-        bucketManager.getBucketInfo("sampleVol",  "bucketOne");
+        bucketManager.getBucketInfo("sample-vol",  "bucket-one");
 
     Assert.assertTrue(bucketInfoRead.getEncryptionKeyInfo().getKeyName()
         .equals(bucketInfo.getEncryptionKeyInfo().getKeyName()));
@@ -154,36 +155,34 @@ public class TestBucketManagerImpl {
 
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testCreateEncryptedBucket() throws Exception {
-    OMMetadataManager metaMgr = createSampleVol();
 
-    writeClient = omTestManagers.getWriteClient();
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
 
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+    BucketManager bucketManager = omTestManagers.getBucketManager();
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-        .setVolumeName("sampleVol")
-        .setBucketName("bucketOne")
+        .setVolumeName("sample-vol")
+        .setBucketName("bucket-one")
         .build();
     writeClient.createBucket(bucketInfo);
-    Assert.assertNotNull(bucketManager.getBucketInfo("sampleVol",
-        "bucketOne"));
+    Assert.assertNotNull(bucketManager.getBucketInfo("sample-vol",
+        "bucket-one"));
     metaMgr.getStore().close();
   }
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testCreateAlreadyExistingBucket() throws Exception {
     thrown.expectMessage("Bucket already exist");
-    OMMetadataManager metaMgr = createSampleVol();
 
-    writeClient = omTestManagers.getWriteClient();
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
 
     try {
-      BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+      BucketManager bucketManager = omTestManagers.getBucketManager();
       OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-          .setVolumeName("sampleVol")
-          .setBucketName("bucketOne")
+          .setVolumeName("sample-vol")
+          .setBucketName("bucket-one")
           .build();
       writeClient.createBucket(bucketInfo);
       writeClient.createBucket(bucketInfo);
@@ -197,14 +196,18 @@ public class TestBucketManagerImpl {
   }
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
+  //@Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testGetBucketInfoForInvalidBucket() throws Exception {
     thrown.expectMessage("Bucket not found");
-    OMMetadataManager metaMgr = createSampleVol();
+    //OMMetadataManager metaMgr = createSampleVol();
+    //OzoneManagerProtocol writeClient = createSampleVol();
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
+
     try {
 
-      BucketManager bucketManager = new BucketManagerImpl(metaMgr);
-      bucketManager.getBucketInfo("sampleVol", "bucketOne");
+      BucketManager bucketManager = omTestManagers.getBucketManager();
+      bucketManager.getBucketInfo("sample-vol", "bucket-one");
     } catch (OMException omEx) {
       Assert.assertEquals(ResultCodes.BUCKET_NOT_FOUND,
           omEx.getResult());
@@ -216,14 +219,15 @@ public class TestBucketManagerImpl {
 
   @Test
   public void testGetBucketInfo() throws Exception {
-    final String volumeName = "sampleVol";
-    final String bucketName = "bucketOne";
-    OMMetadataManager metaMgr = createSampleVol();
+    final String volumeName = "sample-vol";
+    final String bucketName = "bucket-one";
 
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
+    BucketManager bucketManager = omTestManagers.getBucketManager();
     // Check exception thrown when volume does not exist
     try {
-      bucketManager.getBucketInfo(volumeName, bucketName);
+      writeClient.getBucketInfo(volumeName, bucketName);
       Assert.fail("Should have thrown OMException");
     } catch (OMException omEx) {
       Assert.assertEquals("getBucketInfo() should have thrown " +
@@ -270,95 +274,93 @@ public class TestBucketManagerImpl {
   }
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testSetBucketPropertyChangeStorageType() throws Exception {
-    OMMetadataManager metaMgr = createSampleVol();
 
-    writeClient = omTestManagers.getWriteClient();
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
 
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+    BucketManager bucketManager = omTestManagers.getBucketManager();
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-        .setVolumeName("sampleVol")
-        .setBucketName("bucketOne")
+        .setVolumeName("sample-vol")
+        .setBucketName("bucket-one")
         .setStorageType(StorageType.DISK)
         .build();
     createBucket(metaMgr, bucketInfo);
     OmBucketInfo result = bucketManager.getBucketInfo(
-        "sampleVol", "bucketOne");
+        "sample-vol", "bucket-one");
     Assert.assertEquals(StorageType.DISK,
         result.getStorageType());
     OmBucketArgs bucketArgs = OmBucketArgs.newBuilder()
-        .setVolumeName("sampleVol")
-        .setBucketName("bucketOne")
+        .setVolumeName("sample-vol")
+        .setBucketName("bucket-one")
         .setStorageType(StorageType.SSD)
         .build();
     writeClient.setBucketProperty(bucketArgs);
     OmBucketInfo updatedResult = bucketManager.getBucketInfo(
-        "sampleVol", "bucketOne");
+        "sample-vol", "bucket-one");
     Assert.assertEquals(StorageType.SSD,
         updatedResult.getStorageType());
     metaMgr.getStore().close();
   }
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testSetBucketPropertyChangeVersioning() throws Exception {
-    OMMetadataManager metaMgr = createSampleVol();
 
-    writeClient = omTestManagers.getWriteClient();
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
 
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr);
+    BucketManager bucketManager = omTestManagers.getBucketManager();
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-        .setVolumeName("sampleVol")
-        .setBucketName("bucketOne")
+        .setVolumeName("sample-vol")
+        .setBucketName("bucket-one")
         .setIsVersionEnabled(false)
         .build();
     writeClient.createBucket(bucketInfo);
     OmBucketInfo result = bucketManager.getBucketInfo(
-        "sampleVol", "bucketOne");
+        "sample-vol", "bucket-one");
     Assert.assertFalse(result.getIsVersionEnabled());
     OmBucketArgs bucketArgs = OmBucketArgs.newBuilder()
-        .setVolumeName("sampleVol")
-        .setBucketName("bucketOne")
+        .setVolumeName("sample-vol")
+        .setBucketName("bucket-one")
         .setIsVersionEnabled(true)
         .build();
     writeClient.setBucketProperty(bucketArgs);
     OmBucketInfo updatedResult = bucketManager.getBucketInfo(
-        "sampleVol", "bucketOne");
+        "sample-vol", "bucket-one");
     Assert.assertTrue(updatedResult.getIsVersionEnabled());
     metaMgr.getStore().close();
   }
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testDeleteBucket() throws Exception {
     thrown.expectMessage("Bucket not found");
-    OMMetadataManager metaMgr = createSampleVol();
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr);
 
-    writeClient = omTestManagers.getWriteClient();
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
+
+    BucketManager bucketManager = omTestManagers.getBucketManager();
 
     for (int i = 0; i < 5; i++) {
       OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-          .setVolumeName("sampleVol")
-          .setBucketName("bucket_" + i)
+          .setVolumeName("sample-vol")
+          .setBucketName("bucket" + i)
           .build();
       writeClient.createBucket(bucketInfo);
     }
     for (int i = 0; i < 5; i++) {
-      Assert.assertEquals("bucket_" + i,
+      Assert.assertEquals("bucket" + i,
           bucketManager.getBucketInfo(
-              "sampleVol", "bucket_" + i).getBucketName());
+              "sample-vol", "bucket" + i).getBucketName());
     }
     try {
-      writeClient.deleteBucket("sampleVol", "bucket_1");
+      writeClient.deleteBucket("sample-vol", "bucket1");
       Assert.assertNotNull(bucketManager.getBucketInfo(
-          "sampleVol", "bucket_2"));
+          "sample-vol", "bucket2"));
     } catch (IOException ex) {
       Assert.fail(ex.getMessage());
     }
     try {
-      bucketManager.getBucketInfo("sampleVol", "bucket_1");
+      bucketManager.getBucketInfo("sample-vol", "bucket1");
     } catch (OMException omEx) {
       Assert.assertEquals(ResultCodes.BUCKET_NOT_FOUND,
           omEx.getResult());
@@ -368,38 +370,39 @@ public class TestBucketManagerImpl {
   }
 
   @Test
-  @Ignore("Bucket Manager does not use cache, Disable it for now.")
   public void testDeleteNonEmptyBucket() throws Exception {
     thrown.expectMessage("Bucket is not empty");
-    OMMetadataManager metaMgr = createSampleVol();
-    BucketManager bucketManager = new BucketManagerImpl(metaMgr);
 
-    writeClient = omTestManagers.getWriteClient();
+    createSampleVol();
+    OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
 
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-        .setVolumeName("sampleVol")
-        .setBucketName("bucketOne")
+        .setVolumeName("sample-vol")
+        .setBucketName("bucket-one")
         .build();
     writeClient.createBucket(bucketInfo);
     //Create keys in bucket
-    metaMgr.getKeyTable(getBucketLayout()).put("/sampleVol/bucketOne/key_one",
+    metaMgr.getKeyTable(getBucketLayout()).put("/sampleVol/bucketOne/key-one",
         new OmKeyInfo.Builder()
-            .setBucketName("bucketOne")
-            .setVolumeName("sampleVol")
-            .setKeyName("key_one")
+            .setBucketName("bucket-one")
+            .setVolumeName("sample-vol")
+            .setKeyName("key-one")
             .setReplicationConfig(
                     new StandaloneReplicationConfig(ReplicationFactor.ONE))
             .build());
-    metaMgr.getKeyTable(getBucketLayout()).put("/sampleVol/bucketOne/key_two",
+    metaMgr.getKeyTable(getBucketLayout()).put("/sampleVol/bucketOne/key-two",
         new OmKeyInfo.Builder()
-            .setBucketName("bucketOne")
-            .setVolumeName("sampleVol")
-            .setKeyName("key_two")
+            .setBucketName("bucket-one")
+            .setVolumeName("sample-vol")
+            .setKeyName("key-two")
             .setReplicationConfig(
                         new StandaloneReplicationConfig(ReplicationFactor.ONE))
             .build());
+    //metaMgr is not used anymore
+    //we need to add the keys from writeClient
+    //writeClient.commitKey(args, clientId);
     try {
-      writeClient.deleteBucket("sampleVol", "bucketOne");
+      writeClient.deleteBucket("sample-vol", "bucket-one");
     } catch (OMException omEx) {
       Assert.assertEquals(ResultCodes.BUCKET_NOT_EMPTY,
           omEx.getResult());
