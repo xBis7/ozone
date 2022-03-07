@@ -42,6 +42,7 @@ public final class OmTestManagers {
   private OzoneManager om;
   private KeyManager keyManager;
   private OMMetadataManager metadataManager;
+  private KeyProviderCryptoExtension kmsProvider;
   private VolumeManager volumeManager;
   private BucketManager bucketManager;
   private PrefixManager prefixManager;
@@ -67,6 +68,7 @@ public final class OmTestManagers {
   public KeyManager getKeyManager() {
     return keyManager;
   }
+  public KeyProviderCryptoExtension getKmsProvider() { return kmsProvider; }
 
   public OmTestManagers(OzoneConfiguration conf)
       throws AuthenticationException, IOException {
@@ -106,6 +108,11 @@ public final class OmTestManagers {
     HddsWhiteboxTestUtils.setInternalState(keyManager,
         "secretManager", Mockito.mock(OzoneBlockTokenSecretManager.class));
 
+    kmsProvider = Mockito.mock(KeyProviderCryptoExtension.class);
+
+    HddsWhiteboxTestUtils.setInternalState(om,
+            "kmsProvider", kmsProvider);
+
     om.start();
     writeClient = OzoneClientFactory.getRpcClient(conf)
         .getObjectStore().getClientProxy().getOzoneManagerClient();
@@ -117,6 +124,7 @@ public final class OmTestManagers {
         .getInternalState(om, "bucketManager");
     prefixManager = (PrefixManagerImpl)HddsWhiteboxTestUtils
         .getInternalState(om, "prefixManager");
+
 
   }
 
