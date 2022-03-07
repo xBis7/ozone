@@ -143,10 +143,10 @@ public class TestBucketManagerImpl {
                 BucketEncryptionKeyInfo.Builder().setKeyName("key1").build())
         .build();
     writeClient.createBucket(bucketInfo);
-    Assert.assertNotNull(bucketManager.getBucketInfo("sample-vol", "bucket-one"));    //bucketManager instead of writeClient
+    Assert.assertNotNull(bucketManager.getBucketInfo("sample-vol", "bucket-one"));
 
     OmBucketInfo bucketInfoRead =
-        bucketManager.getBucketInfo("sample-vol",  "bucket-one");   //bucketManager instead of writeClient
+        bucketManager.getBucketInfo("sample-vol",  "bucket-one");
 
    Assert.assertTrue(bucketInfoRead.getEncryptionKeyInfo().getKeyName()
         .equals(bucketInfo.getEncryptionKeyInfo().getKeyName()));

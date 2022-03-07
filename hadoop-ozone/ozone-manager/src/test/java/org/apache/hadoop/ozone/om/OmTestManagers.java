@@ -124,8 +124,7 @@ public final class OmTestManagers {
         .getInternalState(om, "bucketManager");
     prefixManager = (PrefixManagerImpl)HddsWhiteboxTestUtils
         .getInternalState(om, "prefixManager");
-
-
+    
   }
 
 }
