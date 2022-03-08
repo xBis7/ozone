@@ -61,6 +61,12 @@ public class TestBucketManagerImpl {
   private OzoneManagerProtocol writeClient;
   private OzoneManager om;
 
+  @After
+  public void cleanup() throws Exception {
+    om = omTestManagers.getOzoneManager();
+    om.stop();
+  }
+
   private OzoneConfiguration createNewTestPath() throws IOException, AuthenticationException {
     OzoneConfiguration conf = new OzoneConfiguration();
     File newFolder = folder.newFolder();
@@ -68,19 +74,12 @@ public class TestBucketManagerImpl {
       Assert.assertTrue(newFolder.mkdirs());
     }
     ServerUtils.setOzoneMetaDirPath(conf, newFolder.toString());
-
     return conf;
-  }
-
-  @After
-  public void cleanup() throws Exception {
-    om.stop();
   }
 
   private void createSampleVol() throws IOException, AuthenticationException {
     OzoneConfiguration conf = createNewTestPath();
     omTestManagers = new OmTestManagers(conf);
-    om = omTestManagers.getOzoneManager();
     writeClient = omTestManagers.getWriteClient();
 
     // This is a simple hack for testing, we just test if the volume via a
@@ -98,12 +97,9 @@ public class TestBucketManagerImpl {
   @Test
   public void testCreateBucketWithoutVolume() throws Exception {
     thrown.expectMessage("Volume doesn't exist");
-
     OzoneConfiguration conf = createNewTestPath();
 
     omTestManagers = new OmTestManagers(conf);
-    om = omTestManagers.getOzoneManager();
-
     try {
       OzoneManagerProtocol writeClient = omTestManagers.getWriteClient();
 
@@ -124,7 +120,7 @@ public class TestBucketManagerImpl {
 
     createSampleVol();
 
-    KeyProviderCryptoExtension kmsProvider = omTestManagers.getKmsProvider();
+    KeyProviderCryptoExtension kmsProvider = omTestManagers.kmsProviderInit();
 
     String testBekName = "key1";
     String testCipherName = "AES/CTR/NoPadding";
@@ -155,7 +151,6 @@ public class TestBucketManagerImpl {
 
   @Test
   public void testCreateEncryptedBucket() throws Exception {
-
     createSampleVol();
 
     BucketManager bucketManager = omTestManagers.getBucketManager();
@@ -193,7 +188,6 @@ public class TestBucketManagerImpl {
     thrown.expectMessage("Bucket not found");
 
     createSampleVol();
-
     try {
 
       BucketManager bucketManager = omTestManagers.getBucketManager();
@@ -210,7 +204,10 @@ public class TestBucketManagerImpl {
     final String volumeName = "sample-vol";
     final String bucketName = "bucket-one";
 
-    createSampleVol();
+    OzoneConfiguration conf = createNewTestPath();
+    omTestManagers = new OmTestManagers(conf);
+    writeClient = omTestManagers.getWriteClient();
+
     OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
     BucketManager bucketManager = omTestManagers.getBucketManager();
     // Check exception thrown when volume does not exist
@@ -236,7 +233,7 @@ public class TestBucketManagerImpl {
             .setAdminName("bilbo")
             .setOwnerName("bilbo")
             .build();
-    OMRequestTestUtils.addVolumeToOM(metaMgr, args);
+    writeClient.createVolume(args);
     // Create bucket
     createBucket(metaMgr, bucketInfo);
     // Check exception thrown when bucket does not exist
@@ -265,7 +262,6 @@ public class TestBucketManagerImpl {
 
     createSampleVol();
     OMMetadataManager metaMgr = omTestManagers.getMetadataManager();
-
     BucketManager bucketManager = omTestManagers.getBucketManager();
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
         .setVolumeName("sample-vol")
@@ -291,7 +287,6 @@ public class TestBucketManagerImpl {
 
   @Test
   public void testSetBucketPropertyChangeVersioning() throws Exception {
-
     createSampleVol();
 
     BucketManager bucketManager = omTestManagers.getBucketManager();
@@ -320,30 +315,29 @@ public class TestBucketManagerImpl {
     thrown.expectMessage("Bucket not found");
 
     createSampleVol();
-
     BucketManager bucketManager = omTestManagers.getBucketManager();
 
     for (int i = 0; i < 5; i++) {
       OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
           .setVolumeName("sample-vol")
-          .setBucketName("bucket" + i)
+          .setBucketName("bucket-" + i)
           .build();
       writeClient.createBucket(bucketInfo);
     }
     for (int i = 0; i < 5; i++) {
-      Assert.assertEquals("bucket" + i,
+      Assert.assertEquals("bucket-" + i,
           bucketManager.getBucketInfo(
-              "sample-vol", "bucket" + i).getBucketName());
+              "sample-vol", "bucket-" + i).getBucketName());
     }
     try {
-      writeClient.deleteBucket("sample-vol", "bucket1");
+      writeClient.deleteBucket("sample-vol", "bucket-1");
       Assert.assertNotNull(bucketManager.getBucketInfo(
-          "sample-vol", "bucket2"));
+          "sample-vol", "bucket-2"));
     } catch (IOException ex) {
       Assert.fail(ex.getMessage());
     }
     try {
-      bucketManager.getBucketInfo("sample-vol", "bucket1");
+      bucketManager.getBucketInfo("sample-vol", "bucket-1");
     } catch (OMException omEx) {
       Assert.assertEquals(ResultCodes.BUCKET_NOT_FOUND,
           omEx.getResult());
@@ -354,7 +348,6 @@ public class TestBucketManagerImpl {
   @Test
   public void testDeleteNonEmptyBucket() throws Exception {
     thrown.expectMessage("Bucket is not empty");
-
     createSampleVol();
 
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
