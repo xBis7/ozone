@@ -22,6 +22,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.WithParentObjectId;
@@ -39,6 +40,7 @@ import java.util.Iterator;
 
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.DIRECTORY_TABLE;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.FILE_TABLE;
+import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
 
 /**
  * Task to query data from OMDB and write into Recon RocksDB.
@@ -74,7 +76,7 @@ public class NSSummaryTask implements ReconOmTask {
 
   // We only listen to updates from FSO-enabled KeyTable(FileTable) and DirTable
   public Collection<String> getTaskTables() {
-    return Arrays.asList(new String[]{FILE_TABLE, DIRECTORY_TABLE});
+    return Arrays.asList(new String[]{FILE_TABLE, DIRECTORY_TABLE, KEY_TABLE});
   }
 
   @Override
@@ -90,6 +92,7 @@ public class NSSummaryTask implements ReconOmTask {
       // we only process updates on OM's KeyTable and Dirtable
       String table = omdbUpdateEvent.getTable();
       boolean updateOnFileTable = table.equals(FILE_TABLE);
+      boolean updateOnKeyTable = table.equals(KEY_TABLE);
       if (!taskTables.contains(table)) {
         continue;
       }
@@ -97,8 +100,8 @@ public class NSSummaryTask implements ReconOmTask {
       String updatedKey = omdbUpdateEvent.getKey();
 
       try {
-        if (updateOnFileTable) {
-          // key update on fileTable
+        if (updateOnFileTable || updateOnKeyTable) {
+          // key update on fileTable or keyTable
           OMDBUpdateEvent<String, OmKeyInfo> keyTableUpdateEvent =
                   (OMDBUpdateEvent<String, OmKeyInfo>) omdbUpdateEvent;
           OmKeyInfo updatedKeyInfo = keyTableUpdateEvent.getValue();
@@ -188,7 +191,19 @@ public class NSSummaryTask implements ReconOmTask {
       }
 
       // Get fileTable used by FSO
-      Table keyTable = omMetadataManager.getFileTable();
+      Table fileTable = omMetadataManager.getFileTable();
+
+      TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
+              fileTableIter = fileTable.iterator();
+
+      while (fileTableIter.hasNext()) {
+        Table.KeyValue<String, OmKeyInfo> kv = fileTableIter.next();
+        OmKeyInfo keyInfo = kv.getValue();
+        writeOmKeyInfoOnNamespaceDB(keyInfo);
+      }
+
+      //Get keyTable
+      Table keyTable = omMetadataManager.getKeyTable(BucketLayout.LEGACY);
 
       TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
               keyTableIter = keyTable.iterator();
@@ -211,23 +226,25 @@ public class NSSummaryTask implements ReconOmTask {
 
   private void writeOmKeyInfoOnNamespaceDB(OmKeyInfo keyInfo)
           throws IOException {
-    long parentObjectId = keyInfo.getParentObjectID();
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-    if (nsSummary == null) {
-      nsSummary = new NSSummary();
-    }
-    int numOfFile = nsSummary.getNumOfFiles();
-    long sizeOfFile = nsSummary.getSizeOfFiles();
-    int[] fileBucket = nsSummary.getFileSizeBucket();
-    nsSummary.setNumOfFiles(numOfFile + 1);
-    long dataSize = keyInfo.getDataSize();
-    nsSummary.setSizeOfFiles(sizeOfFile + dataSize);
-    int binIndex = ReconUtils.getBinIndex(dataSize);
+    if(!keyInfo.getKeyName().endsWith("/")){            //either keyName or fileName
+      long parentObjectId = keyInfo.getParentObjectID();
+      NSSummary nsSummary = reconNamespaceSummaryManager
+              .getNSSummary(parentObjectId);
+      if (nsSummary == null) {
+        nsSummary = new NSSummary();
+      }
+      int numOfFile = nsSummary.getNumOfFiles();
+      long sizeOfFile = nsSummary.getSizeOfFiles();
+      int[] fileBucket = nsSummary.getFileSizeBucket();
+      nsSummary.setNumOfFiles(numOfFile + 1);
+      long dataSize = keyInfo.getDataSize();
+      nsSummary.setSizeOfFiles(sizeOfFile + dataSize);
+      int binIndex = ReconUtils.getBinIndex(dataSize);
 
-    ++fileBucket[binIndex];
-    nsSummary.setFileSizeBucket(fileBucket);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
+      ++fileBucket[binIndex];
+      nsSummary.setFileSizeBucket(fileBucket);
+      reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
+    }
   }
 
   private void writeOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)
