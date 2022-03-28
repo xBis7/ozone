@@ -226,25 +226,23 @@ public class NSSummaryTask implements ReconOmTask {
 
   private void writeOmKeyInfoOnNamespaceDB(OmKeyInfo keyInfo)
           throws IOException {
-    if(!keyInfo.getKeyName().endsWith("/")){            //either keyName or fileName
-      long parentObjectId = keyInfo.getParentObjectID();
-      NSSummary nsSummary = reconNamespaceSummaryManager
-              .getNSSummary(parentObjectId);
-      if (nsSummary == null) {
-        nsSummary = new NSSummary();
-      }
-      int numOfFile = nsSummary.getNumOfFiles();
-      long sizeOfFile = nsSummary.getSizeOfFiles();
-      int[] fileBucket = nsSummary.getFileSizeBucket();
-      nsSummary.setNumOfFiles(numOfFile + 1);
-      long dataSize = keyInfo.getDataSize();
-      nsSummary.setSizeOfFiles(sizeOfFile + dataSize);
-      int binIndex = ReconUtils.getBinIndex(dataSize);
-
-      ++fileBucket[binIndex];
-      nsSummary.setFileSizeBucket(fileBucket);
-      reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
+    long parentObjectId = keyInfo.getParentObjectID();
+    NSSummary nsSummary = reconNamespaceSummaryManager
+            .getNSSummary(parentObjectId);
+    if (nsSummary == null) {
+      nsSummary = new NSSummary();
     }
+    int numOfFile = nsSummary.getNumOfFiles();
+    long sizeOfFile = nsSummary.getSizeOfFiles();
+    int[] fileBucket = nsSummary.getFileSizeBucket();
+    nsSummary.setNumOfFiles(numOfFile + 1);
+    long dataSize = keyInfo.getDataSize();
+    nsSummary.setSizeOfFiles(sizeOfFile + dataSize);
+    int binIndex = ReconUtils.getBinIndex(dataSize);
+
+    ++fileBucket[binIndex];
+    nsSummary.setFileSizeBucket(fileBucket);
+    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
   }
 
   private void writeOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)

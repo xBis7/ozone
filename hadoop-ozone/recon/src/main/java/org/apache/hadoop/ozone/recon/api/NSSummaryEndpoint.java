@@ -33,7 +33,6 @@ import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
-import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -241,8 +240,7 @@ public class NSSummaryEndpoint {
         // count replicas
         // TODO: to be dropped or optimized in the future
         if (withReplica) {
-          //2 versions, we are currently having 1 for fso buckets, add 1 for legacy
-          long volumeDU = calculateDUForVolume(volumeName, false);
+          long volumeDU = calculateDUForVolume(volumeName);
           totalDataSizeWithReplica += volumeDU;
           diskUsage.setSizeWithReplica(volumeDU);
         }
@@ -854,18 +852,11 @@ public class NSSummaryEndpoint {
     return result;
   }
 
-  private long calculateDUForVolume(String volumeName, boolean legacy)
+  private long calculateDUForVolume(String volumeName)
       throws IOException {
     long result = 0L;
 
-    Table keyTable;
-
-    if(legacy){
-      keyTable = omMetadataManager.getKeyTable(BucketLayout.LEGACY);
-    }
-    else{
-      keyTable = omMetadataManager.getFileTable();
-    }
+    Table keyTable = omMetadataManager.getFileTable();
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
@@ -1061,8 +1052,7 @@ public class NSSummaryEndpoint {
     return omMetadataManager.getVolumeTable() != null
         && omMetadataManager.getBucketTable() != null
         && omMetadataManager.getDirectoryTable() != null
-        && omMetadataManager.getFileTable() != null
-        && omMetadataManager.getKeyTable(BucketLayout.LEGACY) != null;
+        && omMetadataManager.getFileTable() != null;
   }
 
   private static String normalizePath(String path) {
