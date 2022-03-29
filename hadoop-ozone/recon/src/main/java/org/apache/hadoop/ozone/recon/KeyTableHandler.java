@@ -201,7 +201,7 @@ public class KeyTableHandler extends TableHandler {
             dirKey = omMetadataManager.getOzonePathKey(dirObjectId, names[i]);
             OmKeyInfo dirInfo =
                     omMetadataManager.getKeyTable(bucketLayout).getSkipCache(dirKey);
-            if(!dirInfo.getKeyName().endsWith("/")){
+            if(dirInfo.getKeyName().endsWith("/")){
                 dirObjectId = dirInfo.getObjectID();
             }
         }
