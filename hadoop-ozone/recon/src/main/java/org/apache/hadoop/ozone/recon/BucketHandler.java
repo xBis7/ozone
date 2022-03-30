@@ -20,7 +20,7 @@ import java.util.List;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.helpers.OzoneFSUtils.removeTrailingSlashIfNeeded;
 
-public abstract class TableHandler {
+public abstract class BucketHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(
             NSSummaryEndpoint.class);
@@ -32,7 +32,7 @@ public abstract class TableHandler {
     @Inject
     private ReconOMMetadataManager omMetadataManager;
 
-    public TableHandler(OzoneStorageContainerManager reconSCM,
+    public BucketHandler(OzoneStorageContainerManager reconSCM,
                         ReconOMMetadataManager omMetadataManager) {
         this.reconSCM = reconSCM;
         this.omMetadataManager = omMetadataManager;

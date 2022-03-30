@@ -27,7 +27,7 @@ import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
-import org.apache.hadoop.ozone.recon.FileTableHandler;
+import org.apache.hadoop.ozone.recon.FSOBucketHandler;
 import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -70,7 +70,7 @@ public class NSSummaryEndpoint {
   @Inject
   private ReconOMMetadataManager omMetadataManager;
 
-  private FileTableHandler fileTableHandler;
+  private FSOBucketHandler fsoBucketHandler;
 
   @Inject
   public NSSummaryEndpoint(ReconNamespaceSummaryManager namespaceSummaryManager,
@@ -78,8 +78,7 @@ public class NSSummaryEndpoint {
                            OzoneStorageContainerManager reconSCM) {
     this.reconNamespaceSummaryManager = namespaceSummaryManager;
     this.omMetadataManager = omMetadataManager;
-//    this.containerManager = reconSCM.getContainerManager();
-    fileTableHandler = new FileTableHandler(reconNamespaceSummaryManager,
+    fsoBucketHandler = new FSOBucketHandler(reconNamespaceSummaryManager,
             omMetadataManager, reconSCM);
   }
 
@@ -149,13 +148,13 @@ public class NSSummaryEndpoint {
       namespaceSummaryResponse =
           new NamespaceSummaryResponse(EntityType.BUCKET);
       assert (names.length == 2);
-      long bucketObjectId = fileTableHandler.getBucketObjectId(names);
+      long bucketObjectId = fsoBucketHandler.getBucketObjectId(names);
       namespaceSummaryResponse.setNumTotalDir(getTotalDirCount(bucketObjectId));
       namespaceSummaryResponse.setNumTotalKey(getTotalKeyCount(bucketObjectId));
       break;
     case DIRECTORY:
       // path should exist so we don't need any extra verification/null check
-      long dirObjectId = fileTableHandler.getDirObjectId(names, BucketLayout.FILE_SYSTEM_OPTIMIZED);
+      long dirObjectId = fsoBucketHandler.getDirObjectId(names, BucketLayout.FILE_SYSTEM_OPTIMIZED);
       namespaceSummaryResponse =
           new NamespaceSummaryResponse(EntityType.DIRECTORY);
       namespaceSummaryResponse.setNumTotalDir(getTotalDirCount(dirObjectId));
@@ -262,7 +261,7 @@ public class NSSummaryEndpoint {
         long dataSize = getTotalSize(bucketObjectID);
         volDataSize += dataSize;
         if (withReplica) {
-          long bucketDU = fileTableHandler.calculateDUUnderObject(bucketObjectID,
+          long bucketDU = fsoBucketHandler.calculateDUUnderObject(bucketObjectID,
                   BucketLayout.FILE_SYSTEM_OPTIMIZED);
           diskUsage.setSizeWithReplica(bucketDU);
           volDataSizeWithReplica += bucketDU;
@@ -277,7 +276,7 @@ public class NSSummaryEndpoint {
       duResponse.setDuData(bucketDuData);
       break;
     case BUCKET:
-      long bucketObjectId = fileTableHandler.getBucketObjectId(names);
+      long bucketObjectId = fsoBucketHandler.getBucketObjectId(names);
       NSSummary bucketNSSummary =
               reconNamespaceSummaryManager.getNSSummary(bucketObjectId);
       // empty bucket, because it's not a parent of any directory or key
@@ -309,7 +308,7 @@ public class NSSummaryEndpoint {
         bucketDataSize += dataSize;
 
         if (withReplica) {
-          long dirDU = fileTableHandler.calculateDUUnderObject(subdirObjectId,
+          long dirDU = fsoBucketHandler.calculateDUUnderObject(subdirObjectId,
                   BucketLayout.FILE_SYSTEM_OPTIMIZED);
           diskUsage.setSizeWithReplica(dirDU);
           bucketDataSizeWithReplica += dirDU;
@@ -319,7 +318,7 @@ public class NSSummaryEndpoint {
       }
       // Either listFile or withReplica is enabled, we need the directKeys info
       if (listFile || withReplica) {
-        bucketDataSizeWithReplica += fileTableHandler.handleDirectKeys(bucketObjectId,
+        bucketDataSizeWithReplica += fsoBucketHandler.handleDirectKeys(bucketObjectId,
             withReplica, listFile, dirDUData, normalizedPath,
                 BucketLayout.FILE_SYSTEM_OPTIMIZED);
       }
@@ -331,7 +330,7 @@ public class NSSummaryEndpoint {
       duResponse.setDuData(dirDUData);
       break;
     case DIRECTORY:
-      long dirObjectId = fileTableHandler.getDirObjectId(names, BucketLayout.FILE_SYSTEM_OPTIMIZED);
+      long dirObjectId = fsoBucketHandler.getDirObjectId(names, BucketLayout.FILE_SYSTEM_OPTIMIZED);
       NSSummary dirNSSummary =
               reconNamespaceSummaryManager.getNSSummary(dirObjectId);
       // Empty directory
@@ -362,7 +361,7 @@ public class NSSummaryEndpoint {
         dirDataSize += dataSize;
 
         if (withReplica) {
-          long subdirDU = fileTableHandler.calculateDUUnderObject(subdirObjectId,
+          long subdirDU = fsoBucketHandler.calculateDUUnderObject(subdirObjectId,
                   BucketLayout.FILE_SYSTEM_OPTIMIZED);
           diskUsage.setSizeWithReplica(subdirDU);
           dirDataSizeWithReplica += subdirDU;
@@ -374,7 +373,7 @@ public class NSSummaryEndpoint {
 
       // handle direct keys under directory
       if (listFile || withReplica) {
-        dirDataSizeWithReplica += fileTableHandler.handleDirectKeys(dirObjectId, withReplica,
+        dirDataSizeWithReplica += fsoBucketHandler.handleDirectKeys(dirObjectId, withReplica,
             listFile, subdirDUData, normalizedPath, BucketLayout.FILE_SYSTEM_OPTIMIZED);
       }
 
@@ -389,7 +388,7 @@ public class NSSummaryEndpoint {
       // DU for key doesn't have subpaths
       duResponse.setCount(0);
       // The object ID for the directory that the key is directly in
-      long parentObjectId = fileTableHandler.getDirObjectId(names, names.length - 1,
+      long parentObjectId = fsoBucketHandler.getDirObjectId(names, names.length - 1,
               BucketLayout.FILE_SYSTEM_OPTIMIZED);
       String fileName = names[names.length - 1];
       String ozoneKey =
@@ -398,7 +397,7 @@ public class NSSummaryEndpoint {
           omMetadataManager.getFileTable().getSkipCache(ozoneKey);
       duResponse.setSize(keyInfo.getDataSize());
       if (withReplica) {
-        long keySizeWithReplica = fileTableHandler.getKeySizeWithReplication(keyInfo);
+        long keySizeWithReplica = fsoBucketHandler.getKeySizeWithReplication(keyInfo);
         duResponse.setSizeWithReplica(keySizeWithReplica);
       }
       break;
@@ -551,12 +550,12 @@ public class NSSummaryEndpoint {
       distResponse.setFileSizeDist(volumeFileSizeDist);
       break;
     case BUCKET:
-      long bucketObjectId = fileTableHandler.getBucketObjectId(names);
+      long bucketObjectId = fsoBucketHandler.getBucketObjectId(names);
       int[] bucketFileSizeDist = getTotalFileSizeDist(bucketObjectId);
       distResponse.setFileSizeDist(bucketFileSizeDist);
       break;
     case DIRECTORY:
-      long dirObjectId = fileTableHandler.getDirObjectId(names, BucketLayout.FILE_SYSTEM_OPTIMIZED);
+      long dirObjectId = fsoBucketHandler.getDirObjectId(names, BucketLayout.FILE_SYSTEM_OPTIMIZED);
       int[] dirFileSizeDist = getTotalFileSizeDist(dirObjectId);
       distResponse.setFileSizeDist(dirFileSizeDist);
       break;
@@ -611,8 +610,8 @@ public class NSSummaryEndpoint {
           || !bucketExists(volName, bucketName)) {
         return EntityType.UNKNOWN;
       }
-      long bucketObjectId = fileTableHandler.getBucketObjectId(names);
-      return fileTableHandler.determineKeyPath(keyName, bucketObjectId,
+      long bucketObjectId = fsoBucketHandler.getBucketObjectId(names);
+      return fsoBucketHandler.determineKeyPath(keyName, bucketObjectId,
               BucketLayout.FILE_SYSTEM_OPTIMIZED);
     }
   }
@@ -820,7 +819,7 @@ public class NSSummaryEndpoint {
 
       if (keyInfo != null) {
         if (volumeName.equals(keyInfo.getVolumeName())) {
-          result += fileTableHandler.getKeySizeWithReplication(keyInfo);
+          result += fsoBucketHandler.getKeySizeWithReplication(keyInfo);
         }
       }
     }

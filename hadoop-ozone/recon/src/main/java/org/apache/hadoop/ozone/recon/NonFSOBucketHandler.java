@@ -4,7 +4,6 @@ import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
-import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
@@ -20,9 +19,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
-
-public class FileTableHandler extends TableHandler {
+public class NonFSOBucketHandler extends BucketHandler {
 
     @Inject
     private ReconOMMetadataManager omMetadataManager;
@@ -30,10 +27,9 @@ public class FileTableHandler extends TableHandler {
     @Inject
     private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
 
-    @Inject
-    public FileTableHandler(ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-                            ReconOMMetadataManager omMetadataManager,
-                            OzoneStorageContainerManager reconSCM) {
+    public NonFSOBucketHandler(ReconNamespaceSummaryManager reconNamespaceSummaryManager,
+                               ReconOMMetadataManager omMetadataManager,
+                               OzoneStorageContainerManager reconSCM) {
         super(reconSCM, omMetadataManager);
         this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
         this.omMetadataManager = omMetadataManager;
@@ -47,55 +43,50 @@ public class FileTableHandler extends TableHandler {
         Iterator<Path> elements = keyPath.iterator();
 
         long lastKnownParentId = bucketObjectId;
-        OmDirectoryInfo omDirInfo = null;
+        OmKeyInfo omKeyInfo;
         while (elements.hasNext()) {
             String fileName = elements.next().toString();
 
             // For example, /vol1/buck1/a/b/c/d/e/file1.txt
-            // 1. Do lookup path component on directoryTable starting from bucket
-            // 'buck1' to the leaf node component, which is 'file1.txt'.
-            // 2. If there is no dir exists for the leaf node component 'file1.txt'
-            // then do look it on fileTable.
+            // Look in the KeyTable, if there is a result, check the keyName
+            // if it ends with '/' then we have directory
+            // else we have a key
+            // otherwise we return null, UNKNOWN
             String dbNodeName = omMetadataManager.getOzonePathKey(
                     lastKnownParentId, fileName);
-            omDirInfo = omMetadataManager.getDirectoryTable()
+
+            omKeyInfo = omMetadataManager.getKeyTable(bucketLayout)
                     .getSkipCache(dbNodeName);
 
-            if (omDirInfo != null) {
-                lastKnownParentId = omDirInfo.getObjectID();
-            } else if (!elements.hasNext()) {
-                // reached last path component. Check file exists for the given path.
-                OmKeyInfo omKeyInfo = omMetadataManager.getFileTable()
-                        .getSkipCache(dbNodeName);
-                // The path exists as a file
-                if (omKeyInfo != null) {
-                    omKeyInfo.setKeyName(keyName);
+            if (omKeyInfo != null) {
+                omKeyInfo.setKeyName(keyName);
+                if(keyName.endsWith("/")){
+                    return EntityType.DIRECTORY;
+                }
+                else{
                     return EntityType.KEY;
                 }
-            } else {
-                // Missing intermediate directory and just return null;
-                // key not found in DB
+            }
+            else{
                 return EntityType.UNKNOWN;
             }
         }
 
-        if (omDirInfo != null) {
-            return EntityType.DIRECTORY;
-        }
         return EntityType.UNKNOWN;
     }
 
-    // FileTable's key is in the format of "parentId/fileName"
+    // KeyTable's key is in the format of "path/fileName"
     // Make use of RocksDB's order to seek to the prefix and avoid full iteration
     @Override
     public long calculateDUUnderObject(long parentId, BucketLayout bucketLayout)
             throws IOException {
-        Table keyTable = omMetadataManager.getFileTable();
+        Table keyTable = omMetadataManager.getKeyTable(bucketLayout);
 
         TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
                 iterator = keyTable.iterator();
 
-        String seekPrefix = parentId + OM_KEY_PREFIX;
+        // returns "parentId.path" + "/" + "", path to parent object
+        String seekPrefix = omMetadataManager.getOzonePathKey(parentId, "");
         iterator.seek(seekPrefix);
         long totalDU = 0L;
         // handle direct keys
@@ -139,15 +130,15 @@ public class FileTableHandler extends TableHandler {
      */
     @Override
     public long handleDirectKeys(long parentId, boolean withReplica,
-                                  boolean listFile,
-                                  List<DUResponse.DiskUsage> duData,
-                                  String normalizedPath, BucketLayout bucketLayout) throws IOException {
+                                          boolean listFile,
+                                          List<DUResponse.DiskUsage> duData,
+                                          String normalizedPath, BucketLayout bucketLayout) throws IOException {
 
-        Table keyTable = omMetadataManager.getFileTable();
+        Table keyTable = omMetadataManager.getKeyTable(bucketLayout);
         TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
                 iterator = keyTable.iterator();
 
-        String seekPrefix = parentId + OM_KEY_PREFIX;
+        String seekPrefix = omMetadataManager.getOzonePathKey(parentId, "");
         iterator.seek(seekPrefix);
 
         long keyDataSizeWithReplica = 0L;
@@ -179,7 +170,6 @@ public class FileTableHandler extends TableHandler {
                 }
             }
         }
-
         return keyDataSizeWithReplica;
     }
 
@@ -206,12 +196,14 @@ public class FileTableHandler extends TableHandler {
     @Override
     public long getDirObjectId(String[] names, int cutoff, BucketLayout bucketLayout) throws IOException {
         long dirObjectId = getBucketObjectId(names);
-        String dirKey = null;
+        String dirKey;
         for (int i = 2; i < cutoff; ++i) {
             dirKey = omMetadataManager.getOzonePathKey(dirObjectId, names[i]);
-            OmDirectoryInfo dirInfo =
-                    omMetadataManager.getDirectoryTable().getSkipCache(dirKey);
-            dirObjectId = dirInfo.getObjectID();
+            OmKeyInfo dirInfo =
+                    omMetadataManager.getKeyTable(bucketLayout).getSkipCache(dirKey);
+            if(dirInfo.getKeyName().endsWith("/")){
+                dirObjectId = dirInfo.getObjectID();
+            }
         }
         return dirObjectId;
     }
