@@ -103,7 +103,7 @@ public abstract class EntityHandler {
   }
 
   public String[] getNames() {
-    return names;
+    return names.clone();
   }
 
   /**
@@ -343,7 +343,7 @@ public abstract class EntityHandler {
       path = path.substring(1);
     }
     names = path.split(OM_KEY_PREFIX);
-    return names;
+    return names.clone();
   }
 
   private static String normalizePath(String path) {
