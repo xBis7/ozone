@@ -109,8 +109,11 @@ public abstract class EntityHandler {
   /**
    * Return the entity type of client's request, check path existence.
    * If path doesn't exist, return Entity.UNKNOWN
+   * @param reconNamespaceSummaryManager ReconNamespaceSummaryManager
+   * @param omMetadataManager ReconOMMetadataManager
+   * @param reconSCM OzoneStorageContainerManager
    * @param path the original path request used to identify root level
-   * @return the entity type of client's request, check path existence
+   * @return the entity type of client's request
    */
   public static EntityHandler getEntityHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
