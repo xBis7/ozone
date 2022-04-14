@@ -22,10 +22,7 @@ import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerManager;
 import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
-import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
-import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
-import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
-import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
+import org.apache.hadoop.ozone.om.helpers.*;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
@@ -165,15 +162,14 @@ public abstract class BucketHandler {
   // it will be updated for other bucket types depending on the path
   // For now only FSO buckets supported
 
-  public static BucketHandler getBucketHandler(
-          ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-          ReconOMMetadataManager omMetadataManager,
-          OzoneStorageContainerManager reconSCM,
-          String path) {
-
-    return new FSOBucketHandler(reconNamespaceSummaryManager,
-            omMetadataManager, reconSCM);
-  }
+//  public static BucketHandler getBucketHandler(
+//          ReconNamespaceSummaryManager reconNamespaceSummaryManager,
+//          ReconOMMetadataManager omMetadataManager,
+//          OzoneStorageContainerManager reconSCM, String path) {
+//
+//    return new FSOBucketHandler(reconNamespaceSummaryManager,
+//            omMetadataManager, reconSCM);
+//  }
 
   public static BucketHandler getBucketHandler(
                 ReconNamespaceSummaryManager reconNamespaceSummaryManager,
@@ -181,8 +177,14 @@ public abstract class BucketHandler {
                 OzoneStorageContainerManager reconSCM,
                 OmBucketInfo bucketInfo) {
 
-    return new FSOBucketHandler(reconNamespaceSummaryManager,
-            omMetadataManager, reconSCM);
+    if (bucketInfo.getBucketLayout()
+            .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      return new FSOBucketHandler(reconNamespaceSummaryManager,
+              omMetadataManager, reconSCM);
+    } else {
+      return new NonFSOBucketHandler(reconNamespaceSummaryManager,
+              omMetadataManager, reconSCM);
+    }
   }
 
 }

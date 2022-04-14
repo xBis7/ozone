@@ -21,6 +21,7 @@ import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OmUtils;
+import org.apache.hadoop.ozone.om.OzoneManagerUtils;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -121,7 +122,7 @@ public abstract class EntityHandler {
           OzoneStorageContainerManager reconSCM,
           String path) throws IOException {
     BucketHandler bucketHandler;
-
+    OmBucketInfo omBucketInfo;
     normalizedPath = normalizePath(path);
     names = parseRequestPath(normalizedPath);
 
@@ -142,11 +143,13 @@ public abstract class EntityHandler {
       return EntityType.VOLUME.create(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, null);
     } else if (names.length == 2) { // bucket level check
-      bucketHandler = BucketHandler.getBucketHandler(
-              reconNamespaceSummaryManager,
-              omMetadataManager, reconSCM, path);
       String volName = names[0];
       String bucketName = names[1];
+      omBucketInfo = OzoneManagerUtils
+              .getOmBucketInfo(omMetadataManager, volName, bucketName);
+      bucketHandler = BucketHandler.getBucketHandler(
+              reconNamespaceSummaryManager,
+              omMetadataManager, reconSCM, omBucketInfo);
       if (!bucketHandler.bucketExists(volName, bucketName)) {
         return EntityType.UNKNOWN.create(reconNamespaceSummaryManager,
                 omMetadataManager, reconSCM, null);
@@ -154,12 +157,14 @@ public abstract class EntityHandler {
       return EntityType.BUCKET.create(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, bucketHandler);
     } else { // length > 3. check dir or key existence (FSO-enabled)
-      bucketHandler = BucketHandler.getBucketHandler(
-              reconNamespaceSummaryManager,
-              omMetadataManager, reconSCM, path);
       String volName = names[0];
       String bucketName = names[1];
       String keyName = BucketHandler.getKeyName(names);
+      omBucketInfo = OzoneManagerUtils
+              .getOmBucketInfo(omMetadataManager, volName, bucketName);
+      bucketHandler = BucketHandler.getBucketHandler(
+              reconNamespaceSummaryManager,
+              omMetadataManager, reconSCM, omBucketInfo);
       // check if either volume or bucket doesn't exist
       if (!volumeExists(omMetadataManager, volName)
           || !bucketHandler.bucketExists(volName, bucketName)) {

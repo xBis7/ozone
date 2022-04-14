@@ -19,6 +19,7 @@
 package org.apache.hadoop.ozone.recon.api.types;
 
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
+import org.apache.hadoop.ozone.om.BucketManager;
 import org.apache.hadoop.ozone.recon.api.handlers.BucketHandler;
 import org.apache.hadoop.ozone.recon.api.handlers.EntityHandler;
 import org.apache.hadoop.ozone.recon.api.handlers.RootEntityHandler;
@@ -57,10 +58,10 @@ public enum EntityType {
   },
   BUCKET {
     public EntityHandler create(
-        ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-        ReconOMMetadataManager omMetadataManager,
-        OzoneStorageContainerManager reconSCM,
-        BucketHandler bucketHandler) {
+            ReconNamespaceSummaryManager reconNamespaceSummaryManager,
+            ReconOMMetadataManager omMetadataManager,
+            OzoneStorageContainerManager reconSCM,
+            BucketHandler bucketHandler) {
       return new BucketEntityHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, bucketHandler);
     }
