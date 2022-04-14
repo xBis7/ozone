@@ -58,10 +58,10 @@ public enum EntityType {
   },
   BUCKET {
     public EntityHandler create(
-            ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-            ReconOMMetadataManager omMetadataManager,
-            OzoneStorageContainerManager reconSCM,
-            BucketHandler bucketHandler) {
+        ReconNamespaceSummaryManager reconNamespaceSummaryManager,
+        ReconOMMetadataManager omMetadataManager,
+        OzoneStorageContainerManager reconSCM,
+        BucketHandler bucketHandler) {
       return new BucketEntityHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, bucketHandler);
     }
