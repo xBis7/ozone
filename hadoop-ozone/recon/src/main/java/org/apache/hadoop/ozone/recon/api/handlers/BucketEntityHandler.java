@@ -38,10 +38,10 @@ import java.util.Set;
  */
 public class BucketEntityHandler extends EntityHandler {
   public BucketEntityHandler(
-          ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-          ReconOMMetadataManager omMetadataManager,
-          OzoneStorageContainerManager reconSCM,
-          BucketHandler bucketHandler) {
+      ReconNamespaceSummaryManager reconNamespaceSummaryManager,
+      ReconOMMetadataManager omMetadataManager,
+      OzoneStorageContainerManager reconSCM,
+      BucketHandler bucketHandler) {
     super(reconNamespaceSummaryManager, omMetadataManager,
             reconSCM, bucketHandler);
   }
