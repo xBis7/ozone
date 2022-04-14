@@ -19,6 +19,7 @@
 package org.apache.hadoop.ozone.recon.api;
 
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.recon.api.handlers.EntityHandler;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -205,7 +206,9 @@ public class NSSummaryEndpoint {
     return omMetadataManager.getVolumeTable() != null
         && omMetadataManager.getBucketTable() != null
         && omMetadataManager.getDirectoryTable() != null
-        && omMetadataManager.getFileTable() != null;
+        && omMetadataManager.getFileTable() != null
+        && omMetadataManager.getKeyTable(BucketLayout.LEGACY) != null
+        && omMetadataManager.getKeyTable(BucketLayout.OBJECT_STORE) != null;
   }
 
 }
