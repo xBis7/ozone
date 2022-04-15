@@ -56,15 +56,14 @@ import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.FILE_TABLE;
  * The write logic is the same as above. For update action, we will treat it as
  * delete old value first, and write updated value then.
  */
-public class NSSummaryTask implements ReconOmTask {
+public class NSSummaryTask extends ReconOmTask {
+
   private static final Logger LOG =
           LoggerFactory.getLogger(NSSummaryTask.class);
-  private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
 
-  @Inject
   public NSSummaryTask(ReconNamespaceSummaryManager
-                                 reconNamespaceSummaryManager) {
-    this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
+                               reconNamespaceSummaryManager) {
+    super(reconNamespaceSummaryManager);
   }
 
   @Override
@@ -173,6 +172,8 @@ public class NSSummaryTask implements ReconOmTask {
   @Override
   public Pair<String, Boolean> reprocess(OMMetadataManager omMetadataManager) {
 
+    ReconNamespaceSummaryManager reconNamespaceSummaryManager =
+            getReconNamespaceSummaryManager();
     try {
       // reinit Recon RocksDB's namespace CF.
       reconNamespaceSummaryManager.clearNSSummaryTable();
@@ -209,94 +210,5 @@ public class NSSummaryTask implements ReconOmTask {
     return new ImmutablePair<>(getTaskName(), true);
   }
 
-  private void writeOmKeyInfoOnNamespaceDB(OmKeyInfo keyInfo)
-          throws IOException {
-    long parentObjectId = keyInfo.getParentObjectID();
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-    if (nsSummary == null) {
-      nsSummary = new NSSummary();
-    }
-    int numOfFile = nsSummary.getNumOfFiles();
-    long sizeOfFile = nsSummary.getSizeOfFiles();
-    int[] fileBucket = nsSummary.getFileSizeBucket();
-    nsSummary.setNumOfFiles(numOfFile + 1);
-    long dataSize = keyInfo.getDataSize();
-    nsSummary.setSizeOfFiles(sizeOfFile + dataSize);
-    int binIndex = ReconUtils.getBinIndex(dataSize);
-
-    ++fileBucket[binIndex];
-    nsSummary.setFileSizeBucket(fileBucket);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
-
-  private void writeOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)
-          throws IOException {
-    long parentObjectId = directoryInfo.getParentObjectID();
-    long objectId = directoryInfo.getObjectID();
-    // write the dir name to the current directory
-    String dirName = directoryInfo.getName();
-    NSSummary curNSSummary =
-            reconNamespaceSummaryManager.getNSSummary(objectId);
-    if (curNSSummary == null) {
-      curNSSummary = new NSSummary();
-    }
-    curNSSummary.setDirName(dirName);
-    reconNamespaceSummaryManager.storeNSSummary(objectId, curNSSummary);
-
-    // write the child dir list to the parent directory
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-    if (nsSummary == null) {
-      nsSummary = new NSSummary();
-    }
-    nsSummary.addChildDir(objectId);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
-
-  private void deleteOmKeyInfoOnNamespaceDB(OmKeyInfo keyInfo)
-          throws IOException {
-    long parentObjectId = keyInfo.getParentObjectID();
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-
-    // Just in case the OmKeyInfo isn't correctly written.
-    if (nsSummary == null) {
-      LOG.error("The namespace table is not correctly populated.");
-      return;
-    }
-    int numOfFile = nsSummary.getNumOfFiles();
-    long sizeOfFile = nsSummary.getSizeOfFiles();
-    int[] fileBucket = nsSummary.getFileSizeBucket();
-
-    long dataSize = keyInfo.getDataSize();
-    int binIndex = ReconUtils.getBinIndex(dataSize);
-
-    // decrement count, data size, and bucket count
-    // even if there's no direct key, we still keep the entry because
-    // we still need children dir IDs info
-    nsSummary.setNumOfFiles(numOfFile - 1);
-    nsSummary.setSizeOfFiles(sizeOfFile - dataSize);
-    --fileBucket[binIndex];
-    nsSummary.setFileSizeBucket(fileBucket);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
-
-  private void deleteOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)
-          throws IOException {
-    long parentObjectId = directoryInfo.getParentObjectID();
-    long objectId = directoryInfo.getObjectID();
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-
-    // Just in case the OmDirectoryInfo isn't correctly written.
-    if (nsSummary == null) {
-      LOG.error("The namespace table is not correctly populated.");
-      return;
-    }
-
-    nsSummary.removeChildDir(objectId);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
 }
 
