@@ -56,7 +56,7 @@ import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.FILE_TABLE;
  * The write logic is the same as above. For update action, we will treat it as
  * delete old value first, and write updated value then.
  */
-public abstract class NSSummaryTask {
+public abstract class NSSummaryTask implements ReconOmTask {
   private static final Logger LOG =
           LoggerFactory.getLogger(NSSummaryTask.class);
 
