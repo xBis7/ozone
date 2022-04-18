@@ -50,6 +50,7 @@ import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.StorageContainerServiceProvider;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
 import org.apache.hadoop.ozone.recon.spi.impl.StorageContainerServiceProviderImpl;
+import org.apache.hadoop.ozone.recon.tasks.FSOTaskHandler;
 import org.apache.hadoop.ozone.recon.tasks.NSSummaryTask;
 import org.junit.Assert;
 import org.junit.Before;
@@ -233,9 +234,9 @@ public class TestNSSummaryEndpoint {
 
     // populate OM DB and reprocess into Recon RocksDB
     populateOMDB();
-    NSSummaryTask nsSummaryTask =
-            new NSSummaryTask(reconNamespaceSummaryManager);
-    nsSummaryTask.reprocess(reconOMMetadataManager);
+    FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
+        reconNamespaceSummaryManager);
+    fsoTaskHandler.reprocess(reconOMMetadataManager);
   }
 
   @Test
