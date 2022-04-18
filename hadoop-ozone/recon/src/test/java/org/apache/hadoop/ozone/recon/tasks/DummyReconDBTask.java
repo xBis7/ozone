@@ -24,22 +24,18 @@ import java.util.Collections;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
-import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 /**
  * Dummy Recon task that has 3 modes of operations.
  * ALWAYS_FAIL / FAIL_ONCE / ALWAYS_PASS
  */
-public class DummyReconDBTask extends ReconOmTask {
+public class DummyReconDBTask implements ReconOmTask {
 
   private int numFailuresAllowed = Integer.MIN_VALUE;
   private int callCtr = 0;
   private String taskName;
 
-  public DummyReconDBTask(String taskName, TaskType taskType,
-                          ReconNamespaceSummaryManager
-                                  reconNamespaceSummaryManager) {
-    super(reconNamespaceSummaryManager);
+  DummyReconDBTask(String taskName, TaskType taskType) {
     this.taskName = taskName;
     if (taskType.equals(TaskType.FAIL_ONCE)) {
       numFailuresAllowed = 1;

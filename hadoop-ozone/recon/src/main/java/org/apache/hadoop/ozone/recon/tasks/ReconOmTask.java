@@ -20,145 +20,30 @@ package org.apache.hadoop.ozone.recon.tasks;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
-import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
-import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
-import org.apache.hadoop.ozone.recon.ReconUtils;
-import org.apache.hadoop.ozone.recon.api.types.NSSummary;
-import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import java.io.IOException;
 
 /**
  * Interface used to denote a Recon task that needs to act on OM DB events.
  */
-public abstract class ReconOmTask {
-
-  private static final Logger LOG =
-          LoggerFactory.getLogger(NSSummaryTask.class);
-
-  private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
-
-  @Inject
-  public ReconOmTask(ReconNamespaceSummaryManager
-                               reconNamespaceSummaryManager) {
-    this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
-  }
-
-  public ReconNamespaceSummaryManager getReconNamespaceSummaryManager() {
-    return reconNamespaceSummaryManager;
-  }
+public interface ReconOmTask {
 
   /**
    * Return task name.
    * @return task name
    */
-  public abstract String getTaskName();
+  String getTaskName();
 
   /**
    * Process a set of OM events on tables that the task is listening on.
    * @param events Set of events to be processed by the task.
    * @return Pair of task name -> task success.
    */
-  public abstract Pair<String, Boolean> process(OMUpdateEventBatch events);
+  Pair<String, Boolean> process(OMUpdateEventBatch events);
 
   /**
    * Process a  on tables that the task is listening on.
    * @param omMetadataManager OM Metadata manager instance.
    * @return Pair of task name -> task success.
    */
-  public abstract Pair<String, Boolean> reprocess(OMMetadataManager omMetadataManager);
+  Pair<String, Boolean> reprocess(OMMetadataManager omMetadataManager);
 
-
-  protected void writeOmKeyInfoOnNamespaceDB(OmKeyInfo keyInfo)
-          throws IOException {
-    long parentObjectId = keyInfo.getParentObjectID();
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-    if (nsSummary == null) {
-      nsSummary = new NSSummary();
-    }
-    int numOfFile = nsSummary.getNumOfFiles();
-    long sizeOfFile = nsSummary.getSizeOfFiles();
-    int[] fileBucket = nsSummary.getFileSizeBucket();
-    nsSummary.setNumOfFiles(numOfFile + 1);
-    long dataSize = keyInfo.getDataSize();
-    nsSummary.setSizeOfFiles(sizeOfFile + dataSize);
-    int binIndex = ReconUtils.getBinIndex(dataSize);
-
-    ++fileBucket[binIndex];
-    nsSummary.setFileSizeBucket(fileBucket);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
-
-  protected void writeOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)
-          throws IOException {
-    long parentObjectId = directoryInfo.getParentObjectID();
-    long objectId = directoryInfo.getObjectID();
-    // write the dir name to the current directory
-    String dirName = directoryInfo.getName();
-    NSSummary curNSSummary =
-            reconNamespaceSummaryManager.getNSSummary(objectId);
-    if (curNSSummary == null) {
-      curNSSummary = new NSSummary();
-    }
-    curNSSummary.setDirName(dirName);
-    reconNamespaceSummaryManager.storeNSSummary(objectId, curNSSummary);
-
-    // write the child dir list to the parent directory
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-    if (nsSummary == null) {
-      nsSummary = new NSSummary();
-    }
-    nsSummary.addChildDir(objectId);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
-
-  protected void deleteOmKeyInfoOnNamespaceDB(OmKeyInfo keyInfo)
-          throws IOException {
-    long parentObjectId = keyInfo.getParentObjectID();
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-
-    // Just in case the OmKeyInfo isn't correctly written.
-    if (nsSummary == null) {
-      LOG.error("The namespace table is not correctly populated.");
-      return;
-    }
-    int numOfFile = nsSummary.getNumOfFiles();
-    long sizeOfFile = nsSummary.getSizeOfFiles();
-    int[] fileBucket = nsSummary.getFileSizeBucket();
-
-    long dataSize = keyInfo.getDataSize();
-    int binIndex = ReconUtils.getBinIndex(dataSize);
-
-    // decrement count, data size, and bucket count
-    // even if there's no direct key, we still keep the entry because
-    // we still need children dir IDs info
-    nsSummary.setNumOfFiles(numOfFile - 1);
-    nsSummary.setSizeOfFiles(sizeOfFile - dataSize);
-    --fileBucket[binIndex];
-    nsSummary.setFileSizeBucket(fileBucket);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
-
-  protected void deleteOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)
-          throws IOException {
-    long parentObjectId = directoryInfo.getParentObjectID();
-    long objectId = directoryInfo.getObjectID();
-    NSSummary nsSummary = reconNamespaceSummaryManager
-            .getNSSummary(parentObjectId);
-
-    // Just in case the OmDirectoryInfo isn't correctly written.
-    if (nsSummary == null) {
-      LOG.error("The namespace table is not correctly populated.");
-      return;
-    }
-
-    nsSummary.removeChildDir(objectId);
-    reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
-  }
 }
