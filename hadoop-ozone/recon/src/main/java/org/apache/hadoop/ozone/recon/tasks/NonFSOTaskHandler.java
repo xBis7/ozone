@@ -12,6 +12,7 @@ import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
@@ -24,6 +25,7 @@ public class NonFSOTaskHandler extends NSSummaryTask {
   private static final Logger LOG =
       LoggerFactory.getLogger(NonFSOTaskHandler.class);
 
+  @Inject
   public NonFSOTaskHandler(ReconNamespaceSummaryManager
                             reconNamespaceSummaryManager) {
     super(reconNamespaceSummaryManager);
@@ -48,7 +50,7 @@ public class NonFSOTaskHandler extends NSSummaryTask {
           WithParentObjectId> omdbUpdateEvent = eventIterator.next();
       OMDBUpdateEvent.OMDBUpdateAction action = omdbUpdateEvent.getAction();
 
-      // we only process updates on OM's KeyTable and Dirtable
+      // we only process updates on OM's KeyTable
       String table = omdbUpdateEvent.getTable();
       boolean updateOnKeyTable = table.equals(KEY_TABLE);
       if (!taskTables.contains(table)) {

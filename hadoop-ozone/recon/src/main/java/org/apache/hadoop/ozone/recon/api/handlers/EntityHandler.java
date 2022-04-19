@@ -22,6 +22,7 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.om.OzoneManagerUtils;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -122,7 +123,6 @@ public abstract class EntityHandler {
           OzoneStorageContainerManager reconSCM,
           String path) throws IOException {
     BucketHandler bucketHandler;
-    OmBucketInfo omBucketInfo;
     normalizedPath = normalizePath(path);
     names = parseRequestPath(normalizedPath);
 
@@ -145,8 +145,11 @@ public abstract class EntityHandler {
     } else if (names.length == 2) { // bucket level check
       String volName = names[0];
       String bucketName = names[1];
-      omBucketInfo = OzoneManagerUtils
-              .getOmBucketInfo(omMetadataManager, volName, bucketName);
+      OmBucketInfo omBucketInfo = OmBucketInfo.newBuilder()
+          .setVolumeName(volName)
+          .setBucketName(bucketName)
+          .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
+          .build();
       bucketHandler = BucketHandler.getBucketHandler(
               reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);
@@ -160,8 +163,11 @@ public abstract class EntityHandler {
       String volName = names[0];
       String bucketName = names[1];
       String keyName = BucketHandler.getKeyName(names);
-      omBucketInfo = OzoneManagerUtils
-              .getOmBucketInfo(omMetadataManager, volName, bucketName);
+      OmBucketInfo omBucketInfo = OmBucketInfo.newBuilder()
+          .setVolumeName(volName)
+          .setBucketName(bucketName)
+          .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
+          .build();
       bucketHandler = BucketHandler.getBucketHandler(
               reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);
