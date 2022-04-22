@@ -70,28 +70,28 @@ public class FSOTaskHandler extends NSSummaryTask {
           OmKeyInfo oldKeyInfo = keyTableUpdateEvent.getOldValue();
 
           switch (action) {
-            case PUT:
-              writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-              break;
+          case PUT:
+            writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+            break;
 
-            case DELETE:
-              deleteOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-              break;
+          case DELETE:
+            deleteOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+            break;
 
-            case UPDATE:
-              if (oldKeyInfo != null) {
-                // delete first, then put
-                deleteOmKeyInfoOnNamespaceDB(oldKeyInfo);
-              } else {
-                LOG.warn("Update event does not have the old keyInfo for {}.",
-                    updatedKey);
-              }
-              writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-              break;
+          case UPDATE:
+            if (oldKeyInfo != null) {
+              // delete first, then put
+              deleteOmKeyInfoOnNamespaceDB(oldKeyInfo);
+            } else {
+              LOG.warn("Update event does not have the old keyInfo for {}.",
+                  updatedKey);
+            }
+            writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+            break;
 
-            default:
-              LOG.debug("Skipping DB update event : {}",
-                  omdbUpdateEvent.getAction());
+          default:
+            LOG.debug("Skipping DB update event : {}",
+                omdbUpdateEvent.getAction());
           }
         } else {
           // directory update on DirTable
@@ -101,28 +101,28 @@ public class FSOTaskHandler extends NSSummaryTask {
           OmDirectoryInfo oldDirectoryInfo = dirTableUpdateEvent.getOldValue();
 
           switch (action) {
-            case PUT:
-              writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
-              break;
+          case PUT:
+            writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+            break;
 
-            case DELETE:
-              deleteOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
-              break;
+          case DELETE:
+            deleteOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+            break;
 
-            case UPDATE:
-              if (oldDirectoryInfo != null) {
-                // delete first, then put
-                deleteOmDirectoryInfoOnNamespaceDB(oldDirectoryInfo);
-              } else {
-                LOG.warn("Update event does not have the old dirInfo for {}.",
-                    updatedKey);
-              }
-              writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
-              break;
+          case UPDATE:
+            if (oldDirectoryInfo != null) {
+              // delete first, then put
+              deleteOmDirectoryInfoOnNamespaceDB(oldDirectoryInfo);
+            } else {
+              LOG.warn("Update event does not have the old dirInfo for {}.",
+                  updatedKey);
+            }
+            writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+            break;
 
-            default:
-              LOG.debug("Skipping DB update event : {}",
-                  omdbUpdateEvent.getAction());
+          default:
+            LOG.debug("Skipping DB update event : {}",
+                omdbUpdateEvent.getAction());
           }
         }
       } catch (IOException ioEx) {
@@ -140,7 +140,7 @@ public class FSOTaskHandler extends NSSummaryTask {
 
     try {
       // reinit Recon RocksDB's namespace CF.
-      reconNamespaceSummaryManager.clearNSSummaryTable();
+      getReconNamespaceSummaryManager().clearNSSummaryTable();
 
       Table dirTable = omMetadataManager.getDirectoryTable();
       TableIterator<String, ? extends Table.KeyValue<String, OmDirectoryInfo>>

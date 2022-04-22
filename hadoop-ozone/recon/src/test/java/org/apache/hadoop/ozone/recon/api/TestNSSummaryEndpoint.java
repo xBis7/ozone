@@ -30,10 +30,11 @@ import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
-import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
 import org.apache.hadoop.ozone.recon.api.handlers.BucketHandler;
@@ -296,15 +297,6 @@ public class TestNSSummaryEndpoint {
   }
 
   @Test
-  public void testGetBasicInfoKey() throws Exception {
-    // Test key
-    Response keyResponse = nsSummaryEndpoint.getBasicInfo(KEY_PATH);
-    NamespaceSummaryResponse keyResObj =
-        (NamespaceSummaryResponse) keyResponse.getEntity();
-    Assert.assertEquals(EntityType.KEY, keyResObj.getEntityType());
-  }
-
-  @Test
   public void testGetBasicInfoNoPath() throws Exception {
     // Test invalid path
     Response invalidResponse = nsSummaryEndpoint.getBasicInfo(INVALID_PATH);
@@ -312,6 +304,15 @@ public class TestNSSummaryEndpoint {
         (NamespaceSummaryResponse) invalidResponse.getEntity();
     Assert.assertEquals(ResponseStatus.PATH_NOT_FOUND,
         invalidObj.getStatus());
+  }
+
+  @Test
+  public void testGetBasicInfoKey() throws Exception {
+    // Test key
+    Response keyResponse = nsSummaryEndpoint.getBasicInfo(KEY_PATH);
+    NamespaceSummaryResponse keyResObj =
+        (NamespaceSummaryResponse) keyResponse.getEntity();
+    Assert.assertEquals(EntityType.KEY, keyResObj.getEntityType());
   }
 
   @Test
@@ -552,6 +553,7 @@ public class TestNSSummaryEndpoint {
             .setBucketName(BUCKET_ONE)
             .setObjectID(BUCKET_ONE_OBJECT_ID)
             .setQuotaInBytes(BUCKET_ONE_QUOTA)
+            .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
             .build();
 
     OmBucketInfo bucketInfo2 = OmBucketInfo.newBuilder()
@@ -559,6 +561,7 @@ public class TestNSSummaryEndpoint {
             .setBucketName(BUCKET_TWO)
             .setObjectID(BUCKET_TWO_OBJECT_ID)
             .setQuotaInBytes(BUCKET_TWO_QUOTA)
+            .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
             .build();
 
     String bucketKey = omMetadataManager.getBucketKey(

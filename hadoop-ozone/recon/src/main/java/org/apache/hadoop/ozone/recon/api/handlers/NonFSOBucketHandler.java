@@ -40,11 +40,17 @@ import java.util.Set;
  */
 public class NonFSOBucketHandler extends BucketHandler {
 
+  private BucketLayout bucketLayout;
+
   public NonFSOBucketHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
           ReconOMMetadataManager omMetadataManager,
           OzoneStorageContainerManager reconSCM) {
     super(reconNamespaceSummaryManager, omMetadataManager, reconSCM);
+  }
+
+  public void setBucketLayout(BucketLayout bucketLayout) {
+    this.bucketLayout = bucketLayout;
   }
 
   /**
@@ -72,7 +78,7 @@ public class NonFSOBucketHandler extends BucketHandler {
       String dbNodeName = getOmMetadataManager().getOzonePathKey(
               lastKnownParentId, fileName);
 
-      omKeyInfo = getOmMetadataManager().getKeyTable(BucketLayout.LEGACY)
+      omKeyInfo = getOmMetadataManager().getKeyTable(bucketLayout)
               .getSkipCache(dbNodeName);
 
       if (omKeyInfo != null) {
@@ -94,7 +100,7 @@ public class NonFSOBucketHandler extends BucketHandler {
   @Override
   public long calculateDUUnderObject(long parentId)
           throws IOException {
-    Table keyTable = getOmMetadataManager().getKeyTable(BucketLayout.LEGACY);
+    Table keyTable = getOmMetadataManager().getKeyTable(bucketLayout);
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
             iterator = keyTable.iterator();
@@ -150,7 +156,7 @@ public class NonFSOBucketHandler extends BucketHandler {
                                List<DUResponse.DiskUsage> duData,
                                String normalizedPath) throws IOException {
 
-    Table keyTable = getOmMetadataManager().getKeyTable(BucketLayout.LEGACY);
+    Table keyTable = getOmMetadataManager().getKeyTable(bucketLayout);
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
             iterator = keyTable.iterator();
 
@@ -216,7 +222,7 @@ public class NonFSOBucketHandler extends BucketHandler {
     for (int i = 2; i < cutoff; ++i) {
       dirKey = getOmMetadataManager().getOzonePathKey(dirObjectId, names[i]);
       OmKeyInfo dirInfo = getOmMetadataManager()
-              .getKeyTable(BucketLayout.LEGACY).getSkipCache(dirKey);
+              .getKeyTable(bucketLayout).getSkipCache(dirKey);
       if (dirInfo.getKeyName().endsWith("/")) {
         dirObjectId = dirInfo.getObjectID();
       }
