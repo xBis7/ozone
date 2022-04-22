@@ -17,14 +17,10 @@
  */
 
 package org.apache.hadoop.ozone.recon.tasks;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.hadoop.hdds.utils.db.Table;
-import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
-import org.apache.hadoop.ozone.om.helpers.WithParentObjectId;
 import org.apache.hadoop.ozone.recon.ReconUtils;
 import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
@@ -33,12 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-
-import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.DIRECTORY_TABLE;
-import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.FILE_TABLE;
 
 /**
  * Task to query data from OMDB and write into Recon RocksDB.
@@ -60,7 +50,7 @@ public abstract class NSSummaryTask implements ReconOmTask {
   private static final Logger LOG =
           LoggerFactory.getLogger(NSSummaryTask.class);
 
-  protected ReconNamespaceSummaryManager reconNamespaceSummaryManager;
+  private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
 
   @Inject
   public NSSummaryTask(ReconNamespaceSummaryManager
@@ -68,11 +58,16 @@ public abstract class NSSummaryTask implements ReconOmTask {
     this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
   }
 
+  public ReconNamespaceSummaryManager getReconNamespaceSummaryManager() {
+    return reconNamespaceSummaryManager;
+  }
+
   public abstract String getTaskName();
 
   public abstract Pair<String, Boolean> process(OMUpdateEventBatch events);
 
-  public abstract Pair<String, Boolean> reprocess(OMMetadataManager omMetadataManager);
+  public abstract Pair<String, Boolean> reprocess(
+      OMMetadataManager omMetadataManager);
 
   protected void writeOmKeyInfoOnNamespaceDB(OmKeyInfo keyInfo)
           throws IOException {
@@ -95,7 +90,8 @@ public abstract class NSSummaryTask implements ReconOmTask {
     reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
   }
 
-  protected void writeOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)
+  protected void writeOmDirectoryInfoOnNamespaceDB(
+      OmDirectoryInfo directoryInfo)
           throws IOException {
     long parentObjectId = directoryInfo.getParentObjectID();
     long objectId = directoryInfo.getObjectID();
@@ -147,7 +143,8 @@ public abstract class NSSummaryTask implements ReconOmTask {
     reconNamespaceSummaryManager.storeNSSummary(parentObjectId, nsSummary);
   }
 
-  protected void deleteOmDirectoryInfoOnNamespaceDB(OmDirectoryInfo directoryInfo)
+  protected void deleteOmDirectoryInfoOnNamespaceDB(
+      OmDirectoryInfo directoryInfo)
           throws IOException {
     long parentObjectId = directoryInfo.getParentObjectID();
     long objectId = directoryInfo.getObjectID();
