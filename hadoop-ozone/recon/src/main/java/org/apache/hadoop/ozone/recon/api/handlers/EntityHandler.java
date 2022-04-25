@@ -148,6 +148,13 @@ public abstract class EntityHandler {
       String bucketName = names[1];
       omBucketInfo = OzoneManagerUtils
           .getOmBucketInfo(omMetadataManager, volName, bucketName);
+      if (omBucketInfo == null) {
+        omBucketInfo = OmBucketInfo.newBuilder()
+            .setVolumeName(volName)
+            .setBucketName(bucketName)
+            .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
+            .build();
+      }
       bucketHandler = BucketHandler.getBucketHandler(
               reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);
@@ -163,6 +170,13 @@ public abstract class EntityHandler {
       String keyName = BucketHandler.getKeyName(names);
       omBucketInfo = OzoneManagerUtils
           .getOmBucketInfo(omMetadataManager, volName, bucketName);
+      if (omBucketInfo == null) {
+        omBucketInfo = OmBucketInfo.newBuilder()
+            .setVolumeName(volName)
+            .setBucketName(bucketName)
+            .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
+            .build();
+      }
       bucketHandler = BucketHandler.getBucketHandler(
               reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);

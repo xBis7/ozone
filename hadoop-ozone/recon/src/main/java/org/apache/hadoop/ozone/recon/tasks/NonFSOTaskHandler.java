@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.hadoop.ozone.recon.tasks;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -24,6 +23,7 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.WithParentObjectId;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
@@ -36,6 +36,9 @@ import java.util.Iterator;
 
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
 
+/**
+ * Class for handling non FSO specific tasks.
+ */
 public class NonFSOTaskHandler extends NSSummaryTask {
 
   private BucketLayout bucketLayout;
@@ -77,37 +80,79 @@ public class NonFSOTaskHandler extends NSSummaryTask {
       String updatedKey = omdbUpdateEvent.getKey();
 
       try {
-        //check whether we are having key or directory
-        //if() {
-        // key update on keyTable
         OMDBUpdateEvent<String, OmKeyInfo> keyTableUpdateEvent =
             (OMDBUpdateEvent<String, OmKeyInfo>) omdbUpdateEvent;
         OmKeyInfo updatedKeyInfo = keyTableUpdateEvent.getValue();
         OmKeyInfo oldKeyInfo = keyTableUpdateEvent.getOldValue();
 
-        switch (action) {
-        case PUT:
-          writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-          break;
+        //set parent id
+        //updatedKeyInfo.setParentObjectID();
+        //oldKeyInfo.setParentObjectID();
 
-        case DELETE:
-          deleteOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-          break;
+        if (!updatedKeyInfo.getKeyName().endsWith("/")) {
+          switch (action) {
+          case PUT:
+            writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+            break;
 
-        case UPDATE:
-          if (oldKeyInfo != null) {
-            // delete first, then put
-            deleteOmKeyInfoOnNamespaceDB(oldKeyInfo);
-          } else {
-            LOG.warn("Update event does not have the old keyInfo for {}.",
-                updatedKey);
+          case DELETE:
+            deleteOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+            break;
+
+          case UPDATE:
+            if (oldKeyInfo != null) {
+              // delete first, then put
+              deleteOmKeyInfoOnNamespaceDB(oldKeyInfo);
+            } else {
+              LOG.warn("Update event does not have the old keyInfo for {}.",
+                  updatedKey);
+            }
+            writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+            break;
+
+          default:
+            LOG.debug("Skipping DB update event : {}",
+                omdbUpdateEvent.getAction());
           }
-          writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-          break;
+        } else {
+          OmDirectoryInfo updatedDirectoryInfo =
+              new OmDirectoryInfo.Builder()
+                  .setName(updatedKeyInfo.getKeyName())
+                  .setObjectID(updatedKeyInfo.getObjectID())
+                  .setParentObjectID(updatedKeyInfo.getParentObjectID())
+                  .build();
 
-        default:
-          LOG.debug("Skipping DB update event : {}",
-              omdbUpdateEvent.getAction());
+          OmDirectoryInfo oldDirectoryInfo =
+              new OmDirectoryInfo.Builder()
+                  .setName(oldKeyInfo.getKeyName())
+                  .setObjectID(oldKeyInfo.getObjectID())
+                  .setParentObjectID(oldKeyInfo.getParentObjectID())
+                  .build();
+
+          switch (action) {
+          case PUT:
+            writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+            break;
+
+          case DELETE:
+            deleteOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+            break;
+
+          case UPDATE:
+            if (oldDirectoryInfo != null) {
+              // delete first, then put
+              deleteOmDirectoryInfoOnNamespaceDB(oldDirectoryInfo);
+            } else {
+              LOG.warn("Update event does not have the old dirInfo for {}.",
+                  updatedKey);
+            }
+            writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+            break;
+
+          default:
+            LOG.debug("Skipping DB update event : {}",
+                omdbUpdateEvent.getAction());
+          }
         }
       } catch (IOException ioEx) {
         LOG.error("Unable to process Namespace Summary data in Recon DB. ",
@@ -115,7 +160,7 @@ public class NonFSOTaskHandler extends NSSummaryTask {
         return new ImmutablePair<>(getTaskName(), false);
       }
     }
-    LOG.info("Completed a process run of NSSummaryTask");
+    LOG.info("Completed a process run of NonFSOTaskHandler");
     return new ImmutablePair<>(getTaskName(), true);
   }
 
@@ -125,7 +170,6 @@ public class NonFSOTaskHandler extends NSSummaryTask {
       // reinit Recon RocksDB's namespace CF.
       getReconNamespaceSummaryManager().clearNSSummaryTable();
 
-      // add a method parameter bucketLayout and pass it here
       Table keyTable = omMetadataManager.getKeyTable(bucketLayout);
 
       TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
@@ -134,7 +178,18 @@ public class NonFSOTaskHandler extends NSSummaryTask {
       while (keyTableIter.hasNext()) {
         Table.KeyValue<String, OmKeyInfo> kv = keyTableIter.next();
         OmKeyInfo keyInfo = kv.getValue();
-        writeOmKeyInfoOnNamespaceDB(keyInfo);
+        //keyInfo.setParentObjectID();
+        if (keyInfo.getKeyName().endsWith("/")) {
+          OmDirectoryInfo directoryInfo =
+              new OmDirectoryInfo.Builder()
+                 .setName(keyInfo.getKeyName())
+                 .setObjectID(keyInfo.getObjectID())
+                 .setParentObjectID(keyInfo.getParentObjectID())
+                 .build();
+          writeOmDirectoryInfoOnNamespaceDB(directoryInfo);
+        } else {
+          writeOmKeyInfoOnNamespaceDB(keyInfo);
+        }
       }
 
     } catch (IOException ioEx) {
@@ -143,7 +198,7 @@ public class NonFSOTaskHandler extends NSSummaryTask {
       return new ImmutablePair<>(getTaskName(), false);
     }
 
-    LOG.info("Completed a reprocess run of NSSummaryTask");
+    LOG.info("Completed a reprocess run of NonFSOTaskHandler");
     return new ImmutablePair<>(getTaskName(), true);
   }
 
