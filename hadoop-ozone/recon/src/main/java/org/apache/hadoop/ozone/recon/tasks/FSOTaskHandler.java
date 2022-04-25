@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.hadoop.ozone.recon.tasks;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -21,6 +38,9 @@ import java.util.Iterator;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.DIRECTORY_TABLE;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.FILE_TABLE;
 
+/**
+ * Class for handling FSO specific tasks.
+ */
 public class FSOTaskHandler extends NSSummaryTask {
 
   private static final Logger LOG =
@@ -52,7 +72,7 @@ public class FSOTaskHandler extends NSSummaryTask {
           WithParentObjectId> omdbUpdateEvent = eventIterator.next();
       OMDBUpdateEvent.OMDBUpdateAction action = omdbUpdateEvent.getAction();
 
-      // we only process updates on OM's KeyTable and Dirtable
+      // we only process updates on OM's FileTable and Dirtable
       String table = omdbUpdateEvent.getTable();
       boolean updateOnFileTable = table.equals(FILE_TABLE);
       if (!taskTables.contains(table)) {
@@ -131,7 +151,7 @@ public class FSOTaskHandler extends NSSummaryTask {
         return new ImmutablePair<>(getTaskName(), false);
       }
     }
-    LOG.info("Completed a process run of NSSummaryTask");
+    LOG.info("Completed a process run of FSOTaskHandler");
     return new ImmutablePair<>(getTaskName(), true);
   }
 
@@ -170,7 +190,7 @@ public class FSOTaskHandler extends NSSummaryTask {
       return new ImmutablePair<>(getTaskName(), false);
     }
 
-    LOG.info("Completed a reprocess run of NSSummaryTask");
+    LOG.info("Completed a reprocess run of FSOTaskHandler");
     return new ImmutablePair<>(getTaskName(), true);
   }
 }
