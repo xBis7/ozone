@@ -129,7 +129,7 @@ public class TestNSSummaryTask {
   @Test
   public void testReprocess() throws Exception {
     NSSummary nonExistentSummary =
-            reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+        reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
     Assert.assertNull(nonExistentSummary);
 
     populateOMDB();
@@ -138,14 +138,14 @@ public class TestNSSummaryTask {
     NSSummary staleNSSummary = new NSSummary();
     reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
     FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
-            reconNamespaceSummaryManager);
+        reconNamespaceSummaryManager);
     fsoTaskHandler.reprocess(reconOMMetadataManager);
 
     Assert.assertNull(reconNamespaceSummaryManager.getNSSummary(-1L));
     NSSummary nsSummaryForBucket1 =
-            reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+        reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
     NSSummary nsSummaryForBucket2 =
-            reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
+        reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
     Assert.assertNotNull(nsSummaryForBucket1);
     Assert.assertNotNull(nsSummaryForBucket2);
 
@@ -154,7 +154,7 @@ public class TestNSSummaryTask {
 
     Assert.assertEquals(KEY_ONE_SIZE, nsSummaryForBucket1.getSizeOfFiles());
     Assert.assertEquals(KEY_TWO_OLD_SIZE + KEY_FOUR_SIZE,
-            nsSummaryForBucket2.getSizeOfFiles());
+        nsSummaryForBucket2.getSizeOfFiles());
 
     int[] fileDistBucket1 = nsSummaryForBucket1.getFileSizeBucket();
     int[] fileDistBucket2 = nsSummaryForBucket2.getFileSizeBucket();
@@ -185,7 +185,7 @@ public class TestNSSummaryTask {
 
     // Dir 1 has two dir: dir2 and dir3.
     NSSummary nsSummaryInDir1 = reconNamespaceSummaryManager
-            .getNSSummary(DIR_ONE_OBJECT_ID);
+        .getNSSummary(DIR_ONE_OBJECT_ID);
     Assert.assertNotNull(nsSummaryInDir1);
     Set<Long> childDirForDirOne = nsSummaryInDir1.getChildDir();
     Assert.assertEquals(2, childDirForDirOne.size());
@@ -195,7 +195,7 @@ public class TestNSSummaryTask {
     Assert.assertEquals(dirOneAns, childDirForDirOne);
 
     NSSummary nsSummaryInDir2 = reconNamespaceSummaryManager
-            .getNSSummary(DIR_TWO_OBJECT_ID);
+        .getNSSummary(DIR_TWO_OBJECT_ID);
     Assert.assertEquals(1, nsSummaryInDir2.getNumOfFiles());
     Assert.assertEquals(KEY_THREE_SIZE, nsSummaryInDir2.getSizeOfFiles());
 
