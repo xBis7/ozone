@@ -58,7 +58,7 @@ public class FSOBucketHandler extends BucketHandler {
   @Override
   public EntityType determineKeyPath(String keyName, long bucketObjectId)
           throws IOException {
-    java.nio.file.Path keyPath = Paths.get(keyName);
+    Path keyPath = Paths.get(keyName);
     Iterator<Path> elements = keyPath.iterator();
 
     long lastKnownParentId = bucketObjectId;

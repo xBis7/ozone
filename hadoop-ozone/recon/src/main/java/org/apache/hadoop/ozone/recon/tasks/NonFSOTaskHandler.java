@@ -21,6 +21,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
+import org.apache.hadoop.ozone.client.io.OzoneInputStream;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
@@ -178,6 +179,24 @@ public class NonFSOTaskHandler extends NSSummaryTask {
       while (keyTableIter.hasNext()) {
         Table.KeyValue<String, OmKeyInfo> kv = keyTableIter.next();
         OmKeyInfo keyInfo = kv.getValue();
+
+        String[] keyPath = keyInfo.getKeyName().split("/");
+        String parentPath;
+
+        if (keyPath.length > 1) {
+          for(int i=0; i<keyPath.length-1; i++) {
+            parentPath = keyPath[i] + "/";
+          }
+          //getKeyTable
+          //getKeyFromPath
+        } else {
+          parentPath = keyInfo.getVolumeName() + "/" +
+              keyInfo.getBucketName() + "/";
+          //getBucketTable
+        }
+
+
+
         //keyInfo.setParentObjectID();
         if (keyInfo.getKeyName().endsWith("/")) {
           OmDirectoryInfo directoryInfo =

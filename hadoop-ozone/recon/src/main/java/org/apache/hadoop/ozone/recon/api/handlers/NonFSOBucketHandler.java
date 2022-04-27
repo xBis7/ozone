@@ -75,8 +75,8 @@ public class NonFSOBucketHandler extends BucketHandler {
       // if it ends with '/' then we have directory
       // else we have a key
       // otherwise we return null, UNKNOWN
-      String dbNodeName = getOmMetadataManager().getOzonePathKey(
-              lastKnownParentId, fileName);
+      String dbNodeName = getOmMetadataManager()
+          .getOzonePathKey(lastKnownParentId, fileName);
 
       omKeyInfo = getOmMetadataManager().getKeyTable(bucketLayout)
               .getSkipCache(dbNodeName);
