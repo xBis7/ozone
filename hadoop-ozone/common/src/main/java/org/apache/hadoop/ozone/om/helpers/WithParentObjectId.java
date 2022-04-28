@@ -43,7 +43,8 @@ public class WithParentObjectId extends WithObjectID {
    *      b        |     1025     |     1024   |
    * ------------------------------------------|
    *     key1      |     1026     |     1025   |
-   * ------------------------------------------|               */
+   * ------------------------------------------|
+   */
   @SuppressWarnings("visibilitymodifier")
   protected long parentObjectID;
 

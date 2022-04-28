@@ -21,12 +21,11 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
-import org.apache.hadoop.ozone.client.io.OzoneInputStream;
+import org.apache.hadoop.ozone.om.KeyManager;
+import org.apache.hadoop.ozone.om.KeyManagerImpl;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
-import org.apache.hadoop.ozone.om.helpers.BucketLayout;
-import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
-import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
-import org.apache.hadoop.ozone.om.helpers.WithParentObjectId;
+import org.apache.hadoop.ozone.om.helpers.*;
+import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +35,7 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
+import static org.apache.hadoop.ozone.om.OzoneManagerUtils.getBucketLayout;
 
 /**
  * Class for handling non FSO specific tasks.
@@ -49,8 +49,9 @@ public class NonFSOTaskHandler extends NSSummaryTask {
 
   @Inject
   public NonFSOTaskHandler(ReconNamespaceSummaryManager
-                            reconNamespaceSummaryManager) {
-    super(reconNamespaceSummaryManager);
+                            reconNamespaceSummaryManager,
+                           ReconOMMetadataManager reconOMMetadataManager) {
+    super(reconNamespaceSummaryManager, reconOMMetadataManager);
   }
 
   public void setBucketLayout(BucketLayout bucketLayout) {
@@ -86,9 +87,8 @@ public class NonFSOTaskHandler extends NSSummaryTask {
         OmKeyInfo updatedKeyInfo = keyTableUpdateEvent.getValue();
         OmKeyInfo oldKeyInfo = keyTableUpdateEvent.getOldValue();
 
-        //set parent id
-        //updatedKeyInfo.setParentObjectID();
-        //oldKeyInfo.setParentObjectID();
+        setKeyParentID(updatedKeyInfo);
+        setKeyParentID(oldKeyInfo);
 
         if (!updatedKeyInfo.getKeyName().endsWith("/")) {
           switch (action) {
@@ -180,24 +180,8 @@ public class NonFSOTaskHandler extends NSSummaryTask {
         Table.KeyValue<String, OmKeyInfo> kv = keyTableIter.next();
         OmKeyInfo keyInfo = kv.getValue();
 
-        String[] keyPath = keyInfo.getKeyName().split("/");
-        String parentPath;
+        setKeyParentID(keyInfo);
 
-        if (keyPath.length > 1) {
-          for(int i=0; i<keyPath.length-1; i++) {
-            parentPath = keyPath[i] + "/";
-          }
-          //getKeyTable
-          //getKeyFromPath
-        } else {
-          parentPath = keyInfo.getVolumeName() + "/" +
-              keyInfo.getBucketName() + "/";
-          //getBucketTable
-        }
-
-
-
-        //keyInfo.setParentObjectID();
         if (keyInfo.getKeyName().endsWith("/")) {
           OmDirectoryInfo directoryInfo =
               new OmDirectoryInfo.Builder()
@@ -221,4 +205,29 @@ public class NonFSOTaskHandler extends NSSummaryTask {
     return new ImmutablePair<>(getTaskName(), true);
   }
 
+  private void setKeyParentID(OmKeyInfo keyInfo) throws IOException {
+    String[] keyPath = keyInfo.getKeyName().split("/");
+
+    //if (keyPath > 1) there is one or more directories
+    if (keyPath.length > 1) {
+      String keyBytes =
+          getReconOMMetadataManager().getOzoneKey(keyInfo.getVolumeName(),
+              keyInfo.getBucketName(), keyInfo.getKeyName());
+      BucketLayout bucketLayout = getBucketLayout(getReconOMMetadataManager(),
+          keyInfo.getVolumeName(), keyInfo.getBucketName());
+      OmKeyInfo parentKeyInfo = getReconOMMetadataManager()
+          .getKeyTable(bucketLayout)
+          .get(keyBytes);
+
+      keyInfo.setParentObjectID(parentKeyInfo.getObjectID());
+    } else {
+
+      String bucketKey = getReconOMMetadataManager()
+          .getBucketKey(keyInfo.getVolumeName(), keyInfo.getBucketName());
+      OmBucketInfo parentBucketInfo =
+          getReconOMMetadataManager().getBucketTable().get(bucketKey);
+
+      keyInfo.setParentObjectID(parentBucketInfo.getObjectID());
+    }
+  }
 }

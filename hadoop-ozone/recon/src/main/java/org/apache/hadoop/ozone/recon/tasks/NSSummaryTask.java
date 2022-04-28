@@ -23,6 +23,7 @@ import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.ReconUtils;
 import org.apache.hadoop.ozone.recon.api.types.NSSummary;
+import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,14 +53,22 @@ public abstract class NSSummaryTask implements ReconOmTask {
 
   private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
 
+  private ReconOMMetadataManager omMetadataManager;
+
   @Inject
   public NSSummaryTask(ReconNamespaceSummaryManager
-                                 reconNamespaceSummaryManager) {
+                                 reconNamespaceSummaryManager,
+                       ReconOMMetadataManager omMetadataManager) {
     this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
+    this.omMetadataManager = omMetadataManager;
   }
 
   public ReconNamespaceSummaryManager getReconNamespaceSummaryManager() {
     return reconNamespaceSummaryManager;
+  }
+
+  public ReconOMMetadataManager getReconOMMetadataManager() {
+    return omMetadataManager;
   }
 
   public abstract String getTaskName();
