@@ -18,9 +18,7 @@
 
 package org.apache.hadoop.ozone.recon.tasks;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -36,9 +34,8 @@ import org.apache.hadoop.ozone.recon.persistence.AbstractReconSqlDBTest;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.hadoop.ozone.recon.schema.tables.daos.ReconTaskStatusDao;
 import org.hadoop.ozone.recon.schema.tables.pojos.ReconTaskStatus;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Class used to test ReconTaskControllerImpl.
@@ -48,7 +45,7 @@ public class TestReconTaskControllerImpl extends AbstractReconSqlDBTest {
   private ReconTaskController reconTaskController;
   private ReconTaskStatusDao reconTaskStatusDao;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     OzoneConfiguration ozoneConfiguration = new OzoneConfiguration();
     reconTaskStatusDao = getDao(ReconTaskStatusDao.class);
@@ -92,9 +89,9 @@ public class TestReconTaskControllerImpl extends AbstractReconSqlDBTest {
     long taskTimeStamp = reconTaskStatus.getLastUpdatedTimestamp();
     long seqNumber = reconTaskStatus.getLastUpdatedSeqNumber();
 
-    Assert.assertTrue(startTime <= taskTimeStamp
+    assertTrue(startTime <= taskTimeStamp
         && taskTimeStamp <= endTime);
-    Assert.assertEquals(seqNumber,
+    assertEquals(seqNumber,
         omUpdateEventBatchMock.getLastSequenceNumber());
   }
 
@@ -120,11 +117,11 @@ public class TestReconTaskControllerImpl extends AbstractReconSqlDBTest {
     reconTaskStatusDao = getDao(ReconTaskStatusDao.class);
     ReconTaskStatus dbRecord = reconTaskStatusDao.findById(taskName);
 
-    Assert.assertEquals(taskName, dbRecord.getTaskName());
-    Assert.assertTrue(
+    assertEquals(taskName, dbRecord.getTaskName());
+    assertTrue(
         dbRecord.getLastUpdatedTimestamp() > currentTime);
 
-    Assert.assertEquals(Long.valueOf(100L), dbRecord.getLastUpdatedSeqNumber());
+    assertEquals(Long.valueOf(100L), dbRecord.getLastUpdatedSeqNumber());
   }
 
   @Test
@@ -156,9 +153,9 @@ public class TestReconTaskControllerImpl extends AbstractReconSqlDBTest {
     reconTaskStatusDao = getDao(ReconTaskStatusDao.class);
     ReconTaskStatus dbRecord = reconTaskStatusDao.findById(taskName);
 
-    Assert.assertEquals(taskName, dbRecord.getTaskName());
-    Assert.assertEquals(Long.valueOf(0L), dbRecord.getLastUpdatedTimestamp());
-    Assert.assertEquals(Long.valueOf(0L), dbRecord.getLastUpdatedSeqNumber());
+    assertEquals(taskName, dbRecord.getTaskName());
+    assertEquals(Long.valueOf(0L), dbRecord.getLastUpdatedTimestamp());
+    assertEquals(Long.valueOf(0L), dbRecord.getLastUpdatedSeqNumber());
   }
 
 
@@ -189,9 +186,9 @@ public class TestReconTaskControllerImpl extends AbstractReconSqlDBTest {
     long taskTimeStamp = reconTaskStatus.getLastUpdatedTimestamp();
     long seqNumber = reconTaskStatus.getLastUpdatedSeqNumber();
 
-    Assert.assertTrue(startTime <= taskTimeStamp
+    assertTrue(startTime <= taskTimeStamp
         && taskTimeStamp <= endTime);
-    Assert.assertEquals(seqNumber,
+    assertEquals(seqNumber,
         omMetadataManagerMock.getLastSequenceNumberFromDB());
   }
 

@@ -56,11 +56,10 @@ import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
 import org.apache.hadoop.ozone.recon.spi.impl.StorageContainerServiceProviderImpl;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.LambdaTestUtils;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
 import static org.apache.hadoop.ozone.container.upgrade.UpgradeUtils.defaultLayoutVersionProto;
@@ -73,11 +72,15 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -87,8 +90,8 @@ import java.util.concurrent.Callable;
  * Test for Open Container count per Datanode.
  */
 public class TestOpenContainerCount {
-  @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  @TempDir
+  public Path temporaryFolder;
 
   private NodeEndpoint nodeEndpoint;
   private ReconOMMetadataManager reconOMMetadataManager;
@@ -116,8 +119,8 @@ public class TestOpenContainerCount {
 
   private void initializeInjector() throws Exception {
     reconOMMetadataManager = getTestReconOmMetadataManager(
-            initializeNewOmMetadataManager(temporaryFolder.newFolder()),
-            temporaryFolder.newFolder());
+            initializeNewOmMetadataManager(temporaryFolder.toFile()),
+            temporaryFolder.toFile());
     datanodeDetails = randomDatanodeDetails();
     datanodeDetails.setHostName(HOST1);
     datanodeDetails.setIpAddress(IP1);
@@ -212,7 +215,7 @@ public class TestOpenContainerCount {
             reconTestInjector.getInstance(OzoneStorageContainerManager.class);
   }
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     // The following setup runs only once
     if (!isSetupDone) {
@@ -320,7 +323,7 @@ public class TestOpenContainerCount {
       // Process all events in the event queue
       reconScm.getEventQueue().processAll(1000);
     } catch (Exception ex) {
-      Assert.fail(ex.getMessage());
+      fail(ex.getMessage());
     }
   }
 
@@ -343,7 +346,7 @@ public class TestOpenContainerCount {
       --expectedCnt;
       closeContainer(id);
       DatanodeMetadata metadata = getDatanodeMetadata();
-      Assert.assertEquals(expectedCnt, metadata.getOpenContainers());
+      assertEquals(expectedCnt, metadata.getOpenContainers());
     }
   }
 
@@ -412,7 +415,7 @@ public class TestOpenContainerCount {
       // Process all events in the event queue
       reconScm.getEventQueue().processAll(1000);
     } catch (Exception ex) {
-      Assert.fail(ex.getMessage());
+      fail(ex.getMessage());
     }
   }
 

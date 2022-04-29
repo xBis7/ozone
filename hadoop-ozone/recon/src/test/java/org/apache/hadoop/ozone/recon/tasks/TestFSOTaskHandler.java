@@ -29,16 +29,6 @@ import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
-//import org.junit.Assert;
-//import org.junit.Before;
-//import org.junit.Rule;
-//import org.junit.Test;
-//import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.extension.RegisterExtension;
-import org.junit.rules.ExternalResource;
-import org.junit.rules.TemporaryFolder;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +36,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -126,8 +115,6 @@ public class TestFSOTaskHandler {
   @BeforeEach
   public void setUp() throws Exception {
 
-
-
     omMetadataManager = initializeNewOmMetadataManager(
         temporaryFolder.toFile());
     ozoneManagerServiceProvider =
@@ -136,7 +123,7 @@ public class TestFSOTaskHandler {
         temporaryFolder.toFile());
 
     ReconTestInjector reconTestInjector =
-        new ReconTestInjector.Builder(new TemporaryFolder())    //need to pass something like temporaryFolder.toTemporaryFolder()
+        new ReconTestInjector.Builder(temporaryFolder)
             .withReconOm(reconOMMetadataManager)
             .withOmServiceProvider(ozoneManagerServiceProvider)
             .withReconSqlDb()
@@ -151,7 +138,7 @@ public class TestFSOTaskHandler {
     NSSummary staleNSSummary = new NSSummary();
     reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
     FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
-        reconNamespaceSummaryManager);
+        reconNamespaceSummaryManager, reconOMMetadataManager);
     fsoTaskHandler.reprocess(reconOMMetadataManager);
 
     nsSummaryForBucket1 =
@@ -366,8 +353,13 @@ public class TestFSOTaskHandler {
   class TestProcess {
 
     @BeforeEach
-    public void setUp() {
+    public void setUp() throws IOException {
+      OMUpdateEventBatch omUpdateEventBatch = processEventBatch();
 
+      FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
+          reconNamespaceSummaryManager, reconOMMetadataManager);
+      fsoTaskHandler.reprocess(reconOMMetadataManager);
+      fsoTaskHandler.process(omUpdateEventBatch);
     }
 
     protected OMUpdateEventBatch processEventBatch() throws IOException {
@@ -480,17 +472,8 @@ public class TestFSOTaskHandler {
       return omUpdateEventBatch;
     }
 
-    @SuppressWarnings("checkstyle:methodlength")
     @Test
-    public void testProcess() throws Exception {
-
-      OMUpdateEventBatch omUpdateEventBatch = processEventBatch();
-
-      FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
-          reconNamespaceSummaryManager);
-      fsoTaskHandler.reprocess(reconOMMetadataManager);
-      fsoTaskHandler.process(omUpdateEventBatch);
-
+    public void testProcessUpdateFileSize() throws IOException {
       // file 5 is added under bucket 2, so bucket 2 has 3 keys now
       // file 1 is gone, so bucket 1 is empty now
       // file 2 is updated with new datasize,
@@ -507,7 +490,10 @@ public class TestFSOTaskHandler {
       bucketOneAns.add(DIR_ONE_OBJECT_ID);
       bucketOneAns.add(DIR_FOUR_OBJECT_ID);
       assertEquals(bucketOneAns, childDirBucket1);
+    }
 
+    @Test
+    public void testProcessBucket() throws IOException {
       NSSummary nsSummaryForBucket2 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
       assertNotNull(nsSummaryForBucket2);
@@ -522,11 +508,10 @@ public class TestFSOTaskHandler {
       assertEquals(2, fileSizeDist[0]);
       // 2050L
       assertEquals(1, fileSizeDist[2]);
-      for (int i = 0; i < ReconConstants.NUM_OF_BINS; ++i) {
-        if (i == 0 || i == 2) {
-          continue;
+      for (int i = 1; i < ReconConstants.NUM_OF_BINS; ++i) {
+        if (i != 2) {
+          assertEquals(0, fileSizeDist[i]);
         }
-        assertEquals(0, fileSizeDist[i]);
       }
 
       // after put dir5, bucket 2 now has one dir
@@ -534,6 +519,11 @@ public class TestFSOTaskHandler {
       assertEquals(1, childDirBucket2.size());
       bucketTwoAns.add(DIR_FIVE_OBJECT_ID);
       assertEquals(bucketTwoAns, childDirBucket2);
+    }
+
+    @SuppressWarnings("checkstyle:methodlength")
+    @Test
+    public void testProcessDir() throws IOException {
 
       // after delete dir 3, dir 1 now has only one dir: dir2
       NSSummary nsSummaryForDir1 = reconNamespaceSummaryManager
