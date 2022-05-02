@@ -213,13 +213,13 @@ public class NonFSOTaskHandler extends NSSummaryTask {
     //if (keyPath > 1) there is one or more directories
     if (keyPath.length > 1) {
       String parentKeyName = "";
-      for (int i=0; i< keyPath.length-1; i++) {
+      for (int i = 0; i < keyPath.length - 1; i++) {
         parentKeyName += keyPath[i] + "/";
       }
       String keyBytes =
           getReconOMMetadataManager().getOzoneKey(keyInfo.getVolumeName(),
               keyInfo.getBucketName(), parentKeyName);
-      BucketLayout bucketLayout = getBucketLayout(getReconOMMetadataManager(),
+      bucketLayout = getBucketLayout(getReconOMMetadataManager(),
           keyInfo.getVolumeName(), keyInfo.getBucketName());
       OmKeyInfo parentKeyInfo = getReconOMMetadataManager()
           .getKeyTable(bucketLayout)
