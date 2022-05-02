@@ -133,88 +133,6 @@ public class TestFSOTaskHandler {
         reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
 
     populateOMDB();
-
-    // write a NSSummary prior to reprocess and verify it got cleaned up after.
-    NSSummary staleNSSummary = new NSSummary();
-    reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
-    FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
-        reconNamespaceSummaryManager, reconOMMetadataManager);
-    fsoTaskHandler.reprocess(reconOMMetadataManager);
-
-    nsSummaryForBucket1 =
-        reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
-    nsSummaryForBucket2 =
-        reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
-  }
-
-  @Test
-  public void testReprocessNSSummaryNotNull() throws IOException {
-    assertNull(reconNamespaceSummaryManager.getNSSummary(-1L));
-  }
-
-  @Test
-  public void testReprocessFileBucketSize() {
-    int[] fileDistBucket1 = nsSummaryForBucket1.getFileSizeBucket();
-    int[] fileDistBucket2 = nsSummaryForBucket2.getFileSizeBucket();
-    assertEquals(ReconConstants.NUM_OF_BINS, fileDistBucket1.length);
-    assertEquals(ReconConstants.NUM_OF_BINS, fileDistBucket2.length);
-
-    assertEquals(1, fileDistBucket1[0]);
-    for (int i = 1; i < ReconConstants.NUM_OF_BINS; ++i) {
-      assertEquals(0, fileDistBucket1[i]);
-    }
-    assertEquals(1, fileDistBucket2[1]);
-    assertEquals(1, fileDistBucket2[2]);
-    for (int i = 3; i < ReconConstants.NUM_OF_BINS; ++i) {
-      assertEquals(0, fileDistBucket2[i]);
-    }
-  }
-
-  @Test
-  public void testReprocessBucketDirs() {
-    // Bucket one has one dir, bucket two has none.
-    Set<Long> childDirBucketOne = nsSummaryForBucket1.getChildDir();
-    Set<Long> childDirBucketTwo = nsSummaryForBucket2.getChildDir();
-    assertEquals(1, childDirBucketOne.size());
-    bucketOneAns.clear();
-    bucketOneAns.add(DIR_ONE_OBJECT_ID);
-    assertEquals(bucketOneAns, childDirBucketOne);
-    assertEquals(0, childDirBucketTwo.size());
-  }
-
-  @Test
-  public void testReprocessDirsUnderDir() throws Exception {
-
-    // Dir 1 has two dir: dir2 and dir3.
-    NSSummary nsSummaryInDir1 = reconNamespaceSummaryManager
-        .getNSSummary(DIR_ONE_OBJECT_ID);
-    assertNotNull(nsSummaryInDir1);
-    Set<Long> childDirForDirOne = nsSummaryInDir1.getChildDir();
-    assertEquals(2, childDirForDirOne.size());
-    dirOneAns.clear();
-    dirOneAns.add(DIR_TWO_OBJECT_ID);
-    dirOneAns.add(DIR_THREE_OBJECT_ID);
-    assertEquals(dirOneAns, childDirForDirOne);
-
-    NSSummary nsSummaryInDir2 = reconNamespaceSummaryManager
-        .getNSSummary(DIR_TWO_OBJECT_ID);
-    assertEquals(1, nsSummaryInDir2.getNumOfFiles());
-    assertEquals(KEY_THREE_SIZE, nsSummaryInDir2.getSizeOfFiles());
-
-    int[] fileDistForDir2 = nsSummaryInDir2.getFileSizeBucket();
-    assertEquals(ReconConstants.NUM_OF_BINS, fileDistForDir2.length);
-    assertEquals(1, fileDistForDir2[fileDistForDir2.length - 1]);
-    for (int i = 0; i < ReconConstants.NUM_OF_BINS - 1; ++i) {
-      assertEquals(0, fileDistForDir2[i]);
-    }
-    assertEquals(0, nsSummaryInDir2.getChildDir().size());
-
-    // bucket should have empty dirName
-    assertEquals(0, nsSummaryForBucket1.getDirName().length());
-    assertEquals(0, nsSummaryForBucket2.getDirName().length());
-    // check dirName is correctly written
-    assertEquals(DIR_ONE, nsSummaryInDir1.getDirName());
-    assertEquals(DIR_TWO, nsSummaryInDir2.getDirName());
   }
 
   /**
@@ -347,6 +265,94 @@ public class TestFSOTaskHandler {
 
   private BucketLayout getBucketLayout() {
     return BucketLayout.FILE_SYSTEM_OPTIMIZED;
+  }
+
+  @Nested
+  class TestReprocess {
+    @BeforeEach
+    public void setUp() throws IOException {
+      // write a NSSummary prior to reprocess and verify it got cleaned up after.
+      NSSummary staleNSSummary = new NSSummary();
+      reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
+      FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
+          reconNamespaceSummaryManager, reconOMMetadataManager);
+      fsoTaskHandler.reprocess(reconOMMetadataManager);
+
+      nsSummaryForBucket1 =
+          reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+      nsSummaryForBucket2 =
+          reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
+    }
+
+    @Test
+    public void testReprocessNSSummaryNotNull() throws IOException {
+      assertNull(reconNamespaceSummaryManager.getNSSummary(-1L));
+    }
+
+    @Test
+    public void testReprocessFileBucketSize() {
+      int[] fileDistBucket1 = nsSummaryForBucket1.getFileSizeBucket();
+      int[] fileDistBucket2 = nsSummaryForBucket2.getFileSizeBucket();
+      assertEquals(ReconConstants.NUM_OF_BINS, fileDistBucket1.length);
+      assertEquals(ReconConstants.NUM_OF_BINS, fileDistBucket2.length);
+
+      assertEquals(1, fileDistBucket1[0]);
+      for (int i = 1; i < ReconConstants.NUM_OF_BINS; ++i) {
+        assertEquals(0, fileDistBucket1[i]);
+      }
+      assertEquals(1, fileDistBucket2[1]);
+      assertEquals(1, fileDistBucket2[2]);
+      for (int i = 3; i < ReconConstants.NUM_OF_BINS; ++i) {
+        assertEquals(0, fileDistBucket2[i]);
+      }
+    }
+
+    @Test
+    public void testReprocessBucketDirs() {
+      // Bucket one has one dir, bucket two has none.
+      Set<Long> childDirBucketOne = nsSummaryForBucket1.getChildDir();
+      Set<Long> childDirBucketTwo = nsSummaryForBucket2.getChildDir();
+      assertEquals(1, childDirBucketOne.size());
+      bucketOneAns.clear();
+      bucketOneAns.add(DIR_ONE_OBJECT_ID);
+      assertEquals(bucketOneAns, childDirBucketOne);
+      assertEquals(0, childDirBucketTwo.size());
+    }
+
+    @Test
+    public void testReprocessDirsUnderDir() throws Exception {
+
+      // Dir 1 has two dir: dir2 and dir3.
+      NSSummary nsSummaryInDir1 = reconNamespaceSummaryManager
+          .getNSSummary(DIR_ONE_OBJECT_ID);
+      assertNotNull(nsSummaryInDir1);
+      Set<Long> childDirForDirOne = nsSummaryInDir1.getChildDir();
+      assertEquals(2, childDirForDirOne.size());
+      dirOneAns.clear();
+      dirOneAns.add(DIR_TWO_OBJECT_ID);
+      dirOneAns.add(DIR_THREE_OBJECT_ID);
+      assertEquals(dirOneAns, childDirForDirOne);
+
+      NSSummary nsSummaryInDir2 = reconNamespaceSummaryManager
+          .getNSSummary(DIR_TWO_OBJECT_ID);
+      assertEquals(1, nsSummaryInDir2.getNumOfFiles());
+      assertEquals(KEY_THREE_SIZE, nsSummaryInDir2.getSizeOfFiles());
+
+      int[] fileDistForDir2 = nsSummaryInDir2.getFileSizeBucket();
+      assertEquals(ReconConstants.NUM_OF_BINS, fileDistForDir2.length);
+      assertEquals(1, fileDistForDir2[fileDistForDir2.length - 1]);
+      for (int i = 0; i < ReconConstants.NUM_OF_BINS - 1; ++i) {
+        assertEquals(0, fileDistForDir2[i]);
+      }
+      assertEquals(0, nsSummaryInDir2.getChildDir().size());
+
+      // bucket should have empty dirName
+      assertEquals(0, nsSummaryForBucket1.getDirName().length());
+      assertEquals(0, nsSummaryForBucket2.getDirName().length());
+      // check dirName is correctly written
+      assertEquals(DIR_ONE, nsSummaryInDir1.getDirName());
+      assertEquals(DIR_TWO, nsSummaryInDir2.getDirName());
+    }
   }
 
   @Nested
