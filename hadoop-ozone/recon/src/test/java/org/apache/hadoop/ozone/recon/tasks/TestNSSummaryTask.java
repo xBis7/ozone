@@ -54,12 +54,12 @@ import static org.junit.Assert.*;
  */
 public class TestNSSummaryTask {
   @Rule
-  public TemporaryFolder temporaryFolder = new TemporaryFolder();
+  public static TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-  private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
-  private OMMetadataManager omMetadataManager;
-  private ReconOMMetadataManager reconOMMetadataManager;
-  private OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
+  private static ReconNamespaceSummaryManager reconNamespaceSummaryManager;
+  private static OMMetadataManager omMetadataManager;
+  private static ReconOMMetadataManager reconOMMetadataManager;
+  private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
 
   // Object names in FSO-enabled format
   private static final String VOL = "vol";
@@ -108,7 +108,7 @@ public class TestNSSummaryTask {
   private static Set<Long> dirOneAns = new HashSet<>();
 
   @Before
-  public void setUp() throws Exception {
+  public static void setUp() throws Exception {
     omMetadataManager = initializeNewOmMetadataManager(
             temporaryFolder.newFolder());
     ozoneManagerServiceProvider =

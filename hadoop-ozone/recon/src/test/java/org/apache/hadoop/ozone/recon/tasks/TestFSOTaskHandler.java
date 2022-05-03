@@ -29,12 +29,12 @@ import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
-
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.*;
+import org.junit.experimental.runners.Enclosed;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -47,22 +47,22 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestRe
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializeNewOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.when;
 
 /**
  * Test for FSOTaskHandler.
  */
+@RunWith(Enclosed.class)
 public class TestFSOTaskHandler {
 
-  @TempDir
-  public Path temporaryFolder;
+  @ClassRule
+  public static TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-  private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
-  private OMMetadataManager omMetadataManager;
-  private ReconOMMetadataManager reconOMMetadataManager;
-  private OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
+  private static ReconNamespaceSummaryManager reconNamespaceSummaryManager;
+  private static OMMetadataManager omMetadataManager;
+  private static ReconOMMetadataManager reconOMMetadataManager;
+  private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
 
   // Object names in FSO-enabled format
   private static final String VOL = "vol";
@@ -112,15 +112,15 @@ public class TestFSOTaskHandler {
   private static NSSummary nsSummaryForBucket1;
   private static NSSummary nsSummaryForBucket2;
 
-  @BeforeEach
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
 
     omMetadataManager = initializeNewOmMetadataManager(
-        temporaryFolder.toFile());
+        temporaryFolder.newFolder());
     ozoneManagerServiceProvider =
         getMockOzoneManagerServiceProviderWithFSO();
     reconOMMetadataManager = getTestReconOmMetadataManager(omMetadataManager,
-        temporaryFolder.toFile());
+        temporaryFolder.newFolder());
 
     ReconTestInjector reconTestInjector =
         new ReconTestInjector.Builder(temporaryFolder)
@@ -147,13 +147,13 @@ public class TestFSOTaskHandler {
    * @param dataSize       file size
    * @return the KeyInfo
    */
-  private OmKeyInfo buildOmKeyInfo(String volume,
-                                   String bucket,
-                                   String key,
-                                   String fileName,
-                                   long objectID,
-                                   long parentObjectId,
-                                   long dataSize) {
+  private static OmKeyInfo buildOmKeyInfo(String volume,
+                                          String bucket,
+                                          String key,
+                                          String fileName,
+                                          long objectID,
+                                          long parentObjectId,
+                                          long dataSize) {
     return new OmKeyInfo.Builder()
         .setBucketName(bucket)
         .setVolumeName(volume)
@@ -179,12 +179,12 @@ public class TestFSOTaskHandler {
    * @param parentObjectId parent object ID
    * @return the KeyInfo
    */
-  private OmKeyInfo buildOmKeyInfo(String volume,
-                                   String bucket,
-                                   String key,
-                                   String fileName,
-                                   long objectID,
-                                   long parentObjectId) {
+  private static OmKeyInfo buildOmKeyInfo(String volume,
+                                          String bucket,
+                                          String key,
+                                          String fileName,
+                                          long objectID,
+                                          long parentObjectId) {
     return new OmKeyInfo.Builder()
         .setBucketName(bucket)
         .setVolumeName(volume)
@@ -198,9 +198,9 @@ public class TestFSOTaskHandler {
         .build();
   }
 
-  private OmDirectoryInfo buildOmDirInfo(String dirName,
-                                         long objectId,
-                                         long parentObjectId) {
+  private static OmDirectoryInfo buildOmDirInfo(String dirName,
+                                                long objectId,
+                                                long parentObjectId) {
     return new OmDirectoryInfo.Builder()
         .setName(dirName)
         .setObjectID(objectId)
@@ -222,7 +222,7 @@ public class TestFSOTaskHandler {
    *
    * @throws IOException
    */
-  private void populateOMDB() throws IOException {
+  private static void populateOMDB() throws IOException {
     writeKeyToOm(reconOMMetadataManager,
         KEY_ONE,
         BUCKET_ONE,
@@ -267,13 +267,13 @@ public class TestFSOTaskHandler {
         DIR_ONE_OBJECT_ID, DIR_THREE);
   }
 
-  private BucketLayout getBucketLayout() {
+  private static BucketLayout getBucketLayout() {
     return BucketLayout.FILE_SYSTEM_OPTIMIZED;
   }
 
-  @Nested
-  class TestReprocess {
-    @BeforeEach
+  public static class TestReprocess {
+
+    @Before
     public void setUp() throws IOException {
       // write a NSSummary prior to reprocess and verify it got cleaned up after.
       NSSummary staleNSSummary = new NSSummary();
@@ -362,10 +362,9 @@ public class TestFSOTaskHandler {
     }
   }
 
-  @Nested
-  class TestProcess {
+  public static class TestProcess {
 
-    @BeforeEach
+    @Before
     public void setUp() throws IOException {
       OMUpdateEventBatch omUpdateEventBatch = processEventBatch();
 
