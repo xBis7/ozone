@@ -27,12 +27,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -87,18 +85,19 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.hadoop.ozone.recon.schema.ContainerSchemaDefinition;
 import org.hadoop.ozone.recon.schema.ContainerSchemaDefinition.UnHealthyContainerStates;
 import org.hadoop.ozone.recon.schema.tables.pojos.UnhealthyContainers;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Test for container endpoint.
  */
 public class TestContainerEndpoint {
 
-  @TempDir
-  public Path temporaryFolder;
+  @Rule
+  public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private OzoneStorageContainerManager ozoneStorageContainerManager;
   private ReconContainerManager reconContainerManager;
@@ -120,8 +119,8 @@ public class TestContainerEndpoint {
 
   private void initializeInjector() throws Exception {
     reconOMMetadataManager = getTestReconOmMetadataManager(
-        initializeNewOmMetadataManager(temporaryFolder.toFile()),
-        temporaryFolder.toFile());
+        initializeNewOmMetadataManager(temporaryFolder.newFolder()),
+        temporaryFolder.newFolder());
 
     ReconTestInjector reconTestInjector =
         new ReconTestInjector.Builder(temporaryFolder)
@@ -156,7 +155,7 @@ public class TestContainerEndpoint {
     reconPipelineManager.addPipeline(pipeline);
   }
 
-  @BeforeEach
+  @Before
   public void setUp() throws Exception {
     // The following setup runs only once
     if (!isSetupDone) {
@@ -450,7 +449,7 @@ public class TestContainerEndpoint {
     assertEquals(1, responseObject.getTotalCount());
     MissingContainerMetadata container =
         responseObject.getContainers().stream().findFirst().orElse(null);
-    assertNotNull(container);
+    Assert.assertNotNull(container);
 
     assertEquals(containerID.getId(), container.getContainerID());
     assertEquals(keyCount, container.getKeys());
@@ -462,7 +461,7 @@ public class TestContainerEndpoint {
         new HashSet<>(Arrays.asList("host2", "host3", "host4")));
     List<ContainerHistory> containerReplicas = container.getReplicas();
     containerReplicas.forEach(history -> {
-      assertTrue(datanodes.contains(history.getDatanodeHost()));
+      Assert.assertTrue(datanodes.contains(history.getDatanodeHost()));
     });
   }
 
@@ -537,7 +536,7 @@ public class TestContainerEndpoint {
         new HashSet<>(Arrays.asList("host2", "host3", "host4")));
     List<ContainerHistory> containerReplicas = missing.get(0).getReplicas();
     containerReplicas.forEach(history -> {
-      assertTrue(datanodes.contains(history.getDatanodeHost()));
+      Assert.assertTrue(datanodes.contains(history.getDatanodeHost()));
     });
 
     List<UnhealthyContainerMetadata> overRep = records
@@ -684,23 +683,23 @@ public class TestContainerEndpoint {
     Set<String> datanodes = Collections.unmodifiableSet(
         new HashSet<>(Arrays.asList(
             u1.toString(), u2.toString(), u3.toString(), u4.toString())));
-    assertEquals(4, histories.size());
+    Assert.assertEquals(4, histories.size());
     histories.forEach(history -> {
-      assertTrue(datanodes.contains(history.getDatanodeUuid()));
+      Assert.assertTrue(datanodes.contains(history.getDatanodeUuid()));
       if (history.getDatanodeUuid().equals(u1.toString())) {
-        assertEquals("host1", history.getDatanodeHost());
-        assertEquals(1L, history.getFirstSeenTime());
-        assertEquals(5L, history.getLastSeenTime());
+        Assert.assertEquals("host1", history.getDatanodeHost());
+        Assert.assertEquals(1L, history.getFirstSeenTime());
+        Assert.assertEquals(5L, history.getLastSeenTime());
       }
     });
 
     // Check getLatestContainerHistory
     List<ContainerHistory> hist1 = reconContainerManager
         .getLatestContainerHistory(1L, 10);
-    assertTrue(hist1.size() <= 10);
+    Assert.assertTrue(hist1.size() <= 10);
     // Descending order by last report timestamp
     for (int i = 0; i < hist1.size() - 1; i++) {
-      assertTrue(hist1.get(i).getLastSeenTime()
+      Assert.assertTrue(hist1.get(i).getLastSeenTime()
           >= hist1.get(i + 1).getLastSeenTime());
     }
   }
