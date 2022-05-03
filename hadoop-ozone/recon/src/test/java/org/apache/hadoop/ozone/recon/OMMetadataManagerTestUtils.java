@@ -195,11 +195,12 @@ public final class OMMetadataManagerTestUtils {
                                     String fileName,
                                     long objectID,
                                     long parentObjectId,
-                                    long dataSize)
+                                    long dataSize,
+                                    BucketLayout bucketLayout)
           throws IOException {
     // DB key in FileTable => "parentId/filename"
     String omKey = omMetadataManager.getOzonePathKey(parentObjectId, fileName);
-    omMetadataManager.getKeyTable(BucketLayout.FILE_SYSTEM_OPTIMIZED).put(omKey,
+    omMetadataManager.getKeyTable(bucketLayout).put(omKey,
             new OmKeyInfo.Builder()
                     .setBucketName(bucket)
                     .setVolumeName(volume)
@@ -220,10 +221,11 @@ public final class OMMetadataManagerTestUtils {
                                   String bucketName,
                                   String keyName,
                                   String fileName,
-                                  List<OmKeyLocationInfoGroup> locationVersions)
+                                  List<OmKeyLocationInfoGroup> locationVersions,
+                                  BucketLayout bucketLayout)
           throws IOException {
     String omKey = omMetadataManager.getOzonePathKey(parentObjectId, fileName);
-    omMetadataManager.getKeyTable(BucketLayout.FILE_SYSTEM_OPTIMIZED).put(omKey,
+    omMetadataManager.getKeyTable(bucketLayout).put(omKey,
             new OmKeyInfo.Builder()
                     .setBucketName(bucketName)
                     .setVolumeName(volName)

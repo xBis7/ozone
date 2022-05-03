@@ -29,12 +29,12 @@ import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
-
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,29 +42,30 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
-import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProviderWithFSO;
+import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializeNewOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
 /**
- * Test for FSOTaskHandler.
+ * Test for NonFSOTaskHandler.
  */
-public class TestFSOTaskHandler {
+public class TestNonFSOTaskHandler {
 
   @TempDir
-  public Path temporaryFolder;
+  Path temporaryFolder;
 
   private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private OMMetadataManager omMetadataManager;
   private ReconOMMetadataManager reconOMMetadataManager;
   private OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
 
-  // Object names in FSO-enabled format
+  // Object names
   private static final String VOL = "vol";
   private static final String BUCKET_ONE = "bucket1";
   private static final String BUCKET_TWO = "bucket2";
@@ -118,7 +119,7 @@ public class TestFSOTaskHandler {
     omMetadataManager = initializeNewOmMetadataManager(
         temporaryFolder.toFile());
     ozoneManagerServiceProvider =
-        getMockOzoneManagerServiceProviderWithFSO();
+        getMockOzoneManagerServiceProvider();
     reconOMMetadataManager = getTestReconOmMetadataManager(omMetadataManager,
         temporaryFolder.toFile());
 
@@ -231,7 +232,7 @@ public class TestFSOTaskHandler {
         KEY_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
         KEY_ONE_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        BucketLayout.LEGACY);
     writeKeyToOm(reconOMMetadataManager,
         KEY_TWO,
         BUCKET_TWO,
@@ -240,7 +241,7 @@ public class TestFSOTaskHandler {
         KEY_TWO_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
         KEY_TWO_OLD_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        BucketLayout.LEGACY);
     writeKeyToOm(reconOMMetadataManager,
         KEY_THREE,
         BUCKET_ONE,
@@ -249,7 +250,7 @@ public class TestFSOTaskHandler {
         KEY_THREE_OBJECT_ID,
         DIR_TWO_OBJECT_ID,
         KEY_THREE_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        BucketLayout.LEGACY);
     writeKeyToOm(reconOMMetadataManager,
         KEY_FOUR,
         BUCKET_TWO,
@@ -258,7 +259,7 @@ public class TestFSOTaskHandler {
         KEY_FOUR_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
         KEY_FOUR_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        BucketLayout.LEGACY);
     writeDirToOm(reconOMMetadataManager, DIR_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID, DIR_ONE);
     writeDirToOm(reconOMMetadataManager, DIR_TWO_OBJECT_ID,
@@ -268,19 +269,21 @@ public class TestFSOTaskHandler {
   }
 
   private BucketLayout getBucketLayout() {
-    return BucketLayout.FILE_SYSTEM_OPTIMIZED;
+    return BucketLayout.DEFAULT;
   }
 
   @Nested
   class TestReprocess {
+
     @BeforeEach
     public void setUp() throws IOException {
       // write a NSSummary prior to reprocess and verify it got cleaned up after.
       NSSummary staleNSSummary = new NSSummary();
       reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
-      FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
+      NonFSOTaskHandler nonFsoTaskHandler = new NonFSOTaskHandler(
           reconNamespaceSummaryManager, reconOMMetadataManager);
-      fsoTaskHandler.reprocess(reconOMMetadataManager);
+      nonFsoTaskHandler.setBucketLayout(getBucketLayout());
+      nonFsoTaskHandler.reprocess(reconOMMetadataManager);
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
@@ -369,10 +372,11 @@ public class TestFSOTaskHandler {
     public void setUp() throws IOException {
       OMUpdateEventBatch omUpdateEventBatch = processEventBatch();
 
-      FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
+      NonFSOTaskHandler nonFsoTaskHandler = new NonFSOTaskHandler(
           reconNamespaceSummaryManager, reconOMMetadataManager);
-      fsoTaskHandler.reprocess(reconOMMetadataManager);
-      fsoTaskHandler.process(omUpdateEventBatch);
+      nonFsoTaskHandler.setBucketLayout(getBucketLayout());
+      nonFsoTaskHandler.reprocess(reconOMMetadataManager);
+      nonFsoTaskHandler.process(omUpdateEventBatch);
     }
 
     protected OMUpdateEventBatch processEventBatch() throws IOException {
@@ -429,7 +433,7 @@ public class TestFSOTaskHandler {
           .setKey(omDirPutKey1)
           .setValue(omDirPutValue1)
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.PUT)
-          .setTable(omMetadataManager.getDirectoryTable().getName())
+          .setTable(omMetadataManager.getKeyTable(getBucketLayout()).getName())
           .build();
 
       // add dir 5 under bucket 2
@@ -441,7 +445,7 @@ public class TestFSOTaskHandler {
           .setKey(omDirPutKey2)
           .setValue(omDirPutValue2)
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.PUT)
-          .setTable(omMetadataManager.getDirectoryTable().getName())
+          .setTable(omMetadataManager.getKeyTable(getBucketLayout()).getName())
           .build();
 
       // delete dir 3 under dir 1
@@ -453,7 +457,7 @@ public class TestFSOTaskHandler {
           .setKey(omDirDeleteKey)
           .setValue(omDirDeleteValue)
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.DELETE)
-          .setTable(omMetadataManager.getDirectoryTable().getName())
+          .setTable(omMetadataManager.getKeyTable(getBucketLayout()).getName())
           .build();
 
       // rename dir1
@@ -468,7 +472,7 @@ public class TestFSOTaskHandler {
           .setValue(omDirUpdateValue)
           .setOldValue(omDirOldValue)
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.UPDATE)
-          .setTable(omMetadataManager.getDirectoryTable().getName())
+          .setTable(omMetadataManager.getKeyTable(getBucketLayout()).getName())
           .build();
 
       OMUpdateEventBatch omUpdateEventBatch = new OMUpdateEventBatch(
@@ -553,4 +557,3 @@ public class TestFSOTaskHandler {
     }
   }
 }
-
