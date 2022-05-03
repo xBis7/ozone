@@ -52,16 +52,17 @@ import org.apache.hadoop.ozone.recon.spi.StorageContainerServiceProvider;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
 import org.apache.hadoop.ozone.recon.spi.impl.StorageContainerServiceProviderImpl;
 import org.apache.hadoop.ozone.recon.tasks.FSOTaskHandler;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.apache.hadoop.ozone.recon.tasks.NSSummaryTask;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import javax.ws.rs.core.Response;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -75,10 +76,10 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirT
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProviderWithFSO;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 /**
  * Test for NSSummary REST APIs.
@@ -96,9 +97,8 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
  * so there is no need to test process() on DB's updates
  */
 public class TestNSSummaryEndpoint {
-  
-  @TempDir
-  public Path temporaryFolder;
+  @Rule
+  public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private OMMetadataManager omMetadataManager;
@@ -210,14 +210,14 @@ public class TestNSSummaryEndpoint {
   private static final long DIR_ONE_DATA_SIZE = KEY_TWO_SIZE +
           KEY_THREE_SIZE + KEY_SIX_SIZE;
 
-  @BeforeEach
+  @Before
   public void setUp() throws Exception {
     omMetadataManager = initializeNewOmMetadataManager(
-            temporaryFolder.toFile());
+            temporaryFolder.newFolder());
     ozoneManagerServiceProvider =
             getMockOzoneManagerServiceProviderWithFSO();
     reconOMMetadataManager = getTestReconOmMetadataManager(omMetadataManager,
-            temporaryFolder.toFile());
+            temporaryFolder.newFolder());
 
     ReconTestInjector reconTestInjector =
             new ReconTestInjector.Builder(temporaryFolder)
