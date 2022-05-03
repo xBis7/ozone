@@ -26,7 +26,6 @@ import static org.apache.hadoop.ozone.recon.ReconServerConfigKeys.OZONE_RECON_SC
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -45,6 +44,8 @@ import org.apache.hadoop.ozone.recon.spi.OzoneManagerServiceProvider;
 import org.apache.hadoop.ozone.recon.spi.impl.ReconContainerMetadataManagerImpl;
 import org.apache.hadoop.ozone.recon.spi.impl.ReconNamespaceSummaryManagerImpl;
 import org.apache.hadoop.ozone.recon.spi.impl.ReconDBProvider;
+import org.junit.Assert;
+import org.junit.rules.TemporaryFolder;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -68,12 +69,12 @@ public class ReconTestInjector {
   private boolean withContainerDB = false;
   private List<Module> additionalModules = new ArrayList<>();
   private boolean withReconSqlDb = false;
-  private Path temporaryFolder;
+  private TemporaryFolder temporaryFolder;
   private Map<Class, Class> extraInheritedBindings = new HashMap<>();
   private Map<Class, Object> extraInstanceBindings = new HashMap<>();
   private Set<Class> extraClassBindings = new HashSet<>();
 
-  public ReconTestInjector(Path temporaryFolder) {
+  public ReconTestInjector(TemporaryFolder temporaryFolder) {
     this.temporaryFolder = temporaryFolder;
   }
 
@@ -129,9 +130,8 @@ public class ReconTestInjector {
 
   /**
    * Wrapper to get the bound instance.
-   *
    * @param type type
-   * @param <T>  type
+   * @param <T> type
    * @return bound instance of type T.
    */
   public <T> T getInstance(Class<T> type) {
@@ -142,7 +142,6 @@ public class ReconTestInjector {
    * The goal of the class is to discourage the use of injector to
    * create more child injectors explicitly.
    * Use this API wisely!
-   *
    * @return injector.
    */
   public Injector getInjector() {
@@ -155,45 +154,49 @@ public class ReconTestInjector {
     modules.add(new AbstractModule() {
       @Override
       protected void configure() {
-        bind(OzoneConfiguration.class).toInstance(
-            getTestOzoneConfiguration(temporaryFolder.toFile()));
+        try {
+          bind(OzoneConfiguration.class).toInstance(
+              getTestOzoneConfiguration(temporaryFolder.newFolder()));
 
-        if (reconOMMetadataManager != null) {
-          bind(ReconOMMetadataManager.class)
-              .toInstance(reconOMMetadataManager);
-        }
+          if (reconOMMetadataManager != null) {
+            bind(ReconOMMetadataManager.class)
+                .toInstance(reconOMMetadataManager);
+          }
 
-        if (ozoneManagerServiceProvider != null) {
-          bind(OzoneManagerServiceProvider.class)
-              .toInstance(ozoneManagerServiceProvider);
-        }
+          if (ozoneManagerServiceProvider != null) {
+            bind(OzoneManagerServiceProvider.class)
+                .toInstance(ozoneManagerServiceProvider);
+          }
 
-        if (reconScm != null) {
-          bind(OzoneStorageContainerManager.class).toInstance(reconScm);
-        }
+          if (reconScm != null) {
+            bind(OzoneStorageContainerManager.class).toInstance(reconScm);
+          }
 
-        if (withContainerDB) {
-          bind(ReconContainerMetadataManager.class)
-              .to(ReconContainerMetadataManagerImpl.class)
-              .in(Singleton.class);
-          bind(ReconNamespaceSummaryManager.class)
-              .to(ReconNamespaceSummaryManagerImpl.class)
-              .in(Singleton.class);
-          bind(ReconDBProvider.class).in(Singleton.class);
-        }
+          if (withContainerDB) {
+            bind(ReconContainerMetadataManager.class)
+                .to(ReconContainerMetadataManagerImpl.class)
+                    .in(Singleton.class);
+            bind(ReconNamespaceSummaryManager.class)
+                    .to(ReconNamespaceSummaryManagerImpl.class)
+                    .in(Singleton.class);
+            bind(ReconDBProvider.class).in(Singleton.class);
+          }
 
-        for (Map.Entry<Class, Object> entry :
-            extraInstanceBindings.entrySet()) {
-          bind(entry.getKey()).toInstance(entry.getValue());
-        }
+          for (Map.Entry<Class, Object> entry :
+              extraInstanceBindings.entrySet()) {
+            bind(entry.getKey()).toInstance(entry.getValue());
+          }
 
-        for (Map.Entry<Class, Class> entry :
-            extraInheritedBindings.entrySet()) {
-          bind(entry.getKey()).to(entry.getValue()).in(Singleton.class);
-        }
+          for (Map.Entry<Class, Class> entry :
+              extraInheritedBindings.entrySet()) {
+            bind(entry.getKey()).to(entry.getValue()).in(Singleton.class);
+          }
 
-        for (Class type : extraClassBindings) {
-          bind(type).in(Singleton.class);
+          for (Class type : extraClassBindings) {
+            bind(type).in(Singleton.class);
+          }
+        } catch (IOException e) {
+          Assert.fail();
         }
       }
     });
@@ -233,7 +236,7 @@ public class ReconTestInjector {
   public static class Builder {
     private ReconTestInjector reconTestInjector;
 
-    public Builder(Path temporaryFolder) {
+    public Builder(TemporaryFolder temporaryFolder) {
       reconTestInjector = new ReconTestInjector(temporaryFolder);
     }
 
@@ -248,7 +251,6 @@ public class ReconTestInjector {
     /**
      * Pass in your Ozone manager service provider implementation, maybe with
      * mocked behavior.
-     *
      * @param ozoneManagerServiceProvider instance
      */
     public Builder withOmServiceProvider(
@@ -261,7 +263,6 @@ public class ReconTestInjector {
     /**
      * Pass in your ReconOMMetadataManager implementation, maybe with
      * mocked behavior.
-     *
      * @param reconOm instance
      */
     public Builder withReconOm(ReconOMMetadataManager reconOm) {
@@ -271,7 +272,6 @@ public class ReconTestInjector {
 
     /**
      * Pass in your Recon SCM implementation.
-     *
      * @param reconScm instance
      * @return Builder.
      */
@@ -282,7 +282,6 @@ public class ReconTestInjector {
 
     /**
      * Use if you need the ReconContainerDB. Bound to default implementation.
-     *
      * @return Builder.
      */
     public Builder withContainerDB() {
@@ -292,8 +291,7 @@ public class ReconTestInjector {
 
     /**
      * Add binding of the type bind(A.class).toInstance(AImpl).
-     *
-     * @param type     class type
+     * @param type class type
      * @param instance instance
      * @return Builder.
      */
@@ -304,7 +302,6 @@ public class ReconTestInjector {
 
     /**
      * Add binding of the type bind(A.class).
-     *
      * @param type class type
      * @return Builder.
      */
@@ -315,7 +312,6 @@ public class ReconTestInjector {
 
     /**
      * Add binding of the type bind(A.class).to(B.class) where B extends A.
-     *
      * @param type class type
      * @return Builder.
      */
@@ -327,7 +323,6 @@ public class ReconTestInjector {
     /**
      * If you really need to pass in more injector modules for extending the
      * set of classes bound, use this.
-     *
      * @param module external module.
      * @return Builder.
      */
@@ -338,7 +333,6 @@ public class ReconTestInjector {
 
     /**
      * Build the whole graph of classes.
-     *
      * @return ReconTestInjector
      * @throws IOException on error.
      */

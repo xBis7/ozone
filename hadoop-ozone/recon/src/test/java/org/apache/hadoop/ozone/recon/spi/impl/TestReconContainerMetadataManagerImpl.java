@@ -23,7 +23,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,29 +30,30 @@ import org.apache.hadoop.ozone.recon.ReconTestInjector;
 import org.apache.hadoop.ozone.recon.api.types.ContainerKeyPrefix;
 import org.apache.hadoop.ozone.recon.api.types.ContainerMetadata;
 import org.apache.hadoop.ozone.recon.spi.ReconContainerMetadataManager;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Unit Tests for ContainerDBServiceProviderImpl.
  */
 public class TestReconContainerMetadataManagerImpl {
 
-  @TempDir
-  public static Path temporaryFolder;
+  @ClassRule
+  public static final TemporaryFolder TEMP_FOLDER = new TemporaryFolder();
   private static ReconContainerMetadataManager reconContainerMetadataManager;
 
   private String keyPrefix1 = "V3/B1/K1";
   private String keyPrefix2 = "V3/B1/K2";
   private String keyPrefix3 = "V3/B2/K1";
 
-  @BeforeAll
+  @BeforeClass
   public static void setupOnce() throws Exception {
     ReconTestInjector reconTestInjector =
-        new ReconTestInjector.Builder(temporaryFolder)
+        new ReconTestInjector.Builder(TEMP_FOLDER)
             .withReconSqlDb()
             .withContainerDB()
             .build();
@@ -61,7 +61,7 @@ public class TestReconContainerMetadataManagerImpl {
         reconTestInjector.getInstance(ReconContainerMetadataManager.class);
   }
 
-  @BeforeEach
+  @Before
   public void setUp() throws Exception {
     // Reset containerDB before running each test
     reconContainerMetadataManager.reinitWithNewContainerDataFromOm(null);
@@ -154,15 +154,15 @@ public class TestReconContainerMetadataManagerImpl {
           containerKeyPrefix, prefixCounts.get(entry.getKey()));
     }
 
-    assertEquals(1,
+    Assert.assertEquals(1,
         reconContainerMetadataManager.getCountForContainerKeyPrefix(
             new ContainerKeyPrefix(containerId, keyPrefix1,
                 0)).longValue());
-    assertEquals(2,
+    Assert.assertEquals(2,
         reconContainerMetadataManager.getCountForContainerKeyPrefix(
             new ContainerKeyPrefix(containerId, keyPrefix2,
                 0)).longValue());
-    assertEquals(3,
+    Assert.assertEquals(3,
         reconContainerMetadataManager.getCountForContainerKeyPrefix(
             new ContainerKeyPrefix(containerId, keyPrefix3,
                 0)).longValue());

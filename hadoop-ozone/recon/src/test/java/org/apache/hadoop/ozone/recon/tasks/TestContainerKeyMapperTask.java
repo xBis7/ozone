@@ -28,7 +28,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -48,31 +47,31 @@ import org.apache.hadoop.ozone.recon.api.types.ContainerKeyPrefix;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconContainerMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * Unit test for Container Key mapper task.
  */
 public class TestContainerKeyMapperTask {
 
-  @TempDir
-  public Path temporaryFolder;
+  @Rule
+  public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private ReconContainerMetadataManager reconContainerMetadataManager;
   private OMMetadataManager omMetadataManager;
   private ReconOMMetadataManager reconOMMetadataManager;
   private OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
 
-  @BeforeEach
+  @Before
   public void setUp() throws Exception {
     omMetadataManager = initializeNewOmMetadataManager(
-        temporaryFolder.toFile());
+        temporaryFolder.newFolder());
     ozoneManagerServiceProvider = getMockOzoneManagerServiceProvider();
     reconOMMetadataManager = getTestReconOmMetadataManager(omMetadataManager,
-        temporaryFolder.toFile());
+        temporaryFolder.newFolder());
 
     ReconTestInjector reconTestInjector =
         new ReconTestInjector.Builder(temporaryFolder)
