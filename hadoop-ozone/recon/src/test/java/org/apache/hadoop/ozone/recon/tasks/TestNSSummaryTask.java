@@ -30,13 +30,13 @@ import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -47,17 +47,14 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestRe
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializeNewOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.*;
 
 /**
  * Test for NSSummaryTask.
  */
 public class TestNSSummaryTask {
-
-  @TempDir
-  public Path temporaryFolder;
+  @Rule
+  public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private OMMetadataManager omMetadataManager;
@@ -110,14 +107,14 @@ public class TestNSSummaryTask {
   private static Set<Long> bucketTwoAns = new HashSet<>();
   private static Set<Long> dirOneAns = new HashSet<>();
 
-  @BeforeEach
+  @Before
   public void setUp() throws Exception {
     omMetadataManager = initializeNewOmMetadataManager(
-            temporaryFolder.toFile());
+            temporaryFolder.newFolder());
     ozoneManagerServiceProvider =
             getMockOzoneManagerServiceProviderWithFSO();
     reconOMMetadataManager = getTestReconOmMetadataManager(omMetadataManager,
-            temporaryFolder.toFile());
+            temporaryFolder.newFolder());
 
     ReconTestInjector reconTestInjector =
             new ReconTestInjector.Builder(temporaryFolder)
