@@ -482,7 +482,8 @@ public class TestNSSummaryEndpoint {
             FILE_ONE,
             KEY_ONE_OBJECT_ID,
             BUCKET_ONE_OBJECT_ID,
-            KEY_ONE_SIZE);
+            KEY_ONE_SIZE,
+            BucketLayout.FILE_SYSTEM_OPTIMIZED);
     writeKeyToOm(reconOMMetadataManager,
             KEY_TWO,
             BUCKET_ONE,
@@ -490,7 +491,8 @@ public class TestNSSummaryEndpoint {
             FILE_TWO,
             KEY_TWO_OBJECT_ID,
             DIR_TWO_OBJECT_ID,
-            KEY_TWO_SIZE);
+            KEY_TWO_SIZE,
+            BucketLayout.FILE_SYSTEM_OPTIMIZED);
     writeKeyToOm(reconOMMetadataManager,
             KEY_THREE,
             BUCKET_ONE,
@@ -498,7 +500,8 @@ public class TestNSSummaryEndpoint {
             FILE_THREE,
             KEY_THREE_OBJECT_ID,
             DIR_THREE_OBJECT_ID,
-            KEY_THREE_SIZE);
+            KEY_THREE_SIZE,
+            BucketLayout.FILE_SYSTEM_OPTIMIZED);
     writeKeyToOm(reconOMMetadataManager,
             KEY_FOUR,
             BUCKET_TWO,
@@ -506,7 +509,8 @@ public class TestNSSummaryEndpoint {
             FILE_FOUR,
             KEY_FOUR_OBJECT_ID,
             BUCKET_TWO_OBJECT_ID,
-            KEY_FOUR_SIZE);
+            KEY_FOUR_SIZE,
+            BucketLayout.FILE_SYSTEM_OPTIMIZED);
     writeKeyToOm(reconOMMetadataManager,
             KEY_FIVE,
             BUCKET_TWO,
@@ -514,7 +518,8 @@ public class TestNSSummaryEndpoint {
             FILE_FIVE,
             KEY_FIVE_OBJECT_ID,
             BUCKET_TWO_OBJECT_ID,
-            KEY_FIVE_SIZE);
+            KEY_FIVE_SIZE,
+            BucketLayout.FILE_SYSTEM_OPTIMIZED);
     writeKeyToOm(reconOMMetadataManager,
             KEY_SIX,
             BUCKET_ONE,
@@ -522,7 +527,8 @@ public class TestNSSummaryEndpoint {
             FILE_SIX,
             KEY_SIX_OBJECT_ID,
             DIR_FOUR_OBJECT_ID,
-            KEY_SIX_SIZE);
+            KEY_SIX_SIZE,
+            BucketLayout.FILE_SYSTEM_OPTIMIZED);
   }
 
 
@@ -610,7 +616,8 @@ public class TestNSSummaryEndpoint {
             VOL, BUCKET_ONE,
             MULTI_BLOCK_KEY,
             MULTI_BLOCK_FILE,
-            Collections.singletonList(locationInfoGroup));
+            Collections.singletonList(locationInfoGroup),
+            BucketLayout.FILE_SYSTEM_OPTIMIZED);
   }
 
   /**
