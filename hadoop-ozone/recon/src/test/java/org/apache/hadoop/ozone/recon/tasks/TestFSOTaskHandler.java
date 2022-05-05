@@ -29,14 +29,15 @@ import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
-import org.junit.*;
+import org.junit.BeforeClass;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.ClassRule;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -47,8 +48,9 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestRe
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializeNewOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * Test for FSOTaskHandler.
@@ -445,7 +447,7 @@ public class TestFSOTaskHandler {
 
       // delete dir 3 under dir 1
       String omDirDeleteKey = DIR_ONE_OBJECT_ID + OM_KEY_PREFIX + DIR_THREE;
-      OmDirectoryInfo omDirDeleteValue = buildOmDirInfo(DIR_FIVE,
+      OmDirectoryInfo omDirDeleteValue = buildOmDirInfo(DIR_THREE,
           DIR_THREE_OBJECT_ID, DIR_ONE_OBJECT_ID);
       OMDBUpdateEvent keyEvent6 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmDirectoryInfo>()
@@ -533,7 +535,6 @@ public class TestFSOTaskHandler {
       assertEquals(bucketTwoAns, childDirBucket2);
     }
 
-    @SuppressWarnings("checkstyle:methodlength")
     @Test
     public void testProcessDir() throws IOException {
 
