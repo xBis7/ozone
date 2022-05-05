@@ -19,8 +19,10 @@ package org.apache.hadoop.ozone.recon.tasks;
 
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.ReconConstants;
@@ -29,26 +31,34 @@ import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
-import org.junit.*;
+import org.junit.BeforeClass;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.ClassRule;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
+import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
+import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.VOLUME_TABLE;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializeNewOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 /**
  * Test for NonFSOTaskHandler.
@@ -63,6 +73,8 @@ public class TestNonFSOTaskHandler {
   private static OMMetadataManager omMetadataManager;
   private static ReconOMMetadataManager reconOMMetadataManager;
   private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
+
+  private static NonFSOTaskHandler nonFSOTaskHandler;
 
   // Object names
   private static final String VOL = "vol";
@@ -106,6 +118,14 @@ public class TestNonFSOTaskHandler {
   private static final long KEY_FOUR_SIZE = 2050L;
   private static final long KEY_FIVE_SIZE = 100L;
 
+  private static final long DIR_ONE_SIZE = 100L;
+
+  private static final long DIR_ONE_NEW_SIZE = 200L;
+
+  private static final long DIR_FOUR_SIZE = 400L;
+
+  private static final long DIR_FIVE_SIZE = 500L;
+
   private static Set<Long> bucketOneAns = new HashSet<>();
   private static Set<Long> bucketTwoAns = new HashSet<>();
   private static Set<Long> dirOneAns = new HashSet<>();
@@ -131,6 +151,23 @@ public class TestNonFSOTaskHandler {
             .build();
     reconNamespaceSummaryManager =
         reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
+
+    Table volTableMock = mock(Table.class);
+    Table bucketTableMock = mock(Table.class);
+
+    ReconOMMetadataManager mockReconOMMetadataManager = Mockito.spy(reconOMMetadataManager);
+
+    when(volTableMock.getName()).thenReturn(VOLUME_TABLE);
+    doReturn(volTableMock).when(mockReconOMMetadataManager).getVolumeTable();
+    when(bucketTableMock.getName()).thenReturn(BUCKET_TABLE);
+    doReturn(bucketTableMock).when(mockReconOMMetadataManager).getBucketTable();
+    OmBucketInfo omBucketInfo = mock(OmBucketInfo.class);
+    when(omBucketInfo.getObjectID()).thenReturn(1L);
+    when(bucketTableMock.get(any(Object.class))).thenReturn(omBucketInfo);
+
+    nonFSOTaskHandler = new NonFSOTaskHandler(
+        reconNamespaceSummaryManager, mockReconOMMetadataManager);
+    nonFSOTaskHandler.setBucketLayout(getBucketLayout());
 
     populateOMDB();
   }
@@ -278,10 +315,8 @@ public class TestNonFSOTaskHandler {
       // write a NSSummary prior to reprocess and verify it got cleaned up after.
       NSSummary staleNSSummary = new NSSummary();
       reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
-      NonFSOTaskHandler nonFsoTaskHandler = new NonFSOTaskHandler(
-          reconNamespaceSummaryManager, reconOMMetadataManager);
-      nonFsoTaskHandler.setBucketLayout(getBucketLayout());
-      nonFsoTaskHandler.reprocess(reconOMMetadataManager);
+
+      nonFSOTaskHandler.reprocess(reconOMMetadataManager);
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
@@ -369,11 +404,8 @@ public class TestNonFSOTaskHandler {
     public void setUp() throws IOException {
       OMUpdateEventBatch omUpdateEventBatch = processEventBatch();
 
-      NonFSOTaskHandler nonFsoTaskHandler = new NonFSOTaskHandler(
-          reconNamespaceSummaryManager, reconOMMetadataManager);
-      nonFsoTaskHandler.setBucketLayout(getBucketLayout());
-      nonFsoTaskHandler.reprocess(reconOMMetadataManager);
-      nonFsoTaskHandler.process(omUpdateEventBatch);
+      nonFSOTaskHandler.reprocess(reconOMMetadataManager);
+      nonFSOTaskHandler.process(omUpdateEventBatch);
     }
 
     protected OMUpdateEventBatch processEventBatch() throws IOException {
@@ -423,10 +455,10 @@ public class TestNonFSOTaskHandler {
       // Events for DirectoryTable change:
       // add dir 4 under bucket 1
       String omDirPutKey1 = BUCKET_ONE_OBJECT_ID + OM_KEY_PREFIX + DIR_FOUR;
-      OmDirectoryInfo omDirPutValue1 = buildOmDirInfo(DIR_FOUR,
-          DIR_FOUR_OBJECT_ID, BUCKET_ONE_OBJECT_ID);
+      OmKeyInfo omDirPutValue1 = buildOmKeyInfo(VOL, BUCKET_ONE, DIR_FOUR, DIR_FOUR,
+          DIR_FOUR_OBJECT_ID, BUCKET_ONE_OBJECT_ID, DIR_FOUR_SIZE);
       OMDBUpdateEvent keyEvent4 = new OMDBUpdateEvent.
-          OMUpdateEventBuilder<String, OmDirectoryInfo>()
+          OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey1)
           .setValue(omDirPutValue1)
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.PUT)
@@ -435,10 +467,10 @@ public class TestNonFSOTaskHandler {
 
       // add dir 5 under bucket 2
       String omDirPutKey2 = BUCKET_TWO_OBJECT_ID + OM_KEY_PREFIX + DIR_FIVE;
-      OmDirectoryInfo omDirPutValue2 = buildOmDirInfo(DIR_FIVE,
-          DIR_FIVE_OBJECT_ID, BUCKET_TWO_OBJECT_ID);
+      OmKeyInfo omDirPutValue2 = buildOmKeyInfo(VOL, BUCKET_TWO, DIR_FIVE, DIR_FIVE,
+          DIR_FIVE_OBJECT_ID, BUCKET_TWO_OBJECT_ID, DIR_FIVE_SIZE);
       OMDBUpdateEvent keyEvent5 = new OMDBUpdateEvent.
-          OMUpdateEventBuilder<String, OmDirectoryInfo>()
+          OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey2)
           .setValue(omDirPutValue2)
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.PUT)
@@ -447,10 +479,10 @@ public class TestNonFSOTaskHandler {
 
       // delete dir 3 under dir 1
       String omDirDeleteKey = DIR_ONE_OBJECT_ID + OM_KEY_PREFIX + DIR_THREE;
-      OmDirectoryInfo omDirDeleteValue = buildOmDirInfo(DIR_FIVE,
+      OmKeyInfo omDirDeleteValue = buildOmKeyInfo(VOL, BUCKET_ONE, DIR_THREE, DIR_THREE,
           DIR_THREE_OBJECT_ID, DIR_ONE_OBJECT_ID);
       OMDBUpdateEvent keyEvent6 = new OMDBUpdateEvent.
-          OMUpdateEventBuilder<String, OmDirectoryInfo>()
+          OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirDeleteKey)
           .setValue(omDirDeleteValue)
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.DELETE)
@@ -459,12 +491,12 @@ public class TestNonFSOTaskHandler {
 
       // rename dir1
       String omDirUpdateKey = BUCKET_ONE_OBJECT_ID + OM_KEY_PREFIX + DIR_ONE;
-      OmDirectoryInfo omDirOldValue = buildOmDirInfo(DIR_ONE,
-          DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID);
-      OmDirectoryInfo omDirUpdateValue = buildOmDirInfo(DIR_ONE_RENAME,
-          DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID);
+      OmKeyInfo omDirOldValue = buildOmKeyInfo(VOL, BUCKET_ONE, DIR_ONE, DIR_ONE,
+          DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID, DIR_ONE_SIZE);
+      OmKeyInfo omDirUpdateValue = buildOmKeyInfo(VOL, BUCKET_ONE, DIR_ONE_RENAME, DIR_ONE_RENAME,
+          DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID, DIR_ONE_NEW_SIZE);
       OMDBUpdateEvent keyEvent7 = new OMDBUpdateEvent.
-          OMUpdateEventBuilder<String, OmDirectoryInfo>()
+          OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirUpdateKey)
           .setValue(omDirUpdateValue)
           .setOldValue(omDirOldValue)
@@ -535,7 +567,6 @@ public class TestNonFSOTaskHandler {
       assertEquals(bucketTwoAns, childDirBucket2);
     }
 
-    @SuppressWarnings("checkstyle:methodlength")
     @Test
     public void testProcessDir() throws IOException {
 
