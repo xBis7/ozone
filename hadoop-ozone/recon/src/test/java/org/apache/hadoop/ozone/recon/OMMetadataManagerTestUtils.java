@@ -197,7 +197,13 @@ public final class OMMetadataManagerTestUtils {
                                     BucketLayout bucketLayout)
           throws IOException {
     // DB key in FileTable => "parentId/filename"
-    String omKey = omMetadataManager.getOzonePathKey(parentObjectId, fileName);
+    String omKey;
+
+    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      omKey = omMetadataManager.getOzonePathKey(parentObjectId, fileName);
+    } else {
+      omKey = omMetadataManager.getOzoneKey(volume, bucket, key);
+    }
     omMetadataManager.getKeyTable(bucketLayout).put(omKey,
             new OmKeyInfo.Builder()
                     .setBucketName(bucket)
