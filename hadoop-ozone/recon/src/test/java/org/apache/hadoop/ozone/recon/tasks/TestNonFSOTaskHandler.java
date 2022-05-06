@@ -23,7 +23,6 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
-import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
@@ -38,7 +37,6 @@ import org.junit.ClassRule;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -48,11 +46,9 @@ import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
-import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.VOLUME_TABLE;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializeNewOmMetadataManager;
-import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -72,6 +68,7 @@ public class TestNonFSOTaskHandler {
   private static ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private static OMMetadataManager omMetadataManager;
   private static ReconOMMetadataManager reconOMMetadataManager;
+  private static ReconOMMetadataManager mockReconOMMetadataManager;
   private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
 
   private static NonFSOTaskHandler nonFSOTaskHandler;
@@ -119,11 +116,10 @@ public class TestNonFSOTaskHandler {
   private static final long KEY_FIVE_SIZE = 100L;
 
   private static final long DIR_ONE_SIZE = 100L;
-
-  private static final long DIR_ONE_NEW_SIZE = 200L;
-
+  private static final long DIR_ONE_NEW_SIZE = 150L;
+  private static final long DIR_TWO_SIZE = 200L;
+  private static final long DIR_THREE_SIZE = 300L;
   private static final long DIR_FOUR_SIZE = 400L;
-
   private static final long DIR_FIVE_SIZE = 500L;
 
   private static Set<Long> bucketOneAns = new HashSet<>();
@@ -152,24 +148,25 @@ public class TestNonFSOTaskHandler {
     reconNamespaceSummaryManager =
         reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
 
-    Table volTableMock = mock(Table.class);
     Table bucketTableMock = mock(Table.class);
 
-    ReconOMMetadataManager mockReconOMMetadataManager = Mockito.spy(reconOMMetadataManager);
+    mockReconOMMetadataManager = Mockito.spy(reconOMMetadataManager);
 
-    when(volTableMock.getName()).thenReturn(VOLUME_TABLE);
-    doReturn(volTableMock).when(mockReconOMMetadataManager).getVolumeTable();
     when(bucketTableMock.getName()).thenReturn(BUCKET_TABLE);
     doReturn(bucketTableMock).when(mockReconOMMetadataManager).getBucketTable();
+
     OmBucketInfo omBucketInfo = mock(OmBucketInfo.class);
-    when(omBucketInfo.getObjectID()).thenReturn(1L);
+
+    when(omBucketInfo.getObjectID()).thenReturn(BUCKET_ONE_OBJECT_ID);
+    when(omBucketInfo.getBucketLayout()).thenReturn(BucketLayout.LEGACY);
+
     when(bucketTableMock.get(any(Object.class))).thenReturn(omBucketInfo);
+
+    populateOMDB();
 
     nonFSOTaskHandler = new NonFSOTaskHandler(
         reconNamespaceSummaryManager, mockReconOMMetadataManager);
     nonFSOTaskHandler.setBucketLayout(getBucketLayout());
-
-    populateOMDB();
   }
 
   /**
@@ -235,16 +232,6 @@ public class TestNonFSOTaskHandler {
         .build();
   }
 
-  private static OmDirectoryInfo buildOmDirInfo(String dirName,
-                                                long objectId,
-                                                long parentObjectId) {
-    return new OmDirectoryInfo.Builder()
-        .setName(dirName)
-        .setObjectID(objectId)
-        .setParentObjectID(parentObjectId)
-        .build();
-  }
-
   /**
    * Populate OMDB with the following configs.
    * vol
@@ -260,7 +247,7 @@ public class TestNonFSOTaskHandler {
    * @throws IOException
    */
   private static void populateOMDB() throws IOException {
-    writeKeyToOm(reconOMMetadataManager,
+    writeKeyToOm(mockReconOMMetadataManager,
         KEY_ONE,
         BUCKET_ONE,
         VOL,
@@ -269,7 +256,7 @@ public class TestNonFSOTaskHandler {
         BUCKET_ONE_OBJECT_ID,
         KEY_ONE_SIZE,
         BucketLayout.LEGACY);
-    writeKeyToOm(reconOMMetadataManager,
+    writeKeyToOm(mockReconOMMetadataManager,
         KEY_TWO,
         BUCKET_TWO,
         VOL,
@@ -278,7 +265,7 @@ public class TestNonFSOTaskHandler {
         BUCKET_TWO_OBJECT_ID,
         KEY_TWO_OLD_SIZE,
         BucketLayout.LEGACY);
-    writeKeyToOm(reconOMMetadataManager,
+    writeKeyToOm(mockReconOMMetadataManager,
         KEY_THREE,
         BUCKET_ONE,
         VOL,
@@ -287,7 +274,7 @@ public class TestNonFSOTaskHandler {
         DIR_TWO_OBJECT_ID,
         KEY_THREE_SIZE,
         BucketLayout.LEGACY);
-    writeKeyToOm(reconOMMetadataManager,
+    writeKeyToOm(mockReconOMMetadataManager,
         KEY_FOUR,
         BUCKET_TWO,
         VOL,
@@ -296,12 +283,33 @@ public class TestNonFSOTaskHandler {
         BUCKET_TWO_OBJECT_ID,
         KEY_FOUR_SIZE,
         BucketLayout.LEGACY);
-    writeDirToOm(reconOMMetadataManager, DIR_ONE_OBJECT_ID,
-        BUCKET_ONE_OBJECT_ID, DIR_ONE);
-    writeDirToOm(reconOMMetadataManager, DIR_TWO_OBJECT_ID,
-        DIR_ONE_OBJECT_ID, DIR_TWO);
-    writeDirToOm(reconOMMetadataManager, DIR_THREE_OBJECT_ID,
-        DIR_ONE_OBJECT_ID, DIR_THREE);
+    writeKeyToOm(mockReconOMMetadataManager,
+        DIR_ONE + "/",
+        BUCKET_ONE,
+        VOL,
+        DIR_ONE,
+        DIR_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        DIR_ONE_SIZE,
+        BucketLayout.LEGACY);
+    writeKeyToOm(mockReconOMMetadataManager,
+        DIR_ONE + "/" + DIR_TWO + "/",
+        BUCKET_ONE,
+        VOL,
+        DIR_TWO,
+        DIR_TWO_OBJECT_ID,
+        DIR_ONE_OBJECT_ID,
+        DIR_TWO_SIZE,
+        BucketLayout.LEGACY);
+    writeKeyToOm(mockReconOMMetadataManager,
+        DIR_ONE + "/" + DIR_THREE + "/",
+        BUCKET_ONE,
+        VOL,
+        DIR_TWO,
+        DIR_THREE_OBJECT_ID,
+        DIR_ONE_OBJECT_ID,
+        DIR_THREE_SIZE,
+        BucketLayout.LEGACY);
   }
 
   private static BucketLayout getBucketLayout() {
@@ -316,7 +324,7 @@ public class TestNonFSOTaskHandler {
       NSSummary staleNSSummary = new NSSummary();
       reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
 
-      nonFSOTaskHandler.reprocess(reconOMMetadataManager);
+      nonFSOTaskHandler.reprocess(mockReconOMMetadataManager);
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
@@ -404,7 +412,7 @@ public class TestNonFSOTaskHandler {
     public void setUp() throws IOException {
       OMUpdateEventBatch omUpdateEventBatch = processEventBatch();
 
-      nonFSOTaskHandler.reprocess(reconOMMetadataManager);
+      nonFSOTaskHandler.reprocess(mockReconOMMetadataManager);
       nonFSOTaskHandler.process(omUpdateEventBatch);
     }
 
