@@ -91,7 +91,6 @@ public class NonFSOTaskHandler extends NSSummaryTask {
         OmKeyInfo oldKeyInfo = keyTableUpdateEvent.getOldValue();
 
         setKeyParentID(updatedKeyInfo);
-        setKeyParentID(oldKeyInfo);
 
         if (!updatedKeyInfo.getKeyName().endsWith("/")) {
           switch (action) {
@@ -106,6 +105,7 @@ public class NonFSOTaskHandler extends NSSummaryTask {
           case UPDATE:
             if (oldKeyInfo != null) {
               // delete first, then put
+              setKeyParentID(oldKeyInfo);
               deleteOmKeyInfoOnNamespaceDB(oldKeyInfo);
             } else {
               LOG.warn("Update event does not have the old keyInfo for {}.",
@@ -126,12 +126,16 @@ public class NonFSOTaskHandler extends NSSummaryTask {
                   .setParentObjectID(updatedKeyInfo.getParentObjectID())
                   .build();
 
-          OmDirectoryInfo oldDirectoryInfo =
-              new OmDirectoryInfo.Builder()
-                  .setName(oldKeyInfo.getKeyName())
-                  .setObjectID(oldKeyInfo.getObjectID())
-                  .setParentObjectID(oldKeyInfo.getParentObjectID())
-                  .build();
+          OmDirectoryInfo oldDirectoryInfo = null;
+
+          if (oldKeyInfo != null) {
+            oldDirectoryInfo =
+                new OmDirectoryInfo.Builder()
+                    .setName(oldKeyInfo.getKeyName())
+                    .setObjectID(oldKeyInfo.getObjectID())
+                    .setParentObjectID(oldKeyInfo.getParentObjectID())
+                    .build();
+          }
 
           switch (action) {
           case PUT:
