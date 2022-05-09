@@ -291,7 +291,7 @@ public class TestFSOTaskHandler {
     }
 
     @Test
-    public void testReprocessNSSummaryNotNull() throws IOException {
+    public void testReprocessNSSummaryNull() throws IOException {
       assertNull(reconNamespaceSummaryManager.getNSSummary(-1L));
     }
 
@@ -536,7 +536,7 @@ public class TestFSOTaskHandler {
     }
 
     @Test
-    public void testProcessDir() throws IOException {
+    public void testProcessDirDeleteRename() throws IOException {
 
       // after delete dir 3, dir 1 now has only one dir: dir2
       NSSummary nsSummaryForDir1 = reconNamespaceSummaryManager
