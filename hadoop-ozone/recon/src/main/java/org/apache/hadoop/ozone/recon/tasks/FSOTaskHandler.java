@@ -25,7 +25,6 @@ import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.WithParentObjectId;
-import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,9 +48,8 @@ public class FSOTaskHandler extends NSSummaryTask {
 
   @Inject
   public FSOTaskHandler(ReconNamespaceSummaryManager
-                            reconNamespaceSummaryManager,
-                        ReconOMMetadataManager reconOMMetadataManager) {
-    super(reconNamespaceSummaryManager, reconOMMetadataManager);
+                            reconNamespaceSummaryManager) {
+    super(reconNamespaceSummaryManager);
   }
 
   @Override

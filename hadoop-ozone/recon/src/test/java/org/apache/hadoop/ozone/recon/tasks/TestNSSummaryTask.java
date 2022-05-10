@@ -138,7 +138,7 @@ public class TestNSSummaryTask {
     NSSummary staleNSSummary = new NSSummary();
     reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
     FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
-        reconNamespaceSummaryManager, reconOMMetadataManager);
+        reconNamespaceSummaryManager);
     fsoTaskHandler.reprocess(reconOMMetadataManager);
 
     Assert.assertNull(reconNamespaceSummaryManager.getNSSummary(-1L));
@@ -331,7 +331,7 @@ public class TestNSSummaryTask {
           }});
 
     FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
-        reconNamespaceSummaryManager, reconOMMetadataManager);
+        reconNamespaceSummaryManager);
     fsoTaskHandler.reprocess(reconOMMetadataManager);
     fsoTaskHandler.process(omUpdateEventBatch);
 
