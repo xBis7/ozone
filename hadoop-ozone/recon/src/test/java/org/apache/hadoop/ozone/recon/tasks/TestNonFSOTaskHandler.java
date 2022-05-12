@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.ozone.recon.tasks;
 
+import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.utils.db.Table;
@@ -174,12 +175,15 @@ public final class TestNonFSOTaskHandler {
     when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_TWO))
         .thenReturn(omBucketInfo2);
 
+    NSSummary nonExistentSummary =
+        reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+    Assert.assertNull(nonExistentSummary);
+
     populateOMDB();
 
     nonFSOTaskHandler = new NonFSOTaskHandler(
         reconNamespaceSummaryManager);
     nonFSOTaskHandler.setReconOMMetadataManager(mockReconOMMetadataManager);
-    nonFSOTaskHandler.setBucketLayout(getBucketLayout());
   }
 
   /**
@@ -201,13 +205,26 @@ public final class TestNonFSOTaskHandler {
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket1);
       nsSummaryForBucket2 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket2);
     }
 
     @Test
     public void testReprocessNSSummaryNull() throws IOException {
+      //George look at this
       Assert.assertNull(reconNamespaceSummaryManager.getNSSummary(-1L));
+    }
+
+    @Test
+    public void testReprocessGetFiles() {
+      Assert.assertEquals(1, nsSummaryForBucket1.getNumOfFiles());
+      Assert.assertEquals(2, nsSummaryForBucket2.getNumOfFiles());
+
+      Assert.assertEquals(KEY_ONE_SIZE, nsSummaryForBucket1.getSizeOfFiles());
+      Assert.assertEquals(KEY_TWO_OLD_SIZE + KEY_FOUR_SIZE,
+          nsSummaryForBucket2.getSizeOfFiles());
     }
 
     @Test
@@ -296,8 +313,10 @@ public final class TestNonFSOTaskHandler {
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket1);
       nsSummaryForBucket2 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket2);
     }
 
     private static OMUpdateEventBatch processEventBatch() throws IOException {
@@ -308,7 +327,7 @@ public final class TestNonFSOTaskHandler {
           OM_KEY_PREFIX + BUCKET_TWO +
           OM_KEY_PREFIX + FILE_FIVE;
       OmKeyInfo omPutKeyInfo = buildOmKeyInfo(VOL, BUCKET_TWO, KEY_FIVE,
-          FILE_FIVE, KEY_FIVE_OBJECT_ID, BUCKET_TWO_OBJECT_ID, KEY_FIVE_SIZE);
+          FILE_FIVE, KEY_FIVE_OBJECT_ID, KEY_FIVE_SIZE);
       OMDBUpdateEvent keyEvent1 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omPutKey)
@@ -324,8 +343,8 @@ public final class TestNonFSOTaskHandler {
           OM_KEY_PREFIX + BUCKET_ONE +
           OM_KEY_PREFIX + FILE_ONE;
       OmKeyInfo omDeleteInfo = buildOmKeyInfo(
-          VOL, BUCKET_ONE, KEY_ONE, FILE_ONE,
-          KEY_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID);
+          VOL, BUCKET_ONE, KEY_ONE,
+          FILE_ONE, KEY_ONE_OBJECT_ID);
       OMDBUpdateEvent keyEvent2 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDeleteKey)
@@ -342,10 +361,10 @@ public final class TestNonFSOTaskHandler {
           OM_KEY_PREFIX + FILE_TWO;
       OmKeyInfo omOldInfo = buildOmKeyInfo(
           VOL, BUCKET_TWO, KEY_TWO, FILE_TWO,
-          KEY_TWO_OBJECT_ID, BUCKET_TWO_OBJECT_ID, KEY_TWO_OLD_SIZE);
+          KEY_TWO_OBJECT_ID, KEY_TWO_OLD_SIZE);
       OmKeyInfo omUpdateInfo = buildOmKeyInfo(
           VOL, BUCKET_TWO, KEY_TWO, FILE_TWO,
-          KEY_TWO_OBJECT_ID, BUCKET_TWO_OBJECT_ID, KEY_TWO_UPDATE_SIZE);
+          KEY_TWO_OBJECT_ID, KEY_TWO_UPDATE_SIZE);
       OMDBUpdateEvent keyEvent3 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omUpdateKey)
@@ -364,7 +383,7 @@ public final class TestNonFSOTaskHandler {
           OM_KEY_PREFIX + DIR_FOUR + OM_KEY_PREFIX;
       OmKeyInfo omDirPutValue1 = buildOmKeyInfo(VOL, BUCKET_ONE,
           (DIR_FOUR + OM_KEY_PREFIX), DIR_FOUR,
-          DIR_FOUR_OBJECT_ID, BUCKET_ONE_OBJECT_ID, DIR_FOUR_SIZE);
+          DIR_FOUR_OBJECT_ID, DIR_FOUR_SIZE);
       OMDBUpdateEvent keyEvent4 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey1)
@@ -380,7 +399,7 @@ public final class TestNonFSOTaskHandler {
           OM_KEY_PREFIX + DIR_FIVE + OM_KEY_PREFIX;
       OmKeyInfo omDirPutValue2 = buildOmKeyInfo(VOL, BUCKET_TWO,
           (DIR_FIVE + OM_KEY_PREFIX), DIR_FIVE,
-          DIR_FIVE_OBJECT_ID, BUCKET_TWO_OBJECT_ID, DIR_FIVE_SIZE);
+          DIR_FIVE_OBJECT_ID, DIR_FIVE_SIZE);
       OMDBUpdateEvent keyEvent5 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey2)
@@ -396,8 +415,8 @@ public final class TestNonFSOTaskHandler {
           OM_KEY_PREFIX + DIR_ONE +
           OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX;
       OmKeyInfo omDirDeleteValue = buildOmKeyInfo(VOL, BUCKET_ONE,
-          (DIR_ONE + OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX), DIR_THREE,
-          DIR_THREE_OBJECT_ID, DIR_ONE_OBJECT_ID);
+          (DIR_ONE + OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX),
+          DIR_THREE, DIR_THREE_OBJECT_ID);
       OMDBUpdateEvent keyEvent6 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirDeleteKey)
@@ -413,10 +432,10 @@ public final class TestNonFSOTaskHandler {
           OM_KEY_PREFIX + DIR_ONE + OM_KEY_PREFIX;
       OmKeyInfo omDirOldValue = buildOmKeyInfo(VOL, BUCKET_ONE,
           (DIR_ONE + OM_KEY_PREFIX), DIR_ONE,
-          DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID, DIR_ONE_SIZE);
+          DIR_ONE_OBJECT_ID, DIR_ONE_SIZE);
       OmKeyInfo omDirUpdateValue = buildOmKeyInfo(VOL, BUCKET_ONE,
           (DIR_ONE_RENAME + OM_KEY_PREFIX), DIR_ONE_RENAME,
-          DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID, DIR_ONE_SIZE);
+          DIR_ONE_OBJECT_ID, DIR_ONE_SIZE);
       OMDBUpdateEvent keyEvent7 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirUpdateKey)
@@ -472,10 +491,11 @@ public final class TestNonFSOTaskHandler {
       Assert.assertEquals(2, fileSizeDist[0]);
       // 2050L
       Assert.assertEquals(1, fileSizeDist[2]);
-      for (int i = 1; i < ReconConstants.NUM_OF_BINS; ++i) {
-        if (i != 2) {
-          Assert.assertEquals(0, fileSizeDist[i]);
+      for (int i = 0; i < ReconConstants.NUM_OF_BINS; ++i) {
+        if (i == 0 || i == 2) {
+          continue;
         }
+        Assert.assertEquals(0, fileSizeDist[i]);
       }
 
       // after put dir5, bucket 2 now has one dir
@@ -512,7 +532,6 @@ public final class TestNonFSOTaskHandler {
    * @param key            key name
    * @param fileName       file name
    * @param objectID       object ID
-   * @param parentObjectId parent object ID
    * @param dataSize       file size
    * @return the KeyInfo
    */
@@ -521,7 +540,6 @@ public final class TestNonFSOTaskHandler {
                                           String key,
                                           String fileName,
                                           long objectID,
-                                          long parentObjectId,
                                           long dataSize) {
     return new OmKeyInfo.Builder()
         .setBucketName(bucket)
@@ -532,7 +550,6 @@ public final class TestNonFSOTaskHandler {
             StandaloneReplicationConfig.getInstance(
                 HddsProtos.ReplicationFactor.ONE))
         .setObjectID(objectID)
-        .setParentObjectID(parentObjectId)
         .setDataSize(dataSize)
         .build();
   }
@@ -545,15 +562,13 @@ public final class TestNonFSOTaskHandler {
    * @param key            key name
    * @param fileName       file name
    * @param objectID       object ID
-   * @param parentObjectId parent object ID
    * @return the KeyInfo
    */
   private static OmKeyInfo buildOmKeyInfo(String volume,
                                           String bucket,
                                           String key,
                                           String fileName,
-                                          long objectID,
-                                          long parentObjectId) {
+                                          long objectID) {
     return new OmKeyInfo.Builder()
         .setBucketName(bucket)
         .setVolumeName(volume)
@@ -563,7 +578,6 @@ public final class TestNonFSOTaskHandler {
             StandaloneReplicationConfig.getInstance(
                 HddsProtos.ReplicationFactor.ONE))
         .setObjectID(objectID)
-        .setParentObjectID(parentObjectId)
         .build();
   }
 
@@ -648,6 +662,6 @@ public final class TestNonFSOTaskHandler {
   }
 
   private static BucketLayout getBucketLayout() {
-    return BucketLayout.DEFAULT;
+    return BucketLayout.LEGACY;
   }
 }

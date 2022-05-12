@@ -24,33 +24,24 @@ import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
-import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+
+import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
 /**
  * Class for handling non FSO, Legacy and Object Store buckets.
  */
 public class NonFSOBucketHandler extends BucketHandler {
 
-  private BucketLayout bucketLayout;
-
   public NonFSOBucketHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
           ReconOMMetadataManager omMetadataManager,
           OzoneStorageContainerManager reconSCM) {
     super(reconNamespaceSummaryManager, omMetadataManager, reconSCM);
-  }
-
-  public void setBucketLayout(BucketLayout bucketLayout) {
-    this.bucketLayout = bucketLayout;
   }
 
   /**
@@ -62,52 +53,39 @@ public class NonFSOBucketHandler extends BucketHandler {
   @Override
   public EntityType determineKeyPath(String keyName, long bucketObjectId)
           throws IOException {
-    java.nio.file.Path keyPath = Paths.get(keyName);
-    Iterator<Path> elements = keyPath.iterator();
 
-    long lastKnownParentId = bucketObjectId;
-    OmKeyInfo omKeyInfo;
-    while (elements.hasNext()) {
-      String fileName = elements.next().toString();
+    // For example, /vol1/buck1/a/b/c/d/e/file1.txt
+    // Look in the KeyTable, if there is a result, check the keyName
+    // if it ends with '/' then we have directory
+    // else we have a key
+    // otherwise we return null, UNKNOWN
+    OmKeyInfo omKeyInfo = getOmMetadataManager()
+        .getKeyTable(getBucketLayout()).get(keyName);
 
-      // For example, /vol1/buck1/a/b/c/d/e/file1.txt
-      // Look in the KeyTable, if there is a result, check the keyName
-      // if it ends with '/' then we have directory
-      // else we have a key
-      // otherwise we return null, UNKNOWN
-      String dbNodeName = getOmMetadataManager()
-          .getOzonePathKey(lastKnownParentId, fileName);
-
-      omKeyInfo = getOmMetadataManager().getKeyTable(bucketLayout)
-              .getSkipCache(dbNodeName);
-
-      if (omKeyInfo != null) {
-        omKeyInfo.setKeyName(keyName);
-        if (keyName.endsWith("/")) {
-          return EntityType.DIRECTORY;
-        } else {
-          return EntityType.KEY;
-        }
+    if (omKeyInfo != null) {
+      if (keyName.endsWith("/")) {
+        return EntityType.DIRECTORY;
       } else {
-        return EntityType.UNKNOWN;
+        return EntityType.KEY;
       }
+    } else {
+      return EntityType.UNKNOWN;
     }
-    return EntityType.UNKNOWN;
   }
 
-  // KeyTable's key is in the format of "path/fileName"
+
+  // KeyTable's key is in the format of "vol/bucket/keyName"
   // Make use of RocksDB's order to seek to the prefix and avoid full iteration
   @Override
   public long calculateDUUnderObject(long parentId)
           throws IOException {
-    Table keyTable = getOmMetadataManager().getKeyTable(bucketLayout);
+    Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
             iterator = keyTable.iterator();
 
     // returns "parentId.path" + "/" + "", path to parent object
-    String seekPrefix = getOmMetadataManager()
-            .getOzonePathKey(parentId, "");
+    String seekPrefix = parentId + OM_KEY_PREFIX;
     iterator.seek(seekPrefix);
     long totalDU = 0L;
     // handle direct keys
@@ -122,19 +100,6 @@ public class NonFSOBucketHandler extends BucketHandler {
       if (keyInfo != null) {
         totalDU += getKeySizeWithReplication(keyInfo);
       }
-    }
-
-    // handle nested keys (DFS)
-    NSSummary nsSummary = getReconNamespaceSummaryManager()
-            .getNSSummary(parentId);
-    // empty bucket
-    if (nsSummary == null) {
-      return 0;
-    }
-
-    Set<Long> subDirIds = nsSummary.getChildDir();
-    for (long subDirId: subDirIds) {
-      totalDU += calculateDUUnderObject(subDirId);
     }
     return totalDU;
   }
@@ -156,11 +121,12 @@ public class NonFSOBucketHandler extends BucketHandler {
                                List<DUResponse.DiskUsage> duData,
                                String normalizedPath) throws IOException {
 
-    Table keyTable = getOmMetadataManager().getKeyTable(bucketLayout);
+    Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
             iterator = keyTable.iterator();
 
-    String seekPrefix = getOmMetadataManager().getOzonePathKey(parentId, "");
+    //seekPrefix = path of object with parentID
+    String seekPrefix = parentId + OM_KEY_PREFIX;
     iterator.seek(seekPrefix);
 
     long keyDataSizeWithReplica = 0L;
@@ -222,7 +188,7 @@ public class NonFSOBucketHandler extends BucketHandler {
     for (int i = 2; i < cutoff; ++i) {
       dirKey = getOmMetadataManager().getOzonePathKey(dirObjectId, names[i]);
       OmKeyInfo dirInfo = getOmMetadataManager()
-              .getKeyTable(bucketLayout).getSkipCache(dirKey);
+              .getKeyTable(getBucketLayout()).getSkipCache(dirKey);
       if (dirInfo.getKeyName().endsWith("/")) {
         dirObjectId = dirInfo.getObjectID();
       }
@@ -230,4 +196,7 @@ public class NonFSOBucketHandler extends BucketHandler {
     return dirObjectId;
   }
 
+  private static BucketLayout getBucketLayout() {
+    return BucketLayout.LEGACY;
+  }
 }

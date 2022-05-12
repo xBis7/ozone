@@ -157,7 +157,6 @@ public class FSOTaskHandler extends NSSummaryTask {
 
   @Override
   public Pair<String, Boolean> reprocess(OMMetadataManager omMetadataManager) {
-
     try {
       // reinit Recon RocksDB's namespace CF.
       getReconNamespaceSummaryManager().clearNSSummaryTable();

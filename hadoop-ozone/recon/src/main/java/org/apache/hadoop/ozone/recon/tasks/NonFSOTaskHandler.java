@@ -44,7 +44,7 @@ import static org.apache.hadoop.ozone.om.OzoneManagerUtils.getBucketLayout;
  */
 public class NonFSOTaskHandler extends NSSummaryTask {
 
-  private BucketLayout bucketLayout;
+  private static BucketLayout bucketLayout;
 
   private ReconOMMetadataManager reconOMMetadataManager;
 
@@ -55,15 +55,12 @@ public class NonFSOTaskHandler extends NSSummaryTask {
   public NonFSOTaskHandler(ReconNamespaceSummaryManager
                             reconNamespaceSummaryManager) {
     super(reconNamespaceSummaryManager);
+    bucketLayout = BucketLayout.LEGACY;
   }
 
   public void setReconOMMetadataManager(ReconOMMetadataManager
                                             reconOMMetadataManager) {
     this.reconOMMetadataManager = reconOMMetadataManager;
-  }
-
-  public void setBucketLayout(BucketLayout bucketLayout) {
-    this.bucketLayout = bucketLayout;
   }
 
   @Override

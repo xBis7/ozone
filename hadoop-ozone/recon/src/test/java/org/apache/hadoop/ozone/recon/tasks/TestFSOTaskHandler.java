@@ -134,6 +134,10 @@ public final class TestFSOTaskHandler {
     reconNamespaceSummaryManager =
         reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
 
+    NSSummary nonExistentSummary =
+        reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+    Assert.assertNull(nonExistentSummary);
+    
     populateOMDB();
   }
 
@@ -157,14 +161,26 @@ public final class TestFSOTaskHandler {
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket1);
       nsSummaryForBucket2 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket2);
     }
 
     @Test
     public void testReprocessNSSummaryNull() throws IOException {
       Assert.assertNull(reconNamespaceSummaryManager.getNSSummary(-1L));
     }
+
+    @Test
+    public void testReprocessGetFiles() {
+      Assert.assertEquals(1, nsSummaryForBucket1.getNumOfFiles());
+      Assert.assertEquals(2, nsSummaryForBucket2.getNumOfFiles());
+
+      Assert.assertEquals(KEY_ONE_SIZE, nsSummaryForBucket1.getSizeOfFiles());
+      Assert.assertEquals(KEY_TWO_OLD_SIZE + KEY_FOUR_SIZE,
+          nsSummaryForBucket2.getSizeOfFiles());
+    } 
 
     @Test
     public void testReprocessFileBucketSize() {
@@ -252,8 +268,10 @@ public final class TestFSOTaskHandler {
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket1);
       nsSummaryForBucket2 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_TWO_OBJECT_ID);
+      Assert.assertNotNull(nsSummaryForBucket2);
     }
 
     private static OMUpdateEventBatch processEventBatch() throws IOException {
@@ -435,7 +453,6 @@ public final class TestFSOTaskHandler {
 
   /**
    * Build a key info for put/update action.
-   *
    * @param volume         volume name
    * @param bucket         bucket name
    * @param key            key name
@@ -468,7 +485,6 @@ public final class TestFSOTaskHandler {
 
   /**
    * Build a key info for delete action.
-   *
    * @param volume         volume name
    * @param bucket         bucket name
    * @param key            key name
