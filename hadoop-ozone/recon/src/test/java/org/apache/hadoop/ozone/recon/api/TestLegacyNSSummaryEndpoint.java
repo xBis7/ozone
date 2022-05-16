@@ -52,7 +52,7 @@ import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.StorageContainerServiceProvider;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
 import org.apache.hadoop.ozone.recon.spi.impl.StorageContainerServiceProviderImpl;
-import org.apache.hadoop.ozone.recon.tasks.NonFSOTaskHandler;
+import org.apache.hadoop.ozone.recon.tasks.LegacyNSSummaryTask;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -74,7 +74,7 @@ import java.util.HashSet;
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
-import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
+import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
@@ -95,7 +95,7 @@ import static org.mockito.Mockito.*;
  * This is a test for the Rest APIs only. We have tested NSSummaryTask before,
  * so there is no need to test process() on DB's updates
  */
-public class TestNonFSOBucketHandler {
+public class TestLegacyNSSummaryEndpoint {
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -177,10 +177,10 @@ public class TestNonFSOBucketHandler {
   private static final long KEY_FIVE_SIZE = 100L; // bin 0
   private static final long KEY_SIX_SIZE = 2 * OzoneConsts.KB + 1; // bin 2
 
-  private static final long DIR_ONE_SIZE = 100L;
-  private static final long DIR_TWO_SIZE = 200L;
-  private static final long DIR_THREE_SIZE = 300L;
-  private static final long DIR_FOUR_SIZE = 400L;
+  private static final long DIR_ONE_SIZE = 0L;
+  private static final long DIR_TWO_SIZE = 0L;
+  private static final long DIR_THREE_SIZE = 0L;
+  private static final long DIR_FOUR_SIZE = 0L;
   private static final long MULTI_BLOCK_KEY_SIZE_WITH_REPLICA
       = THREE * BLOCK_ONE_LENGTH
       + TWO * BLOCK_TWO_LENGTH
@@ -243,35 +243,19 @@ public class TestNonFSOBucketHandler {
         reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
     nsSummaryEndpoint = reconTestInjector.getInstance(NSSummaryEndpoint.class);
 
-//    Table bucketTableMock = mock(Table.class);
-//
     mockReconOMMetadataManager = Mockito.spy(reconOMMetadataManager);
-//
-//    when(bucketTableMock.getName()).thenReturn(BUCKET_TABLE);
-//    doReturn(bucketTableMock).when(mockReconOMMetadataManager).getBucketTable();
-//
-//    omBucketInfo1 = mock(OmBucketInfo.class);
-//
-//    when(omBucketInfo1.getBucketLayout()).thenReturn(BucketLayout.LEGACY);
-//    when(omBucketInfo1.getObjectID()).thenReturn(BUCKET_ONE_OBJECT_ID);
-//
-//    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_ONE))
-//        .thenReturn(omBucketInfo1);
-//
-//    omBucketInfo2 = mock(OmBucketInfo.class);
-//
-//    when(omBucketInfo2.getBucketLayout()).thenReturn(BucketLayout.LEGACY);
-//    when(omBucketInfo2.getObjectID()).thenReturn(BUCKET_TWO_OBJECT_ID);
-//
-//    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_TWO))
-//        .thenReturn(omBucketInfo2);
+
+    //mock KeyTable
+    Table keyTableMock = mock(Table.class);
+    when(keyTableMock.getName()).thenReturn(KEY_TABLE);
+    doReturn(keyTableMock).when(mockReconOMMetadataManager).getKeyTable(getBucketLayout());
 
     // populate OM DB and reprocess into Recon RocksDB
     populateOMDB();
-    NonFSOTaskHandler nonFsoTaskHandler = new NonFSOTaskHandler(
+    LegacyNSSummaryTask legacyNSSummaryTask = new LegacyNSSummaryTask(
         reconNamespaceSummaryManager);
-    nonFsoTaskHandler.setReconOMMetadataManager(mockReconOMMetadataManager);
-    nonFsoTaskHandler.reprocess(reconOMMetadataManager);
+    legacyNSSummaryTask.setReconOMMetadataManager(mockReconOMMetadataManager);
+    legacyNSSummaryTask.reprocess(reconOMMetadataManager);
   }
 
   @Test

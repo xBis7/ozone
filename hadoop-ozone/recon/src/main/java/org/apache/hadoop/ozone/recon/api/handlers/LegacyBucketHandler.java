@@ -35,9 +35,9 @@ import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 /**
  * Class for handling non FSO, Legacy and Object Store buckets.
  */
-public class NonFSOBucketHandler extends BucketHandler {
+public class LegacyBucketHandler extends BucketHandler {
 
-  public NonFSOBucketHandler(
+  public LegacyBucketHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
           ReconOMMetadataManager omMetadataManager,
           OzoneStorageContainerManager reconSCM) {

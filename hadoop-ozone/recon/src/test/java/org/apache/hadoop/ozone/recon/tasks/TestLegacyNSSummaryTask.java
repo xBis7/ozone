@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.ozone.recon.tasks;
 
-import org.apache.commons.lang3.builder.ToStringExclude;
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.utils.db.Table;
@@ -59,7 +58,7 @@ import static org.mockito.Mockito.doReturn;
  * Test for NonFSOTaskHandler.
  */
 @RunWith(Enclosed.class)
-public final class TestNonFSOTaskHandler {
+public final class TestLegacyNSSummaryTask {
 
   @ClassRule
   public static TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -69,7 +68,7 @@ public final class TestNonFSOTaskHandler {
   private static ReconOMMetadataManager mockReconOMMetadataManager;
   private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
 
-  private static NonFSOTaskHandler nonFSOTaskHandler;
+  private static LegacyNSSummaryTask legacyNSSummaryTask;
 
   private static OmBucketInfo omBucketInfo1;
   private static OmBucketInfo omBucketInfo2;
@@ -116,17 +115,17 @@ public final class TestNonFSOTaskHandler {
   private static final long KEY_FOUR_SIZE = 2050L;
   private static final long KEY_FIVE_SIZE = 100L;
 
-  private static final long DIR_ONE_SIZE = 100L;
-  private static final long DIR_TWO_SIZE = 200L;
-  private static final long DIR_THREE_SIZE = 300L;
-  private static final long DIR_FOUR_SIZE = 400L;
-  private static final long DIR_FIVE_SIZE = 500L;
+  private static final long DIR_ONE_SIZE = 0L;
+  private static final long DIR_TWO_SIZE = 0L;
+  private static final long DIR_THREE_SIZE = 0L;
+  private static final long DIR_FOUR_SIZE = 0L;
+  private static final long DIR_FIVE_SIZE = 0L;
 
   private static Set<Long> bucketOneAns = new HashSet<>();
   private static Set<Long> bucketTwoAns = new HashSet<>();
   private static Set<Long> dirOneAns = new HashSet<>();
 
-  private TestNonFSOTaskHandler() {
+  private TestLegacyNSSummaryTask() {
     throw new UnsupportedOperationException(
         "This is a utility test class and cannot be instantiated");
   }
@@ -181,9 +180,9 @@ public final class TestNonFSOTaskHandler {
 
     populateOMDB();
 
-    nonFSOTaskHandler = new NonFSOTaskHandler(
+    legacyNSSummaryTask = new LegacyNSSummaryTask(
         reconNamespaceSummaryManager);
-    nonFSOTaskHandler.setReconOMMetadataManager(mockReconOMMetadataManager);
+    legacyNSSummaryTask.setReconOMMetadataManager(mockReconOMMetadataManager);
   }
 
   /**
@@ -201,7 +200,7 @@ public final class TestNonFSOTaskHandler {
       NSSummary staleNSSummary = new NSSummary();
       reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
 
-      nonFSOTaskHandler.reprocess(mockReconOMMetadataManager);
+      legacyNSSummaryTask.reprocess(mockReconOMMetadataManager);
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
@@ -308,8 +307,8 @@ public final class TestNonFSOTaskHandler {
     @BeforeClass
     public static void setUp() throws IOException {
 
-      nonFSOTaskHandler.reprocess(mockReconOMMetadataManager);
-      nonFSOTaskHandler.process(processEventBatch());
+      legacyNSSummaryTask.reprocess(mockReconOMMetadataManager);
+      legacyNSSummaryTask.process(processEventBatch());
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
