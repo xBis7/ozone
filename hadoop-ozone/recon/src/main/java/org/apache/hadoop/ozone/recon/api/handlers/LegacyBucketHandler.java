@@ -126,11 +126,7 @@ public class LegacyBucketHandler extends BucketHandler {
         totalDU += getKeySizeWithReplication(keyInfo);
       }
     }
-
-    Set<Long> subDirIds = nsSummary.getChildDir();
-    for (long subDirId: subDirIds) {
-      totalDU += calculateDUUnderObject(subDirId);
-    }
+    
     return totalDU;
   }
 
