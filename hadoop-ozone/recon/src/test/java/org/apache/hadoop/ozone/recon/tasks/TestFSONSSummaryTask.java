@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.hadoop.ozone.recon.tasks;
 
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
@@ -53,7 +54,7 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyT
  * Test for FSOTaskHandler.
  */
 @RunWith(Enclosed.class)
-public final class TestFSOTaskHandler {
+public final class TestFSONSSummaryTask {
 
   @ClassRule
   public static TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -101,7 +102,7 @@ public final class TestFSOTaskHandler {
   private static final long KEY_TWO_OLD_SIZE = 1025L;
   private static final long KEY_TWO_UPDATE_SIZE = 1023L;
   private static final long KEY_THREE_SIZE =
-      ReconConstants.MAX_FILE_SIZE_UPPER_BOUND - 100L;
+          ReconConstants.MAX_FILE_SIZE_UPPER_BOUND - 100L;
   private static final long KEY_FOUR_SIZE = 2050L;
   private static final long KEY_FIVE_SIZE = 100L;
 
@@ -109,14 +110,13 @@ public final class TestFSOTaskHandler {
   private static Set<Long> bucketTwoAns = new HashSet<>();
   private static Set<Long> dirOneAns = new HashSet<>();
 
-  private TestFSOTaskHandler() {
+  private TestFSONSSummaryTask() {
     throw new UnsupportedOperationException(
         "This is a utility test class and cannot be instantiated");
   }
 
   @BeforeClass
   public static void setUp() throws Exception {
-
     omMetadataManager = initializeNewOmMetadataManager(
         temporaryFolder.newFolder());
     ozoneManagerServiceProvider =
@@ -137,7 +137,7 @@ public final class TestFSOTaskHandler {
     NSSummary nonExistentSummary =
         reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
     Assert.assertNull(nonExistentSummary);
-    
+
     populateOMDB();
   }
 
@@ -155,9 +155,9 @@ public final class TestFSOTaskHandler {
       // verify it got cleaned up after.
       NSSummary staleNSSummary = new NSSummary();
       reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
-      FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
+      FSONSSummaryTask fsoNSSummaryTask = new FSONSSummaryTask(
           reconNamespaceSummaryManager);
-      fsoTaskHandler.reprocess(reconOMMetadataManager);
+      fsoNSSummaryTask.reprocess(reconOMMetadataManager);
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
@@ -261,10 +261,10 @@ public final class TestFSOTaskHandler {
 
     @BeforeClass
     public static void setUp() throws IOException {
-      FSOTaskHandler fsoTaskHandler = new FSOTaskHandler(
+      FSONSSummaryTask fsoNSSummaryTask = new FSONSSummaryTask(
           reconNamespaceSummaryManager);
-      fsoTaskHandler.reprocess(reconOMMetadataManager);
-      fsoTaskHandler.process(processEventBatch());
+      fsoNSSummaryTask.reprocess(reconOMMetadataManager);
+      fsoNSSummaryTask.process(processEventBatch());
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
@@ -453,13 +453,13 @@ public final class TestFSOTaskHandler {
 
   /**
    * Build a key info for put/update action.
-   * @param volume         volume name
-   * @param bucket         bucket name
-   * @param key            key name
-   * @param fileName       file name
-   * @param objectID       object ID
+   * @param volume volume name
+   * @param bucket bucket name
+   * @param key key name
+   * @param fileName file name
+   * @param objectID object ID
    * @param parentObjectId parent object ID
-   * @param dataSize       file size
+   * @param dataSize file size
    * @return the KeyInfo
    */
   private static OmKeyInfo buildOmKeyInfo(String volume,
@@ -485,11 +485,11 @@ public final class TestFSOTaskHandler {
 
   /**
    * Build a key info for delete action.
-   * @param volume         volume name
-   * @param bucket         bucket name
-   * @param key            key name
-   * @param fileName       file name
-   * @param objectID       object ID
+   * @param volume volume name
+   * @param bucket bucket name
+   * @param key key name
+   * @param fileName file name
+   * @param objectID object ID
    * @param parentObjectId parent object ID
    * @return the KeyInfo
    */
@@ -585,4 +585,3 @@ public final class TestFSOTaskHandler {
     return BucketLayout.FILE_SYSTEM_OPTIMIZED;
   }
 }
-

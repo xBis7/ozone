@@ -186,7 +186,7 @@ public abstract class BucketHandler {
       return new FSOBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM);
     } else {
-      return new NonFSOBucketHandler(reconNamespaceSummaryManager,
+      return new LegacyBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM);
     }
   }

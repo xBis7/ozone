@@ -152,7 +152,6 @@ public abstract class EntityHandler {
         omBucketInfo = OmBucketInfo.newBuilder()
             .setVolumeName(volName)
             .setBucketName(bucketName)
-            .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
             .build();
       }
       bucketHandler = BucketHandler.getBucketHandler(
@@ -174,7 +173,6 @@ public abstract class EntityHandler {
         omBucketInfo = OmBucketInfo.newBuilder()
             .setVolumeName(volName)
             .setBucketName(bucketName)
-            .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
             .build();
       }
       bucketHandler = BucketHandler.getBucketHandler(

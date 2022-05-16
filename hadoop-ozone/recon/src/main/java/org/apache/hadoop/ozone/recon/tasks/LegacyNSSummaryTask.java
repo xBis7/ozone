@@ -42,17 +42,17 @@ import static org.apache.hadoop.ozone.om.OzoneManagerUtils.getBucketLayout;
 /**
  * Class for handling non FSO specific tasks.
  */
-public class NonFSOTaskHandler extends NSSummaryTask {
+public class LegacyNSSummaryTask extends NSSummaryTask {
 
   private static BucketLayout bucketLayout;
 
   private ReconOMMetadataManager reconOMMetadataManager;
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(NonFSOTaskHandler.class);
+      LoggerFactory.getLogger(LegacyNSSummaryTask.class);
 
   @Inject
-  public NonFSOTaskHandler(ReconNamespaceSummaryManager
+  public LegacyNSSummaryTask(ReconNamespaceSummaryManager
                             reconNamespaceSummaryManager) {
     super(reconNamespaceSummaryManager);
     bucketLayout = BucketLayout.LEGACY;

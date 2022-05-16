@@ -41,13 +41,13 @@ import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.FILE_TABLE;
 /**
  * Class for handling FSO specific tasks.
  */
-public class FSOTaskHandler extends NSSummaryTask {
+public class FSONSSummaryTask extends NSSummaryTask {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(FSOTaskHandler.class);
+      LoggerFactory.getLogger(FSONSSummaryTask.class);
 
   @Inject
-  public FSOTaskHandler(ReconNamespaceSummaryManager
+  public FSONSSummaryTask(ReconNamespaceSummaryManager
                             reconNamespaceSummaryManager) {
     super(reconNamespaceSummaryManager);
   }
