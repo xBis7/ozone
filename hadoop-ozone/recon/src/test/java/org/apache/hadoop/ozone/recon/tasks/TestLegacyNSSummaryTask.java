@@ -181,8 +181,7 @@ public final class TestLegacyNSSummaryTask {
     populateOMDB();
 
     legacyNSSummaryTask = new LegacyNSSummaryTask(
-        reconNamespaceSummaryManager);
-    legacyNSSummaryTask.setReconOMMetadataManager(mockReconOMMetadataManager);
+        reconNamespaceSummaryManager, mockReconOMMetadataManager);
   }
 
   /**

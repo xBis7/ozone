@@ -21,14 +21,17 @@ import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
+import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
@@ -37,11 +40,19 @@ import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
  */
 public class LegacyBucketHandler extends BucketHandler {
 
+  private static OmBucketInfo omBucketInfo;
+  private static String vol;
+  private static String bucket;
+
   public LegacyBucketHandler(
-          ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-          ReconOMMetadataManager omMetadataManager,
-          OzoneStorageContainerManager reconSCM) {
+      ReconNamespaceSummaryManager reconNamespaceSummaryManager,
+      ReconOMMetadataManager omMetadataManager,
+      OzoneStorageContainerManager reconSCM,
+      OmBucketInfo bucketInfo) {
     super(reconNamespaceSummaryManager, omMetadataManager, reconSCM);
+    omBucketInfo = bucketInfo;
+    vol = omBucketInfo.getVolumeName();
+    bucket = omBucketInfo.getBucketName();
   }
 
   /**
@@ -59,11 +70,12 @@ public class LegacyBucketHandler extends BucketHandler {
     // if it ends with '/' then we have directory
     // else we have a key
     // otherwise we return null, UNKNOWN
+    String key = OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX + keyName;
     OmKeyInfo omKeyInfo = getOmMetadataManager()
-        .getKeyTable(getBucketLayout()).get(keyName);
+        .getKeyTable(getBucketLayout()).get(key);
 
     if (omKeyInfo != null) {
-      if (keyName.endsWith("/")) {
+      if (keyName.endsWith(OM_KEY_PREFIX)) {
         return EntityType.DIRECTORY;
       } else {
         return EntityType.KEY;
@@ -73,7 +85,6 @@ public class LegacyBucketHandler extends BucketHandler {
     }
   }
 
-
   // KeyTable's key is in the format of "vol/bucket/keyName"
   // Make use of RocksDB's order to seek to the prefix and avoid full iteration
   @Override
@@ -82,10 +93,24 @@ public class LegacyBucketHandler extends BucketHandler {
     Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
-            iterator = keyTable.iterator();
+        iterator = keyTable.iterator();
 
-    // returns "parentId.path" + "/" + "", path to parent object
-    String seekPrefix = parentId + OM_KEY_PREFIX;
+    String seekPrefix =
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket;
+
+    // handle nested keys (DFS)
+    NSSummary nsSummary = getReconNamespaceSummaryManager()
+        .getNSSummary(parentId);
+    // empty bucket
+    if (nsSummary == null) {
+      return 0;
+    }
+
+    if (omBucketInfo.getObjectID() != parentId) {
+      String dirName = nsSummary.getDirName();
+      seekPrefix += dirName + OM_KEY_PREFIX;
+    }
+
     iterator.seek(seekPrefix);
     long totalDU = 0L;
     // handle direct keys
@@ -100,6 +125,11 @@ public class LegacyBucketHandler extends BucketHandler {
       if (keyInfo != null) {
         totalDU += getKeySizeWithReplication(keyInfo);
       }
+    }
+
+    Set<Long> subDirIds = nsSummary.getChildDir();
+    for (long subDirId: subDirIds) {
+      totalDU += calculateDUUnderObject(subDirId);
     }
     return totalDU;
   }
@@ -123,10 +153,23 @@ public class LegacyBucketHandler extends BucketHandler {
 
     Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
-            iterator = keyTable.iterator();
+        iterator = keyTable.iterator();
 
-    //seekPrefix = path of object with parentID
-    String seekPrefix = parentId + OM_KEY_PREFIX;
+    String seekPrefix =
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket;
+
+    NSSummary nsSummary = getReconNamespaceSummaryManager()
+        .getNSSummary(parentId);
+    // empty bucket
+    if (nsSummary == null) {
+      return 0;
+    }
+
+    if (omBucketInfo.getObjectID() != parentId) {
+      String dirName = nsSummary.getDirName();
+      seekPrefix += dirName + OM_KEY_PREFIX;
+    }
+
     iterator.seek(seekPrefix);
 
     long keyDataSizeWithReplica = 0L;
@@ -142,7 +185,7 @@ public class LegacyBucketHandler extends BucketHandler {
       if (keyInfo != null) {
         DUResponse.DiskUsage diskUsage = new DUResponse.DiskUsage();
         String subpath = buildSubpath(normalizedPath,
-                keyInfo.getFileName());
+            keyInfo.getFileName());
         diskUsage.setSubpath(subpath);
         diskUsage.setKey(true);
         diskUsage.setSize(keyInfo.getDataSize());
@@ -158,6 +201,7 @@ public class LegacyBucketHandler extends BucketHandler {
         }
       }
     }
+
     return keyDataSizeWithReplica;
   }
 
@@ -184,14 +228,16 @@ public class LegacyBucketHandler extends BucketHandler {
   @Override
   public long getDirObjectId(String[] names, int cutoff) throws IOException {
     long dirObjectId = getBucketObjectId(names);
-    String dirKey;
-    for (int i = 2; i < cutoff; ++i) {
-      dirKey = getOmMetadataManager().getOzonePathKey(dirObjectId, names[i]);
-      OmKeyInfo dirInfo = getOmMetadataManager()
-              .getKeyTable(getBucketLayout()).getSkipCache(dirKey);
-      if (dirInfo.getKeyName().endsWith("/")) {
-        dirObjectId = dirInfo.getObjectID();
-      }
+    String dirKey = OM_KEY_PREFIX;
+    for (int i = 0; i < cutoff; ++i) {
+      dirKey += names[i];
+    }
+    dirKey += OM_KEY_PREFIX;
+    OmKeyInfo dirInfo = getOmMetadataManager()
+        .getKeyTable(getBucketLayout()).getSkipCache(dirKey);
+    
+    if (dirInfo != null) {
+      dirObjectId = dirInfo.getObjectID();
     }
     return dirObjectId;
   }

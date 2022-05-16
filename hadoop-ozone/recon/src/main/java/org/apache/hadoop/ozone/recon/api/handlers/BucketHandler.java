@@ -187,7 +187,7 @@ public abstract class BucketHandler {
               omMetadataManager, reconSCM);
     } else {
       return new LegacyBucketHandler(reconNamespaceSummaryManager,
-              omMetadataManager, reconSCM);
+              omMetadataManager, reconSCM, bucketInfo);
     }
   }
 
