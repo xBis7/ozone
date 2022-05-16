@@ -40,12 +40,7 @@ import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
 import org.apache.hadoop.ozone.recon.api.handlers.BucketHandler;
 import org.apache.hadoop.ozone.recon.api.handlers.EntityHandler;
-import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
-import org.apache.hadoop.ozone.recon.api.types.DUResponse;
-import org.apache.hadoop.ozone.recon.api.types.EntityType;
-import org.apache.hadoop.ozone.recon.api.types.FileSizeDistributionResponse;
-import org.apache.hadoop.ozone.recon.api.types.ResponseStatus;
-import org.apache.hadoop.ozone.recon.api.types.QuotaUsageResponse;
+import org.apache.hadoop.ozone.recon.api.types.*;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
@@ -74,6 +69,7 @@ import java.util.HashSet;
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
+import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
@@ -103,7 +99,6 @@ public class TestLegacyNSSummaryEndpoint {
   private OMMetadataManager omMetadataManager;
   private OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
   private NSSummaryEndpoint nsSummaryEndpoint;
-
   private static ReconOMMetadataManager mockReconOMMetadataManager;
   private static OmBucketInfo omBucketInfo1;
   private static OmBucketInfo omBucketInfo2;
@@ -250,11 +245,36 @@ public class TestLegacyNSSummaryEndpoint {
     when(keyTableMock.getName()).thenReturn(KEY_TABLE);
     doReturn(keyTableMock).when(mockReconOMMetadataManager).getKeyTable(getBucketLayout());
 
+    //mock BucketTable
+    Table bucketTableMock = mock(Table.class);
+
+    when(bucketTableMock.getName()).thenReturn(BUCKET_TABLE);
+    doReturn(bucketTableMock).when(mockReconOMMetadataManager).getBucketTable();
+
+    //omBucketInfo1
+    omBucketInfo1 = mock(OmBucketInfo.class);
+
+    when(omBucketInfo1.getBucketLayout()).thenReturn(getBucketLayout());
+    when(omBucketInfo1.getObjectID()).thenReturn(BUCKET_ONE_OBJECT_ID);
+
+    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_ONE))
+        .thenReturn(omBucketInfo1);
+
+    //omBucketInfo2
+    omBucketInfo2 = mock(OmBucketInfo.class);
+
+    when(omBucketInfo2.getBucketLayout()).thenReturn(getBucketLayout());
+    when(omBucketInfo2.getObjectID()).thenReturn(BUCKET_TWO_OBJECT_ID);
+
+    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_TWO))
+        .thenReturn(omBucketInfo2);
+
+    //mock bucketHandler
+
     // populate OM DB and reprocess into Recon RocksDB
     populateOMDB();
     LegacyNSSummaryTask legacyNSSummaryTask = new LegacyNSSummaryTask(
-        reconNamespaceSummaryManager);
-    legacyNSSummaryTask.setReconOMMetadataManager(mockReconOMMetadataManager);
+        reconNamespaceSummaryManager, mockReconOMMetadataManager);
     legacyNSSummaryTask.reprocess(reconOMMetadataManager);
   }
 

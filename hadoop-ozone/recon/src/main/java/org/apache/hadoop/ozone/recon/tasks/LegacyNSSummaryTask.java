@@ -53,14 +53,12 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
   @Inject
   public LegacyNSSummaryTask(ReconNamespaceSummaryManager
-                            reconNamespaceSummaryManager) {
+                            reconNamespaceSummaryManager,
+                            ReconOMMetadataManager
+                                reconOMMetadataManager) {
     super(reconNamespaceSummaryManager);
-    bucketLayout = BucketLayout.LEGACY;
-  }
-
-  public void setReconOMMetadataManager(ReconOMMetadataManager
-                                            reconOMMetadataManager) {
     this.reconOMMetadataManager = reconOMMetadataManager;
+    bucketLayout = BucketLayout.LEGACY;
   }
 
   @Override
