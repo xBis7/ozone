@@ -18,6 +18,9 @@
 package org.apache.hadoop.ozone.recon.api.handlers;
 
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
+import org.apache.hadoop.ozone.om.OzoneManagerUtils;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
@@ -29,6 +32,8 @@ import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 import java.io.IOException;
+
+import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
 /**
  * Class for handling key entity type.
@@ -64,11 +69,28 @@ public class KeyEntityHandler extends EntityHandler {
     // The object ID for the directory that the key is directly in
     long parentObjectId = getBucketHandler().getDirObjectId(names,
             names.length - 1);
+
+    String volName = names[0];
+    String bucketName = names[1];
     String fileName = names[names.length - 1];
-    String ozoneKey = getOmMetadataManager()
-            .getOzonePathKey(parentObjectId, fileName);
-    OmKeyInfo keyInfo = getOmMetadataManager()
-            .getFileTable().getSkipCache(ozoneKey);
+
+    OmBucketInfo omBucketInfo = OzoneManagerUtils
+        .getOmBucketInfo(getOmMetadataManager(), volName, bucketName);
+    OmKeyInfo keyInfo;
+    if (omBucketInfo.getBucketLayout()
+        .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      String ozoneKey = getOmMetadataManager()
+          .getOzonePathKey(parentObjectId, fileName);
+      keyInfo = getOmMetadataManager()
+          .getFileTable().getSkipCache(ozoneKey);
+    } else {
+     String ozoneKey = "";
+     for (int i = 0; i < names.length; i++) {
+       ozoneKey += OM_KEY_PREFIX + names[i];
+     }
+     keyInfo = getOmMetadataManager()
+         .getKeyTable(BucketLayout.LEGACY).get(ozoneKey);
+    }
     duResponse.setSize(keyInfo.getDataSize());
     if (withReplica) {
       long keySizeWithReplica = getBucketHandler()

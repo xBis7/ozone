@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.recon;
 
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.ONE;
+import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.VOLUME_TABLE;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
@@ -200,8 +201,8 @@ public final class OMMetadataManagerTestUtils {
                                     BucketLayout bucketLayout)
           throws IOException {
     // DB key in FileTable => "parentId/filename"
+    // DB key in KeyTable => "/volume/bucket/key"
     String omKey;
-
     if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
       omKey = omMetadataManager.getOzonePathKey(parentObjectId, fileName);
     } else {
@@ -231,7 +232,13 @@ public final class OMMetadataManagerTestUtils {
                                   List<OmKeyLocationInfoGroup> locationVersions,
                                   BucketLayout bucketLayout)
           throws IOException {
-    String omKey = omMetadataManager.getOzonePathKey(parentObjectId, fileName);
+
+    String omKey;
+    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      omKey = omMetadataManager.getOzonePathKey(parentObjectId, fileName);
+    } else {
+      omKey = omMetadataManager.getOzoneKey(volName, bucketName, keyName);
+    }
     omMetadataManager.getKeyTable(bucketLayout).put(omKey,
             new OmKeyInfo.Builder()
                     .setBucketName(bucketName)

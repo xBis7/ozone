@@ -124,6 +124,7 @@ public abstract class EntityHandler {
           String path) throws IOException {
     BucketHandler bucketHandler;
     OmBucketInfo omBucketInfo;
+
     normalizedPath = normalizePath(path);
     names = parseRequestPath(normalizedPath);
 
@@ -161,16 +162,22 @@ public abstract class EntityHandler {
       }
       return EntityType.BUCKET.create(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, bucketHandler);
-    } else { // length > 3. check dir or key existence (FSO-enabled)
+    } else { // length > 3. check dir or key existence
       String volName = names[0];
       String bucketName = names[1];
-      String keyName = BucketHandler.getKeyName(names);
       omBucketInfo = OzoneManagerUtils
           .getOmBucketInfo(omMetadataManager, volName, bucketName);
       if (omBucketInfo == null) {
         return EntityType.UNKNOWN.create(reconNamespaceSummaryManager,
             omMetadataManager, reconSCM, null);
       }
+
+      String keyName = BucketHandler.getKeyName(names);
+
+      if (path.endsWith(OM_KEY_PREFIX)) {
+        keyName += OM_KEY_PREFIX;
+      }
+
       bucketHandler = BucketHandler.getBucketHandler(
               reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);

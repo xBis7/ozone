@@ -27,7 +27,6 @@ import org.apache.hadoop.hdds.scm.container.ContainerManager;
 import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
-import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
@@ -53,7 +52,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.mockito.Mockito;
 
 import javax.ws.rs.core.Response;
 
@@ -69,8 +67,6 @@ import java.util.HashSet;
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
-import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
-import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
@@ -99,9 +95,7 @@ public class TestLegacyNSSummaryEndpoint {
   private OMMetadataManager omMetadataManager;
   private OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
   private NSSummaryEndpoint nsSummaryEndpoint;
-  private static ReconOMMetadataManager mockReconOMMetadataManager;
-  private static OmBucketInfo omBucketInfo1;
-  private static OmBucketInfo omBucketInfo2;
+  private ReconOMMetadataManager reconOMMetadataManager;
 
   private static final String TEST_PATH_UTILITY =
       "/vol1/buck1/a/b/c/d/e/file1.txt";
@@ -218,7 +212,7 @@ public class TestLegacyNSSummaryEndpoint {
         temporaryFolder.newFolder());
     ozoneManagerServiceProvider =
         getMockOzoneManagerServiceProvider();
-    ReconOMMetadataManager reconOMMetadataManager =
+    reconOMMetadataManager =
         getTestReconOmMetadataManager(
             omMetadataManager, temporaryFolder.newFolder());
 
@@ -238,43 +232,10 @@ public class TestLegacyNSSummaryEndpoint {
         reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
     nsSummaryEndpoint = reconTestInjector.getInstance(NSSummaryEndpoint.class);
 
-    mockReconOMMetadataManager = Mockito.spy(reconOMMetadataManager);
-
-    //mock KeyTable
-    Table keyTableMock = mock(Table.class);
-    when(keyTableMock.getName()).thenReturn(KEY_TABLE);
-    doReturn(keyTableMock).when(mockReconOMMetadataManager).getKeyTable(getBucketLayout());
-
-    //mock BucketTable
-    Table bucketTableMock = mock(Table.class);
-
-    when(bucketTableMock.getName()).thenReturn(BUCKET_TABLE);
-    doReturn(bucketTableMock).when(mockReconOMMetadataManager).getBucketTable();
-
-    //omBucketInfo1
-    omBucketInfo1 = mock(OmBucketInfo.class);
-
-    when(omBucketInfo1.getBucketLayout()).thenReturn(getBucketLayout());
-    when(omBucketInfo1.getObjectID()).thenReturn(BUCKET_ONE_OBJECT_ID);
-
-    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_ONE))
-        .thenReturn(omBucketInfo1);
-
-    //omBucketInfo2
-    omBucketInfo2 = mock(OmBucketInfo.class);
-
-    when(omBucketInfo2.getBucketLayout()).thenReturn(getBucketLayout());
-    when(omBucketInfo2.getObjectID()).thenReturn(BUCKET_TWO_OBJECT_ID);
-
-    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_TWO))
-        .thenReturn(omBucketInfo2);
-
-    //mock bucketHandler
-
     // populate OM DB and reprocess into Recon RocksDB
     populateOMDB();
     LegacyNSSummaryTask legacyNSSummaryTask = new LegacyNSSummaryTask(
-        reconNamespaceSummaryManager, mockReconOMMetadataManager);
+        reconNamespaceSummaryManager, reconOMMetadataManager);
     legacyNSSummaryTask.reprocess(reconOMMetadataManager);
   }
 
@@ -501,7 +462,7 @@ public class TestLegacyNSSummaryEndpoint {
    */
   private void populateOMDB() throws Exception {
     // write all 4 directories
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         (DIR_ONE + OM_KEY_PREFIX),
         BUCKET_ONE,
         VOL,
@@ -510,8 +471,8 @@ public class TestLegacyNSSummaryEndpoint {
         BUCKET_ONE_OBJECT_ID,
         DIR_ONE_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
-        (DIR_TWO + OM_KEY_PREFIX),
+    writeKeyToOm(reconOMMetadataManager,
+        (DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX),
         BUCKET_ONE,
         VOL,
         DIR_TWO,
@@ -519,8 +480,8 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_ONE_OBJECT_ID,
         DIR_TWO_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
-        (DIR_THREE + OM_KEY_PREFIX),
+    writeKeyToOm(reconOMMetadataManager,
+        (DIR_ONE + OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX),
         BUCKET_ONE,
         VOL,
         DIR_THREE,
@@ -528,8 +489,8 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_ONE_OBJECT_ID,
         DIR_THREE_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
-        (DIR_FOUR + OM_KEY_PREFIX),
+    writeKeyToOm(reconOMMetadataManager,
+        (DIR_ONE + OM_KEY_PREFIX + DIR_FOUR + OM_KEY_PREFIX),
         BUCKET_ONE,
         VOL,
         DIR_FOUR,
@@ -539,7 +500,7 @@ public class TestLegacyNSSummaryEndpoint {
         getBucketLayout());
 
     // write all 6 keys
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_ONE,
         BUCKET_ONE,
         VOL,
@@ -548,7 +509,7 @@ public class TestLegacyNSSummaryEndpoint {
         BUCKET_ONE_OBJECT_ID,
         KEY_ONE_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_TWO,
         BUCKET_ONE,
         VOL,
@@ -557,7 +518,7 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_TWO_OBJECT_ID,
         KEY_TWO_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_THREE,
         BUCKET_ONE,
         VOL,
@@ -566,7 +527,7 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_THREE_OBJECT_ID,
         KEY_THREE_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_FOUR,
         BUCKET_TWO,
         VOL,
@@ -575,7 +536,7 @@ public class TestLegacyNSSummaryEndpoint {
         BUCKET_TWO_OBJECT_ID,
         KEY_FOUR_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_FIVE,
         BUCKET_TWO,
         VOL,
@@ -584,7 +545,7 @@ public class TestLegacyNSSummaryEndpoint {
         BUCKET_TWO_OBJECT_ID,
         KEY_FIVE_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_SIX,
         BUCKET_ONE,
         VOL,
@@ -674,7 +635,7 @@ public class TestLegacyNSSummaryEndpoint {
         new OmKeyLocationInfoGroup(0L, locationInfoList);
 
     // add the multi-block key to Recon's OM
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         DIR_ONE_OBJECT_ID,
         MULTI_BLOCK_KEY_OBJECT_ID,
         VOL, BUCKET_ONE,

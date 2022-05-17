@@ -230,7 +230,9 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
           .getKeyTable(bucketLayout)
           .get(keyBytes);
 
-      keyInfo.setParentObjectID(parentKeyInfo.getObjectID());
+      if (parentKeyInfo != null) {
+        keyInfo.setParentObjectID(parentKeyInfo.getObjectID());
+      }
     } else {
       String bucketKey = reconOMMetadataManager
           .getBucketKey(keyInfo.getVolumeName(), keyInfo.getBucketName());
