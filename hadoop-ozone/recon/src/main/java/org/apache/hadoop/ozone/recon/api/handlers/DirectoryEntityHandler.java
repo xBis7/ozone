@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
+
 /**
  * Class for handling directory entity type.
  */
@@ -88,9 +90,21 @@ public class DirectoryEntityHandler extends EntityHandler {
       NSSummary subdirNSSummary =
               getReconNamespaceSummaryManager().getNSSummary(subdirObjectId);
       String subdirName = subdirNSSummary.getDirName();
+      // if dirName > 1, then we want to skip the first dir
+      // it has been added from the BucketEntityHandler in the subpath
+      String subDir = "";
+      if (subdirName.length() > 1) {
+        String[] subDirs = subdirName.split(OM_KEY_PREFIX);
+        for (int i = 1; i < subDirs.length; i++) {
+          subDir += subDirs[i] + OM_KEY_PREFIX;
+        }
+      } else {
+        subDir += subdirName;
+      }
+
       // build the path for subdirectory
       String subpath = BucketHandler
-              .buildSubpath(getNormalizedPath(), subdirName);
+              .buildSubpath(getNormalizedPath(), subDir);
       DUResponse.DiskUsage diskUsage = new DUResponse.DiskUsage();
       // reformat the response
       diskUsage.setSubpath(subpath);

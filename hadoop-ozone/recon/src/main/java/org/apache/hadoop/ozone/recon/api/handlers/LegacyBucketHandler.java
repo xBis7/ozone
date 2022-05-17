@@ -31,7 +31,6 @@ import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
@@ -126,6 +125,12 @@ public class LegacyBucketHandler extends BucketHandler {
         totalDU += getKeySizeWithReplication(keyInfo);
       }
     }
+
+//    handling more than direct keys
+//    Set<Long> subDirIds = nsSummary.getChildDir();
+//    for (long subDirId: subDirIds) {
+//      totalDU += calculateDUUnderObject(subDirId);
+//    }
     
     return totalDU;
   }
@@ -224,9 +229,9 @@ public class LegacyBucketHandler extends BucketHandler {
   @Override
   public long getDirObjectId(String[] names, int cutoff) throws IOException {
     long dirObjectId = getBucketObjectId(names);
-    String dirKey = OM_KEY_PREFIX;
+    String dirKey = "";
     for (int i = 0; i < cutoff; ++i) {
-      dirKey += names[i];
+      dirKey += OM_KEY_PREFIX + names[i];
     }
     dirKey += OM_KEY_PREFIX;
     OmKeyInfo dirInfo = getOmMetadataManager()

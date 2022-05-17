@@ -162,19 +162,6 @@ public abstract class BucketHandler {
     return bucketInfo.getObjectID();
   }
 
-  // NOTE: In the next PR,
-  // it will be updated for other bucket types depending on the path
-  // For now only FSO buckets supported
-
-//  public static BucketHandler getBucketHandler(
-//          ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-//          ReconOMMetadataManager omMetadataManager,
-//          OzoneStorageContainerManager reconSCM, String path) {
-//
-//    return new FSOBucketHandler(reconNamespaceSummaryManager,
-//            omMetadataManager, reconSCM);
-//  }
-
   public static BucketHandler getBucketHandler(
                 ReconNamespaceSummaryManager reconNamespaceSummaryManager,
                 ReconOMMetadataManager omMetadataManager,
