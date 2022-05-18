@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
-import static org.apache.hadoop.ozone.om.OzoneManagerUtils.getBucketLayout;
 
 /**
  * Class for handling non FSO specific tasks.
@@ -63,7 +62,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
   @Override
   public String getTaskName() {
-    return "NonFSOTaskHandler";
+    return "LegacyNSSummaryTask";
   }
 
   @Override
@@ -170,7 +169,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
         return new ImmutablePair<>(getTaskName(), false);
       }
     }
-    LOG.info("Completed a process run of NonFSOTaskHandler");
+    LOG.info("Completed a process run of LegacyNSSummaryTask");
     return new ImmutablePair<>(getTaskName(), true);
   }
 
@@ -212,7 +211,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
       return new ImmutablePair<>(getTaskName(), false);
     }
 
-    LOG.info("Completed a reprocess run of NonFSOTaskHandler");
+    LOG.info("Completed a reprocess run of LegacyNSSummaryTask");
     return new ImmutablePair<>(getTaskName(), true);
   }
 
@@ -228,8 +227,6 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
       String keyBytes =
           reconOMMetadataManager.getOzoneKey(keyInfo.getVolumeName(),
               keyInfo.getBucketName(), parentKeyName);
-      bucketLayout = getBucketLayout(reconOMMetadataManager,
-          keyInfo.getVolumeName(), keyInfo.getBucketName());
       OmKeyInfo parentKeyInfo = reconOMMetadataManager
           .getKeyTable(bucketLayout)
           .get(keyBytes);
@@ -243,7 +240,9 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
       OmBucketInfo parentBucketInfo =
           reconOMMetadataManager.getBucketTable().get(bucketKey);
 
-      keyInfo.setParentObjectID(parentBucketInfo.getObjectID());
+      if (parentBucketInfo != null) {
+        keyInfo.setParentObjectID(parentBucketInfo.getObjectID());
+      }
     }
   }
 }

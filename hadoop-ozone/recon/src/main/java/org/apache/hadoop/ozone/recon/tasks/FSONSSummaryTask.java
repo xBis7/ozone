@@ -54,7 +54,7 @@ public class FSONSSummaryTask extends NSSummaryTask {
 
   @Override
   public String getTaskName() {
-    return "FSOTaskHandler";
+    return "FSONSSummaryTask";
   }
 
   // We only listen to updates from FSO-enabled KeyTable(FileTable) and DirTable
@@ -151,7 +151,7 @@ public class FSONSSummaryTask extends NSSummaryTask {
         return new ImmutablePair<>(getTaskName(), false);
       }
     }
-    LOG.info("Completed a process run of FSOTaskHandler");
+    LOG.info("Completed a process run of FSONSSummaryTask");
     return new ImmutablePair<>(getTaskName(), true);
   }
 
@@ -189,7 +189,7 @@ public class FSONSSummaryTask extends NSSummaryTask {
       return new ImmutablePair<>(getTaskName(), false);
     }
 
-    LOG.info("Completed a reprocess run of FSOTaskHandler");
+    LOG.info("Completed a reprocess run of FSONSSummaryTask");
     return new ImmutablePair<>(getTaskName(), true);
   }
 }

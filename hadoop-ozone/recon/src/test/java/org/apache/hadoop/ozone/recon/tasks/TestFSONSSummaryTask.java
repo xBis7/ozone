@@ -63,6 +63,7 @@ public final class TestFSONSSummaryTask {
   private static OMMetadataManager omMetadataManager;
   private static ReconOMMetadataManager reconOMMetadataManager;
   private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
+  private static FSONSSummaryTask fsoNSSummaryTask;
 
   // Object names in FSO-enabled format
   private static final String VOL = "vol";
@@ -139,6 +140,9 @@ public final class TestFSONSSummaryTask {
     Assert.assertNull(nonExistentSummary);
 
     populateOMDB();
+
+    fsoNSSummaryTask = new FSONSSummaryTask(
+        reconNamespaceSummaryManager);
   }
 
   /**
@@ -155,8 +159,7 @@ public final class TestFSONSSummaryTask {
       // verify it got cleaned up after.
       NSSummary staleNSSummary = new NSSummary();
       reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
-      FSONSSummaryTask fsoNSSummaryTask = new FSONSSummaryTask(
-          reconNamespaceSummaryManager);
+
       fsoNSSummaryTask.reprocess(reconOMMetadataManager);
 
       nsSummaryForBucket1 =
@@ -261,8 +264,6 @@ public final class TestFSONSSummaryTask {
 
     @BeforeClass
     public static void setUp() throws IOException {
-      FSONSSummaryTask fsoNSSummaryTask = new FSONSSummaryTask(
-          reconNamespaceSummaryManager);
       fsoNSSummaryTask.reprocess(reconOMMetadataManager);
       fsoNSSummaryTask.process(processEventBatch());
 
@@ -528,7 +529,7 @@ public final class TestFSONSSummaryTask {
    *            /     \
    *        bucket1   bucket2
    *        /    \      /    \
-   *     file1  dir1  file4  file5
+   *     file1  dir1  file2  file4
    *            /   \
    *         dir2   dir3
    *          /

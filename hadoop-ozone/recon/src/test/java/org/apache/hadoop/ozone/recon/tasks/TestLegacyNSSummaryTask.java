@@ -65,13 +65,9 @@ public final class TestLegacyNSSummaryTask {
 
   private static ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private static OMMetadataManager omMetadataManager;
-  private static ReconOMMetadataManager mockReconOMMetadataManager;
+  private static ReconOMMetadataManager reconOMMetadataManager;
   private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
-
   private static LegacyNSSummaryTask legacyNSSummaryTask;
-
-  private static OmBucketInfo omBucketInfo1;
-  private static OmBucketInfo omBucketInfo2;
 
   // Object names
   private static final String VOL = "vol";
@@ -137,7 +133,7 @@ public final class TestLegacyNSSummaryTask {
         temporaryFolder.newFolder());
     ozoneManagerServiceProvider =
         getMockOzoneManagerServiceProvider();
-    ReconOMMetadataManager reconOMMetadataManager =
+    reconOMMetadataManager =
         getTestReconOmMetadataManager(
             omMetadataManager, temporaryFolder.newFolder());
 
@@ -151,29 +147,6 @@ public final class TestLegacyNSSummaryTask {
     reconNamespaceSummaryManager =
         reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
 
-    Table bucketTableMock = mock(Table.class);
-
-    mockReconOMMetadataManager = Mockito.spy(reconOMMetadataManager);
-
-    when(bucketTableMock.getName()).thenReturn(BUCKET_TABLE);
-    doReturn(bucketTableMock).when(mockReconOMMetadataManager).getBucketTable();
-
-    omBucketInfo1 = mock(OmBucketInfo.class);
-
-    when(omBucketInfo1.getBucketLayout()).thenReturn(BucketLayout.LEGACY);
-    when(omBucketInfo1.getObjectID()).thenReturn(BUCKET_ONE_OBJECT_ID);
-
-    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_ONE))
-        .thenReturn(omBucketInfo1);
-
-    omBucketInfo2 = mock(OmBucketInfo.class);
-
-    when(omBucketInfo2.getBucketLayout()).thenReturn(BucketLayout.LEGACY);
-    when(omBucketInfo2.getObjectID()).thenReturn(BUCKET_TWO_OBJECT_ID);
-
-    when(bucketTableMock.get(OM_KEY_PREFIX + VOL + OM_KEY_PREFIX + BUCKET_TWO))
-        .thenReturn(omBucketInfo2);
-
     NSSummary nonExistentSummary =
         reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
     Assert.assertNull(nonExistentSummary);
@@ -181,7 +154,7 @@ public final class TestLegacyNSSummaryTask {
     populateOMDB();
 
     legacyNSSummaryTask = new LegacyNSSummaryTask(
-        reconNamespaceSummaryManager, mockReconOMMetadataManager);
+        reconNamespaceSummaryManager, reconOMMetadataManager);
   }
 
   /**
@@ -199,7 +172,7 @@ public final class TestLegacyNSSummaryTask {
       NSSummary staleNSSummary = new NSSummary();
       reconNamespaceSummaryManager.storeNSSummary(-1L, staleNSSummary);
 
-      legacyNSSummaryTask.reprocess(mockReconOMMetadataManager);
+      legacyNSSummaryTask.reprocess(reconOMMetadataManager);
 
       nsSummaryForBucket1 =
           reconNamespaceSummaryManager.getNSSummary(BUCKET_ONE_OBJECT_ID);
@@ -289,9 +262,9 @@ public final class TestLegacyNSSummaryTask {
       Assert.assertEquals(0, nsSummaryForBucket1.getDirName().length());
       Assert.assertEquals(0, nsSummaryForBucket2.getDirName().length());
       // check dirName is correctly written
-      Assert.assertEquals(DIR_ONE + "/", nsSummaryInDir1.getDirName());
+      Assert.assertEquals(DIR_ONE + OM_KEY_PREFIX, nsSummaryInDir1.getDirName());
       Assert.assertEquals(
-          DIR_ONE + "/" + DIR_TWO + "/", nsSummaryInDir2.getDirName());
+          DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX, nsSummaryInDir2.getDirName());
     }
   }
 
@@ -306,7 +279,7 @@ public final class TestLegacyNSSummaryTask {
     @BeforeClass
     public static void setUp() throws IOException {
 
-      legacyNSSummaryTask.reprocess(mockReconOMMetadataManager);
+      legacyNSSummaryTask.reprocess(reconOMMetadataManager);
       legacyNSSummaryTask.process(processEventBatch());
 
       nsSummaryForBucket1 =
@@ -318,7 +291,6 @@ public final class TestLegacyNSSummaryTask {
     }
 
     private static OMUpdateEventBatch processEventBatch() throws IOException {
-      // Events for keyTable change:
       // put file5 under bucket 2
       String omPutKey =
           OM_KEY_PREFIX + VOL +
@@ -373,7 +345,6 @@ public final class TestLegacyNSSummaryTask {
           .setAction(OMDBUpdateEvent.OMDBUpdateAction.UPDATE)
           .build();
 
-      // Events for DirectoryTable change:
       // add dir 4 under bucket 1
       String omDirPutKey1 =
           OM_KEY_PREFIX + VOL +
@@ -478,6 +449,7 @@ public final class TestLegacyNSSummaryTask {
     @Test
     public void testProcessBucket() throws IOException {
       Assert.assertNotNull(nsSummaryForBucket2);
+      //should be 4, dirs are keys as well in the keyTable
       Assert.assertEquals(3, nsSummaryForBucket2.getNumOfFiles());
       // key 4 + key 5 + updated key 2
       Assert.assertEquals(KEY_FOUR_SIZE + KEY_FIVE_SIZE + KEY_TWO_UPDATE_SIZE,
@@ -585,7 +557,7 @@ public final class TestLegacyNSSummaryTask {
    *            /     \
    *        bucket1   bucket2
    *        /    \      /    \
-   *     file1  dir1  file4  file5
+   *     file1  dir1  file2  file4
    *            /   \
    *         dir2   dir3
    *          /
@@ -594,7 +566,7 @@ public final class TestLegacyNSSummaryTask {
    * @throws IOException
    */
   private static void populateOMDB() throws IOException {
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_ONE,
         BUCKET_ONE,
         VOL,
@@ -603,7 +575,7 @@ public final class TestLegacyNSSummaryTask {
         BUCKET_ONE_OBJECT_ID,
         KEY_ONE_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_TWO,
         BUCKET_TWO,
         VOL,
@@ -612,16 +584,7 @@ public final class TestLegacyNSSummaryTask {
         BUCKET_TWO_OBJECT_ID,
         KEY_TWO_OLD_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
-        KEY_THREE,
-        BUCKET_ONE,
-        VOL,
-        FILE_THREE,
-        KEY_THREE_OBJECT_ID,
-        DIR_TWO_OBJECT_ID,
-        KEY_THREE_SIZE,
-        getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_FOUR,
         BUCKET_TWO,
         VOL,
@@ -630,8 +593,8 @@ public final class TestLegacyNSSummaryTask {
         BUCKET_TWO_OBJECT_ID,
         KEY_FOUR_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
-        DIR_ONE + "/",
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_ONE + OM_KEY_PREFIX,
         BUCKET_ONE,
         VOL,
         DIR_ONE,
@@ -639,8 +602,9 @@ public final class TestLegacyNSSummaryTask {
         BUCKET_ONE_OBJECT_ID,
         DIR_ONE_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
-        DIR_ONE + "/" + DIR_TWO + "/",
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_ONE + OM_KEY_PREFIX +
+            DIR_TWO + OM_KEY_PREFIX,
         BUCKET_ONE,
         VOL,
         DIR_TWO,
@@ -648,8 +612,18 @@ public final class TestLegacyNSSummaryTask {
         DIR_ONE_OBJECT_ID,
         DIR_TWO_SIZE,
         getBucketLayout());
-    writeKeyToOm(mockReconOMMetadataManager,
-        DIR_ONE + "/" + DIR_THREE + "/",
+    writeKeyToOm(reconOMMetadataManager,
+        KEY_THREE,
+        BUCKET_ONE,
+        VOL,
+        FILE_THREE,
+        KEY_THREE_OBJECT_ID,
+        DIR_TWO_OBJECT_ID,
+        KEY_THREE_SIZE,
+        getBucketLayout());
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_ONE + OM_KEY_PREFIX +
+            DIR_THREE + OM_KEY_PREFIX,
         BUCKET_ONE,
         VOL,
         DIR_TWO,
