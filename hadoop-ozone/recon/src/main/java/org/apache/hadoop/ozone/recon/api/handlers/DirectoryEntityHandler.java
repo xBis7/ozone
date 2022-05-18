@@ -18,6 +18,9 @@
 package org.apache.hadoop.ozone.recon.api.handlers;
 
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
+import org.apache.hadoop.ozone.om.OzoneManagerUtils;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.api.types.ResponseStatus;
@@ -90,10 +93,19 @@ public class DirectoryEntityHandler extends EntityHandler {
       NSSummary subdirNSSummary =
               getReconNamespaceSummaryManager().getNSSummary(subdirObjectId);
       String subdirName = subdirNSSummary.getDirName();
-      // if dirName > 1, then we want to skip the first dir
-      // it has been added from the BucketEntityHandler in the subpath
+
+      // find OmBucketInfo to get the BucketLayout
+      String[] names = getNames();
+
+      OmBucketInfo omBucketInfo = OzoneManagerUtils
+          .getOmBucketInfo(getOmMetadataManager(), names[0], names[1]);
+
+      // if dirName > 1, then we need to skip the first dir since
+      // it has been added in the subpath from the BucketEntityHandler
       String subDir = "";
-      if (subdirName.length() > 1) {
+      if (!omBucketInfo.getBucketLayout()
+          .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)
+          && subdirName.length() > 1) {
         String[] subDirs = subdirName.split(OM_KEY_PREFIX);
         for (int i = 1; i < subDirs.length; i++) {
           subDir += subDirs[i] + OM_KEY_PREFIX;
