@@ -90,7 +90,9 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
         OmKeyInfo updatedKeyInfo = keyTableUpdateEvent.getValue();
         OmKeyInfo oldKeyInfo = keyTableUpdateEvent.getOldValue();
 
-        setKeyParentID(updatedKeyInfo);
+        if (updatedKeyInfo != null) {
+          setKeyParentID(updatedKeyInfo);
+        }
 
         if (!updatedKeyInfo.getKeyName().endsWith("/")) {
           switch (action) {
@@ -187,7 +189,9 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
         Table.KeyValue<String, OmKeyInfo> kv = keyTableIter.next();
         OmKeyInfo keyInfo = kv.getValue();
 
-        setKeyParentID(keyInfo);
+        if (keyInfo != null) {
+          setKeyParentID(keyInfo);
+        }
 
         if (keyInfo.getKeyName().endsWith("/")) {
           OmDirectoryInfo directoryInfo =

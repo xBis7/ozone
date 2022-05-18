@@ -31,6 +31,7 @@ import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
@@ -69,7 +70,9 @@ public class LegacyBucketHandler extends BucketHandler {
     // if it ends with '/' then we have directory
     // else we have a key
     // otherwise we return null, UNKNOWN
-    String key = OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX + keyName;
+    String key = OM_KEY_PREFIX + vol +
+        OM_KEY_PREFIX + bucket +
+        OM_KEY_PREFIX + keyName;
     OmKeyInfo omKeyInfo = getOmMetadataManager()
         .getKeyTable(getBucketLayout()).get(key);
 
@@ -126,11 +129,10 @@ public class LegacyBucketHandler extends BucketHandler {
       }
     }
 
-//    handling more than direct keys
-//    Set<Long> subDirIds = nsSummary.getChildDir();
-//    for (long subDirId: subDirIds) {
-//      totalDU += calculateDUUnderObject(subDirId);
-//    }
+    Set<Long> subDirIds = nsSummary.getChildDir();
+    for (long subDirId: subDirIds) {
+      totalDU += calculateDUUnderObject(subDirId);
+    }
     
     return totalDU;
   }

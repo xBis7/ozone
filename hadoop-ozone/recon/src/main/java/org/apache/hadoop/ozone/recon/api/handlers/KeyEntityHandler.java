@@ -84,12 +84,12 @@ public class KeyEntityHandler extends EntityHandler {
       keyInfo = getOmMetadataManager()
           .getFileTable().getSkipCache(ozoneKey);
     } else {
-     String ozoneKey = "";
-     for (int i = 0; i < names.length; i++) {
-       ozoneKey += OM_KEY_PREFIX + names[i];
-     }
-     keyInfo = getOmMetadataManager()
-         .getKeyTable(BucketLayout.LEGACY).get(ozoneKey);
+      String ozoneKey = "";
+      for (int i = 0; i < names.length; i++) {
+        ozoneKey += OM_KEY_PREFIX + names[i];
+      }
+      keyInfo = getOmMetadataManager()
+          .getKeyTable(BucketLayout.LEGACY).get(ozoneKey);
     }
     duResponse.setSize(keyInfo.getDataSize());
     if (withReplica) {
