@@ -36,6 +36,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.Iterator;
 
+import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
 
 /**
@@ -93,7 +94,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
           setKeyParentID(updatedKeyInfo);
         }
 
-        if (!updatedKeyInfo.getKeyName().endsWith("/")) {
+        if (!updatedKeyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
           switch (action) {
           case PUT:
             writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
@@ -192,7 +193,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
           setKeyParentID(keyInfo);
         }
 
-        if (keyInfo.getKeyName().endsWith("/")) {
+        if (keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
           OmDirectoryInfo directoryInfo =
               new OmDirectoryInfo.Builder()
                  .setName(keyInfo.getKeyName())
@@ -216,13 +217,13 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
   }
 
   private void setKeyParentID(OmKeyInfo keyInfo) throws IOException {
-    String[] keyPath = keyInfo.getKeyName().split("/");
+    String[] keyPath = keyInfo.getKeyName().split(OM_KEY_PREFIX);
 
     //if (keyPath > 1) there is one or more directories
     if (keyPath.length > 1) {
       String parentKeyName = "";
       for (int i = 0; i < keyPath.length - 1; i++) {
-        parentKeyName += keyPath[i] + "/";
+        parentKeyName += keyPath[i] + OM_KEY_PREFIX;
       }
       String keyBytes =
           reconOMMetadataManager.getOzoneKey(keyInfo.getVolumeName(),

@@ -18,12 +18,16 @@
 package org.apache.hadoop.ozone.recon.tasks;
 
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.utils.db.Table;
+import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
+import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
+import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
 import org.apache.hadoop.ozone.recon.api.types.NSSummary;
@@ -37,22 +41,20 @@ import org.junit.ClassRule;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
-import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.BUCKET_TABLE;
+import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
-import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializeNewOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doReturn;
 
 /**
  * Test for NonFSOTaskHandler.
@@ -66,7 +68,6 @@ public final class TestLegacyNSSummaryTask {
   private static ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private static OMMetadataManager omMetadataManager;
   private static ReconOMMetadataManager reconOMMetadataManager;
-  private static OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
   private static LegacyNSSummaryTask legacyNSSummaryTask;
 
   // Object names
@@ -90,6 +91,14 @@ public final class TestLegacyNSSummaryTask {
   private static final String DIR_FOUR = "dir4";
   private static final String DIR_FIVE = "dir5";
 
+  // quota in bytes
+  private static final long VOL_QUOTA = 2 * OzoneConsts.MB;
+  private static final long BUCKET_ONE_QUOTA = OzoneConsts.MB;
+  private static final long BUCKET_TWO_QUOTA = OzoneConsts.MB;
+
+  private static final String TEST_USER = "TestUser";
+
+  private static final long VOL_OBJECT_ID = 0L;
   private static final long BUCKET_ONE_OBJECT_ID = 1L;
   private static final long BUCKET_TWO_OBJECT_ID = 2L;
   private static final long KEY_ONE_OBJECT_ID = 3L;
@@ -131,7 +140,7 @@ public final class TestLegacyNSSummaryTask {
 
     omMetadataManager = initializeNewOmMetadataManager(
         temporaryFolder.newFolder());
-    ozoneManagerServiceProvider =
+    OzoneManagerServiceProviderImpl ozoneManagerServiceProvider =
         getMockOzoneManagerServiceProvider();
     reconOMMetadataManager =
         getTestReconOmMetadataManager(
@@ -278,7 +287,6 @@ public final class TestLegacyNSSummaryTask {
 
     @BeforeClass
     public static void setUp() throws IOException {
-
       legacyNSSummaryTask.reprocess(reconOMMetadataManager);
       legacyNSSummaryTask.process(processEventBatch());
 
@@ -449,7 +457,6 @@ public final class TestLegacyNSSummaryTask {
     @Test
     public void testProcessBucket() throws IOException {
       Assert.assertNotNull(nsSummaryForBucket2);
-      //should be 4, dirs are keys as well in the keyTable
       Assert.assertEquals(3, nsSummaryForBucket2.getNumOfFiles());
       // key 4 + key 5 + updated key 2
       Assert.assertEquals(KEY_FOUR_SIZE + KEY_FIVE_SIZE + KEY_TWO_UPDATE_SIZE,
@@ -575,7 +582,7 @@ public final class TestLegacyNSSummaryTask {
         BUCKET_ONE_OBJECT_ID,
         KEY_ONE_SIZE,
         getBucketLayout());
-    writeKeyToOm(reconOMMetadataManager,
+     writeKeyToOm(reconOMMetadataManager,
         KEY_TWO,
         BUCKET_TWO,
         VOL,
@@ -594,7 +601,7 @@ public final class TestLegacyNSSummaryTask {
         KEY_FOUR_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-        DIR_ONE + OM_KEY_PREFIX,
+        (DIR_ONE + OM_KEY_PREFIX),
         BUCKET_ONE,
         VOL,
         DIR_ONE,
@@ -603,8 +610,8 @@ public final class TestLegacyNSSummaryTask {
         DIR_ONE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-        DIR_ONE + OM_KEY_PREFIX +
-            DIR_TWO + OM_KEY_PREFIX,
+        (DIR_ONE + OM_KEY_PREFIX +
+            DIR_TWO + OM_KEY_PREFIX),
         BUCKET_ONE,
         VOL,
         DIR_TWO,
@@ -622,8 +629,8 @@ public final class TestLegacyNSSummaryTask {
         KEY_THREE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-        DIR_ONE + OM_KEY_PREFIX +
-            DIR_THREE + OM_KEY_PREFIX,
+        (DIR_ONE + OM_KEY_PREFIX +
+            DIR_THREE + OM_KEY_PREFIX),
         BUCKET_ONE,
         VOL,
         DIR_TWO,
@@ -631,6 +638,58 @@ public final class TestLegacyNSSummaryTask {
         DIR_ONE_OBJECT_ID,
         DIR_THREE_SIZE,
         getBucketLayout());
+  }
+
+  /**
+   * Create a new OM Metadata manager instance with one user, one vol, and two
+   * buckets.
+   * @throws IOException ioEx
+   */
+  private static OMMetadataManager initializeNewOmMetadataManager(
+      File omDbDir)
+      throws IOException {
+    OzoneConfiguration omConfiguration = new OzoneConfiguration();
+    omConfiguration.set(OZONE_OM_DB_DIRS,
+        omDbDir.getAbsolutePath());
+    OMMetadataManager omMetadataManager = new OmMetadataManagerImpl(
+        omConfiguration);
+
+    String volumeKey = omMetadataManager.getVolumeKey(VOL);
+    OmVolumeArgs args =
+        OmVolumeArgs.newBuilder()
+            .setObjectID(VOL_OBJECT_ID)
+            .setVolume(VOL)
+            .setAdminName(TEST_USER)
+            .setOwnerName(TEST_USER)
+            .setQuotaInBytes(VOL_QUOTA)
+            .build();
+    omMetadataManager.getVolumeTable().put(volumeKey, args);
+
+    OmBucketInfo bucketInfo1 = OmBucketInfo.newBuilder()
+        .setVolumeName(VOL)
+        .setBucketName(BUCKET_ONE)
+        .setObjectID(BUCKET_ONE_OBJECT_ID)
+        .setQuotaInBytes(BUCKET_ONE_QUOTA)
+        .setBucketLayout(getBucketLayout())
+        .build();
+
+    OmBucketInfo bucketInfo2 = OmBucketInfo.newBuilder()
+        .setVolumeName(VOL)
+        .setBucketName(BUCKET_TWO)
+        .setObjectID(BUCKET_TWO_OBJECT_ID)
+        .setQuotaInBytes(BUCKET_TWO_QUOTA)
+        .setBucketLayout(getBucketLayout())
+        .build();
+
+    String bucketKey = omMetadataManager.getBucketKey(
+        bucketInfo1.getVolumeName(), bucketInfo1.getBucketName());
+    String bucketKey2 = omMetadataManager.getBucketKey(
+        bucketInfo2.getVolumeName(), bucketInfo2.getBucketName());
+
+    omMetadataManager.getBucketTable().put(bucketKey, bucketInfo1);
+    omMetadataManager.getBucketTable().put(bucketKey2, bucketInfo2);
+
+    return omMetadataManager;
   }
 
   private static BucketLayout getBucketLayout() {
