@@ -36,7 +36,7 @@ import java.util.Set;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
 /**
- * Class for handling non FSO, Legacy and Object Store buckets.
+ * Class for handling Legacy buckets.
  */
 public class LegacyBucketHandler extends BucketHandler {
 
@@ -133,7 +133,6 @@ public class LegacyBucketHandler extends BucketHandler {
     for (long subDirId: subDirIds) {
       totalDU += calculateDUUnderObject(subDirId);
     }
-    
     return totalDU;
   }
 

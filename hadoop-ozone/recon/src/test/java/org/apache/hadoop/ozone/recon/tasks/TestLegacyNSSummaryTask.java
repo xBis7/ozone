@@ -53,7 +53,7 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestRe
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 
 /**
- * Test for NonFSOTaskHandler.
+ * Test for LegacyNSSummaryTask.
  */
 @RunWith(Enclosed.class)
 public final class TestLegacyNSSummaryTask {
@@ -128,7 +128,6 @@ public final class TestLegacyNSSummaryTask {
 
   @BeforeClass
   public static void setUp() throws Exception {
-
     initializeNewOmMetadataManager(TEMPORARY_FOLDER.newFolder());
     OzoneManagerServiceProviderImpl ozoneManagerServiceProvider =
         getMockOzoneManagerServiceProvider();
@@ -157,7 +156,7 @@ public final class TestLegacyNSSummaryTask {
   }
 
   /**
-   * Nested class for testing NonFSOTaskHandler reprocess.
+   * Nested class for testing LegacyNSSummaryTask reprocess.
    */
   public static class TestReprocess {
 
@@ -270,7 +269,7 @@ public final class TestLegacyNSSummaryTask {
   }
 
   /**
-   * Nested class for testing NonFSOTaskHandler process.
+   * Nested class for testing LegacyNSSummaryTask process.
    */
   public static class TestProcess {
 
@@ -503,13 +502,12 @@ public final class TestLegacyNSSummaryTask {
 
   /**
    * Build a key info for put/update action.
-   *
-   * @param volume         volume name
-   * @param bucket         bucket name
-   * @param key            key name
-   * @param fileName       file name
-   * @param objectID       object ID
-   * @param dataSize       file size
+   * @param volume volume name
+   * @param bucket bucket name
+   * @param key key name
+   * @param fileName file name
+   * @param objectID object ID
+   * @param dataSize file size
    * @return the KeyInfo
    */
   private static OmKeyInfo buildOmKeyInfo(String volume,
@@ -533,12 +531,11 @@ public final class TestLegacyNSSummaryTask {
 
   /**
    * Build a key info for delete action.
-   *
-   * @param volume         volume name
-   * @param bucket         bucket name
-   * @param key            key name
-   * @param fileName       file name
-   * @param objectID       object ID
+   * @param volume volume name
+   * @param bucket bucket name
+   * @param key key name
+   * @param fileName file name
+   * @param objectID object ID
    * @return the KeyInfo
    */
   private static OmKeyInfo buildOmKeyInfo(String volume,

@@ -79,7 +79,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Test for NSSummary REST APIs.
+ * Test for FSONSSummary REST APIs.
  * We tested on a mini file system with the following setting:
  *                vol
  *             /       \

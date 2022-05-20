@@ -51,7 +51,7 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirT
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 
 /**
- * Test for FSOTaskHandler.
+ * Test for FSONSSummaryTask.
  */
 @RunWith(Enclosed.class)
 public final class TestFSONSSummaryTask {
@@ -146,7 +146,7 @@ public final class TestFSONSSummaryTask {
   }
 
   /**
-   * Nested class for testing FSOTaskHandler reprocess.
+   * Nested class for testing FSONSSummaryTask reprocess.
    */
   public static class TestReprocess {
 
@@ -255,7 +255,7 @@ public final class TestFSONSSummaryTask {
   }
 
   /**
-   * Nested class for testing FSOTaskHandler process.
+   * Nested class for testing FSONSSummaryTask process.
    */
   public static class TestProcess {
 
@@ -554,7 +554,7 @@ public final class TestFSONSSummaryTask {
         KEY_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
         KEY_ONE_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         KEY_TWO,
         BUCKET_TWO,
@@ -563,7 +563,7 @@ public final class TestFSONSSummaryTask {
         KEY_TWO_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
         KEY_TWO_OLD_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         KEY_THREE,
         BUCKET_ONE,
@@ -572,7 +572,7 @@ public final class TestFSONSSummaryTask {
         KEY_THREE_OBJECT_ID,
         DIR_TWO_OBJECT_ID,
         KEY_THREE_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         KEY_FOUR,
         BUCKET_TWO,
@@ -581,7 +581,7 @@ public final class TestFSONSSummaryTask {
         KEY_FOUR_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
         KEY_FOUR_SIZE,
-        BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        getBucketLayout());
     writeDirToOm(reconOMMetadataManager, DIR_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID, DIR_ONE);
     writeDirToOm(reconOMMetadataManager, DIR_TWO_OBJECT_ID,

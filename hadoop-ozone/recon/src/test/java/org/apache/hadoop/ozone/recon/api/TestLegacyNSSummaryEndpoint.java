@@ -40,11 +40,11 @@ import org.apache.hadoop.ozone.recon.ReconTestInjector;
 import org.apache.hadoop.ozone.recon.api.handlers.BucketHandler;
 import org.apache.hadoop.ozone.recon.api.handlers.EntityHandler;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
-import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
-import org.apache.hadoop.ozone.recon.api.types.QuotaUsageResponse;
-import org.apache.hadoop.ozone.recon.api.types.ResponseStatus;
+import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.api.types.FileSizeDistributionResponse;
+import org.apache.hadoop.ozone.recon.api.types.ResponseStatus;
+import org.apache.hadoop.ozone.recon.api.types.QuotaUsageResponse;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
@@ -70,8 +70,8 @@ import java.util.Set;
 import java.util.HashSet;
 
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
-import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
+import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
@@ -79,7 +79,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Test for NSSummary REST APIs.
+ * Test for LegacyNSSummary REST APIs.
  * We tested on a mini file system with the following setting:
  *                vol
  *             /       \
@@ -99,9 +99,9 @@ public class TestLegacyNSSummaryEndpoint {
 
   private ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private OMMetadataManager omMetadataManager;
+  private ReconOMMetadataManager reconOMMetadataManager;
   private OzoneManagerServiceProviderImpl ozoneManagerServiceProvider;
   private NSSummaryEndpoint nsSummaryEndpoint;
-  private ReconOMMetadataManager reconOMMetadataManager;
 
   private static final String TEST_PATH_UTILITY =
       "/vol1/buck1/a/b/c/d/e/file1.txt";
@@ -110,7 +110,7 @@ public class TestLegacyNSSummaryEndpoint {
       new String[]{"vol1", "buck1", "a", "b", "c", "d", "e", "file1.txt"};
   private static final String TEST_KEY_NAMES = "a/b/c/d/e/file1.txt";
 
-  // Object names in FSO-enabled format
+  // Object names
   private static final String VOL = "vol";
   private static final String BUCKET_ONE = "bucket1";
   private static final String BUCKET_TWO = "bucket2";
@@ -171,15 +171,14 @@ public class TestLegacyNSSummaryEndpoint {
   private static final long KEY_FOUR_SIZE = 2 * OzoneConsts.KB + 1; // bin 2
   private static final long KEY_FIVE_SIZE = 100L; // bin 0
   private static final long KEY_SIX_SIZE = 2 * OzoneConsts.KB + 1; // bin 2
-
-  private static final long DIR_ONE_SIZE = 0L;
-  private static final long DIR_TWO_SIZE = 0L;
-  private static final long DIR_THREE_SIZE = 0L;
-  private static final long DIR_FOUR_SIZE = 0L;
   private static final long MULTI_BLOCK_KEY_SIZE_WITH_REPLICA
       = THREE * BLOCK_ONE_LENGTH
       + TWO * BLOCK_TWO_LENGTH
       + FOUR * BLOCK_THREE_LENGTH;
+  private static final long DIR_ONE_SIZE = 0L;
+  private static final long DIR_TWO_SIZE = 0L;
+  private static final long DIR_THREE_SIZE = 0L;
+  private static final long DIR_FOUR_SIZE = 0L;
 
   // quota in bytes
   private static final long VOL_QUOTA = 2 * OzoneConsts.MB;
@@ -588,7 +587,7 @@ public class TestLegacyNSSummaryEndpoint {
             .build();
     omMetadataManager.getVolumeTable().put(volumeKey, args);
 
-    OmBucketInfo bucketInfo1 = OmBucketInfo.newBuilder()
+    OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
         .setVolumeName(VOL)
         .setBucketName(BUCKET_ONE)
         .setObjectID(BUCKET_ONE_OBJECT_ID)
@@ -605,11 +604,11 @@ public class TestLegacyNSSummaryEndpoint {
         .build();
 
     String bucketKey = omMetadataManager.getBucketKey(
-        bucketInfo1.getVolumeName(), bucketInfo1.getBucketName());
+        bucketInfo.getVolumeName(), bucketInfo.getBucketName());
     String bucketKey2 = omMetadataManager.getBucketKey(
         bucketInfo2.getVolumeName(), bucketInfo2.getBucketName());
 
-    omMetadataManager.getBucketTable().put(bucketKey, bucketInfo1);
+    omMetadataManager.getBucketTable().put(bucketKey, bucketInfo);
     omMetadataManager.getBucketTable().put(bucketKey2, bucketInfo2);
 
     return omMetadataManager;
