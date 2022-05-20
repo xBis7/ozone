@@ -20,8 +20,6 @@ package org.apache.hadoop.ozone.recon.tasks;
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
-import org.apache.hadoop.hdds.utils.db.Table;
-import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
@@ -41,8 +39,6 @@ import org.junit.ClassRule;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,7 +59,7 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyT
 public final class TestLegacyNSSummaryTask {
 
   @ClassRule
-  public static TemporaryFolder temporaryFolder = new TemporaryFolder();
+  public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
 
   private static ReconNamespaceSummaryManager reconNamespaceSummaryManager;
   private static OMMetadataManager omMetadataManager;
@@ -90,11 +86,6 @@ public final class TestLegacyNSSummaryTask {
   private static final String DIR_THREE = "dir3";
   private static final String DIR_FOUR = "dir4";
   private static final String DIR_FIVE = "dir5";
-
-  // quota in bytes
-  private static final long VOL_QUOTA = 2 * OzoneConsts.MB;
-  private static final long BUCKET_ONE_QUOTA = OzoneConsts.MB;
-  private static final long BUCKET_TWO_QUOTA = OzoneConsts.MB;
 
   private static final String TEST_USER = "TestUser";
 
@@ -138,16 +129,15 @@ public final class TestLegacyNSSummaryTask {
   @BeforeClass
   public static void setUp() throws Exception {
 
-    omMetadataManager = initializeNewOmMetadataManager(
-        temporaryFolder.newFolder());
+    initializeNewOmMetadataManager(TEMPORARY_FOLDER.newFolder());
     OzoneManagerServiceProviderImpl ozoneManagerServiceProvider =
         getMockOzoneManagerServiceProvider();
     reconOMMetadataManager =
         getTestReconOmMetadataManager(
-            omMetadataManager, temporaryFolder.newFolder());
+            omMetadataManager, TEMPORARY_FOLDER.newFolder());
 
     ReconTestInjector reconTestInjector =
-        new ReconTestInjector.Builder(temporaryFolder)
+        new ReconTestInjector.Builder(TEMPORARY_FOLDER)
             .withReconOm(reconOMMetadataManager)
             .withOmServiceProvider(ozoneManagerServiceProvider)
             .withReconSqlDb()
@@ -271,9 +261,11 @@ public final class TestLegacyNSSummaryTask {
       Assert.assertEquals(0, nsSummaryForBucket1.getDirName().length());
       Assert.assertEquals(0, nsSummaryForBucket2.getDirName().length());
       // check dirName is correctly written
-      Assert.assertEquals(DIR_ONE + OM_KEY_PREFIX, nsSummaryInDir1.getDirName());
+      Assert.assertEquals(DIR_ONE + OM_KEY_PREFIX,
+          nsSummaryInDir1.getDirName());
       Assert.assertEquals(
-          DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX, nsSummaryInDir2.getDirName());
+          DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX,
+          nsSummaryInDir2.getDirName());
     }
   }
 
@@ -284,6 +276,14 @@ public final class TestLegacyNSSummaryTask {
 
     private static NSSummary nsSummaryForBucket1;
     private static NSSummary nsSummaryForBucket2;
+
+    private static OMDBUpdateEvent keyEvent1;
+    private static OMDBUpdateEvent keyEvent2;
+    private static OMDBUpdateEvent keyEvent3;
+    private static OMDBUpdateEvent keyEvent4;
+    private static OMDBUpdateEvent keyEvent5;
+    private static OMDBUpdateEvent keyEvent6;
+    private static OMDBUpdateEvent keyEvent7;
 
     @BeforeClass
     public static void setUp() throws IOException {
@@ -306,7 +306,7 @@ public final class TestLegacyNSSummaryTask {
           OM_KEY_PREFIX + FILE_FIVE;
       OmKeyInfo omPutKeyInfo = buildOmKeyInfo(VOL, BUCKET_TWO, KEY_FIVE,
           FILE_FIVE, KEY_FIVE_OBJECT_ID, KEY_FIVE_SIZE);
-      OMDBUpdateEvent keyEvent1 = new OMDBUpdateEvent.
+      keyEvent1 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omPutKey)
           .setValue(omPutKeyInfo)
@@ -323,7 +323,7 @@ public final class TestLegacyNSSummaryTask {
       OmKeyInfo omDeleteInfo = buildOmKeyInfo(
           VOL, BUCKET_ONE, KEY_ONE,
           FILE_ONE, KEY_ONE_OBJECT_ID);
-      OMDBUpdateEvent keyEvent2 = new OMDBUpdateEvent.
+      keyEvent2 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDeleteKey)
           .setValue(omDeleteInfo)
@@ -343,7 +343,7 @@ public final class TestLegacyNSSummaryTask {
       OmKeyInfo omUpdateInfo = buildOmKeyInfo(
           VOL, BUCKET_TWO, KEY_TWO, FILE_TWO,
           KEY_TWO_OBJECT_ID, KEY_TWO_UPDATE_SIZE);
-      OMDBUpdateEvent keyEvent3 = new OMDBUpdateEvent.
+      keyEvent3 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omUpdateKey)
           .setValue(omUpdateInfo)
@@ -361,7 +361,7 @@ public final class TestLegacyNSSummaryTask {
       OmKeyInfo omDirPutValue1 = buildOmKeyInfo(VOL, BUCKET_ONE,
           (DIR_FOUR + OM_KEY_PREFIX), DIR_FOUR,
           DIR_FOUR_OBJECT_ID, DIR_FOUR_SIZE);
-      OMDBUpdateEvent keyEvent4 = new OMDBUpdateEvent.
+      keyEvent4 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey1)
           .setValue(omDirPutValue1)
@@ -377,7 +377,7 @@ public final class TestLegacyNSSummaryTask {
       OmKeyInfo omDirPutValue2 = buildOmKeyInfo(VOL, BUCKET_TWO,
           (DIR_FIVE + OM_KEY_PREFIX), DIR_FIVE,
           DIR_FIVE_OBJECT_ID, DIR_FIVE_SIZE);
-      OMDBUpdateEvent keyEvent5 = new OMDBUpdateEvent.
+      keyEvent5 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey2)
           .setValue(omDirPutValue2)
@@ -394,7 +394,7 @@ public final class TestLegacyNSSummaryTask {
       OmKeyInfo omDirDeleteValue = buildOmKeyInfo(VOL, BUCKET_ONE,
           (DIR_ONE + OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX),
           DIR_THREE, DIR_THREE_OBJECT_ID);
-      OMDBUpdateEvent keyEvent6 = new OMDBUpdateEvent.
+      keyEvent6 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirDeleteKey)
           .setValue(omDirDeleteValue)
@@ -413,7 +413,7 @@ public final class TestLegacyNSSummaryTask {
       OmKeyInfo omDirUpdateValue = buildOmKeyInfo(VOL, BUCKET_ONE,
           (DIR_ONE_RENAME + OM_KEY_PREFIX), DIR_ONE_RENAME,
           DIR_ONE_OBJECT_ID, DIR_ONE_SIZE);
-      OMDBUpdateEvent keyEvent7 = new OMDBUpdateEvent.
+      keyEvent7 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirUpdateKey)
           .setValue(omDirUpdateValue)
@@ -582,7 +582,7 @@ public final class TestLegacyNSSummaryTask {
         BUCKET_ONE_OBJECT_ID,
         KEY_ONE_SIZE,
         getBucketLayout());
-     writeKeyToOm(reconOMMetadataManager,
+    writeKeyToOm(reconOMMetadataManager,
         KEY_TWO,
         BUCKET_TWO,
         VOL,
@@ -645,13 +645,13 @@ public final class TestLegacyNSSummaryTask {
    * buckets.
    * @throws IOException ioEx
    */
-  private static OMMetadataManager initializeNewOmMetadataManager(
+  private static void initializeNewOmMetadataManager(
       File omDbDir)
       throws IOException {
     OzoneConfiguration omConfiguration = new OzoneConfiguration();
     omConfiguration.set(OZONE_OM_DB_DIRS,
         omDbDir.getAbsolutePath());
-    OMMetadataManager omMetadataManager = new OmMetadataManagerImpl(
+    omMetadataManager = new OmMetadataManagerImpl(
         omConfiguration);
 
     String volumeKey = omMetadataManager.getVolumeKey(VOL);
@@ -661,7 +661,6 @@ public final class TestLegacyNSSummaryTask {
             .setVolume(VOL)
             .setAdminName(TEST_USER)
             .setOwnerName(TEST_USER)
-            .setQuotaInBytes(VOL_QUOTA)
             .build();
     omMetadataManager.getVolumeTable().put(volumeKey, args);
 
@@ -669,7 +668,6 @@ public final class TestLegacyNSSummaryTask {
         .setVolumeName(VOL)
         .setBucketName(BUCKET_ONE)
         .setObjectID(BUCKET_ONE_OBJECT_ID)
-        .setQuotaInBytes(BUCKET_ONE_QUOTA)
         .setBucketLayout(getBucketLayout())
         .build();
 
@@ -677,7 +675,6 @@ public final class TestLegacyNSSummaryTask {
         .setVolumeName(VOL)
         .setBucketName(BUCKET_TWO)
         .setObjectID(BUCKET_TWO_OBJECT_ID)
-        .setQuotaInBytes(BUCKET_TWO_QUOTA)
         .setBucketLayout(getBucketLayout())
         .build();
 
@@ -688,8 +685,6 @@ public final class TestLegacyNSSummaryTask {
 
     omMetadataManager.getBucketTable().put(bucketKey, bucketInfo1);
     omMetadataManager.getBucketTable().put(bucketKey2, bucketInfo2);
-
-    return omMetadataManager;
   }
 
   private static BucketLayout getBucketLayout() {

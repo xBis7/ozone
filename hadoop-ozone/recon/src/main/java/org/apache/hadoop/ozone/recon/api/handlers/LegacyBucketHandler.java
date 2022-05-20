@@ -40,9 +40,9 @@ import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
  */
 public class LegacyBucketHandler extends BucketHandler {
 
-  private static OmBucketInfo omBucketInfo;
-  private static String vol;
-  private static String bucket;
+  private OmBucketInfo omBucketInfo;
+  private String vol;
+  private String bucket;
 
   public LegacyBucketHandler(
       ReconNamespaceSummaryManager reconNamespaceSummaryManager,
@@ -50,9 +50,9 @@ public class LegacyBucketHandler extends BucketHandler {
       OzoneStorageContainerManager reconSCM,
       OmBucketInfo bucketInfo) {
     super(reconNamespaceSummaryManager, omMetadataManager, reconSCM);
-    omBucketInfo = bucketInfo;
-    vol = omBucketInfo.getVolumeName();
-    bucket = omBucketInfo.getBucketName();
+    this.omBucketInfo = bucketInfo;
+    this.vol = omBucketInfo.getVolumeName();
+    this.bucket = omBucketInfo.getBucketName();
   }
 
   /**
@@ -231,11 +231,13 @@ public class LegacyBucketHandler extends BucketHandler {
   @Override
   public long getDirObjectId(String[] names, int cutoff) throws IOException {
     long dirObjectId = getBucketObjectId(names);
-    String dirKey = "";
+    StringBuilder bld = new StringBuilder();
     for (int i = 0; i < cutoff; ++i) {
-      dirKey += OM_KEY_PREFIX + names[i];
+      bld.append(OM_KEY_PREFIX)
+          .append(names[i]);
     }
-    dirKey += OM_KEY_PREFIX;
+    bld.append(OM_KEY_PREFIX);
+    String dirKey = bld.toString();
     OmKeyInfo dirInfo = getOmMetadataManager()
         .getKeyTable(getBucketLayout()).getSkipCache(dirKey);
     

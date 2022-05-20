@@ -44,7 +44,7 @@ import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
  */
 public class LegacyNSSummaryTask extends NSSummaryTask {
 
-  private static BucketLayout bucketLayout;
+  private BucketLayout bucketLayout;
 
   private ReconOMMetadataManager reconOMMetadataManager;
 
@@ -58,7 +58,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
                                 reconOMMetadataManager) {
     super(reconNamespaceSummaryManager);
     this.reconOMMetadataManager = reconOMMetadataManager;
-    bucketLayout = BucketLayout.LEGACY;
+    this.bucketLayout = BucketLayout.LEGACY;
   }
 
   @Override
@@ -221,10 +221,12 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
     //if (keyPath > 1) there is one or more directories
     if (keyPath.length > 1) {
-      String parentKeyName = "";
+      StringBuilder bld = new StringBuilder();
       for (int i = 0; i < keyPath.length - 1; i++) {
-        parentKeyName += keyPath[i] + OM_KEY_PREFIX;
+        bld.append(keyPath[i])
+            .append(OM_KEY_PREFIX);
       }
+      String parentKeyName = bld.toString();
       String keyBytes =
           reconOMMetadataManager.getOzoneKey(keyInfo.getVolumeName(),
               keyInfo.getBucketName(), parentKeyName);

@@ -102,17 +102,19 @@ public class DirectoryEntityHandler extends EntityHandler {
 
       // if dirName > 1, then we need to skip the first dir since
       // it has been added in the subpath from the BucketEntityHandler
-      String subDir = "";
+      StringBuilder bld = new StringBuilder();
       if (!omBucketInfo.getBucketLayout()
           .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)
           && subdirName.length() > 1) {
         String[] subDirs = subdirName.split(OM_KEY_PREFIX);
         for (int i = 1; i < subDirs.length; i++) {
-          subDir += subDirs[i] + OM_KEY_PREFIX;
+          bld.append(subDirs[i])
+              .append(OM_KEY_PREFIX);
         }
       } else {
-        subDir += subdirName;
+        bld.append(subdirName);
       }
+      String subDir = bld.toString();
 
       // build the path for subdirectory
       String subpath = BucketHandler
