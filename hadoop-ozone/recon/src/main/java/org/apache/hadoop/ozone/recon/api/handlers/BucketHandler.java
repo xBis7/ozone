@@ -172,9 +172,13 @@ public abstract class BucketHandler {
             .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
       return new FSOBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM);
-    } else {
+    } else if (bucketInfo.getBucketLayout()
+        .equals(BucketLayout.LEGACY)) {
       return new LegacyBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, bucketInfo);
+    } else {
+      return new OBSBucketHandler(reconNamespaceSummaryManager,
+          omMetadataManager, reconSCM, bucketInfo);
     }
   }
 
