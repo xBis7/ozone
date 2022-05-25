@@ -236,6 +236,8 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
       if (parentKeyInfo != null) {
         keyInfo.setParentObjectID(parentKeyInfo.getObjectID());
+      } else {
+        LOG.info("OmKeyInfo for parent dir is null");
       }
     } else {
       String bucketKey = reconOMMetadataManager
@@ -245,6 +247,8 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
       if (parentBucketInfo != null) {
         keyInfo.setParentObjectID(parentBucketInfo.getObjectID());
+      } else {
+        LOG.info("OmBucketInfo for parent bucket is null");
       }
     }
   }
