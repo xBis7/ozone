@@ -66,12 +66,13 @@ public class OBSBucketHandler extends BucketHandler {
 
     // For example, /vol1/buck1/a/b/c/d/e/file1.txt
     // For Object Store buckets, in the KeyTable
-    // there are no directories, only keys
+    // there are no directories
+    // keys are only the files
     // /vol1/buck1/a/ or
     // /vol1/buck1/a/b/ or
     // /vol1/buck1/a/b/c/ or
     // /vol1/buck1/a/b/c/d/ or
-    // /vol1/buck1/a/b/c/d/e/ isn't stored
+    // /vol1/buck1/a/b/c/d/e/ aren't stored
     String key = OM_KEY_PREFIX + vol +
         OM_KEY_PREFIX + bucket +
         OM_KEY_PREFIX + keyName;
@@ -94,7 +95,7 @@ public class OBSBucketHandler extends BucketHandler {
         iterator = keyTable.iterator();
 
     String seekPrefix =
-        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket;
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
 
     // handle nested keys (DFS)
     NSSummary nsSummary = getReconNamespaceSummaryManager()
@@ -125,7 +126,7 @@ public class OBSBucketHandler extends BucketHandler {
 
   /**
    * This method handles disk usage of direct keys.
-   * @param parentId parent directory/bucket
+   * @param parentId parent bucket
    * @param withReplica if withReplica is enabled, set sizeWithReplica
    * for each direct key's DU
    * @param listFile if listFile is enabled, append key DU as a subpath
@@ -145,7 +146,7 @@ public class OBSBucketHandler extends BucketHandler {
         iterator = keyTable.iterator();
 
     String seekPrefix =
-        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket;
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
 
     NSSummary nsSummary = getReconNamespaceSummaryManager()
         .getNSSummary(parentId);

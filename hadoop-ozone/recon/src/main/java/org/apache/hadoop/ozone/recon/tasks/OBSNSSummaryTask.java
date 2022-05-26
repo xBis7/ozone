@@ -48,7 +48,7 @@ public class OBSNSSummaryTask extends NSSummaryTask {
   private ReconOMMetadataManager reconOMMetadataManager;
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(LegacyNSSummaryTask.class);
+      LoggerFactory.getLogger(OBSNSSummaryTask.class);
 
   @Inject
   public OBSNSSummaryTask(ReconNamespaceSummaryManager
@@ -91,6 +91,8 @@ public class OBSNSSummaryTask extends NSSummaryTask {
 
         if (updatedKeyInfo != null) {
           setKeyParentID(updatedKeyInfo);
+        } else {
+          LOG.error("UpdatedKeyInfo for OBSNSSummaryTask is null");
         }
 
         switch (action) {
@@ -145,6 +147,8 @@ public class OBSNSSummaryTask extends NSSummaryTask {
 
         if (keyInfo != null) {
           setKeyParentID(keyInfo);
+        } else {
+          LOG.error("Reprocess KeyInfo for OBSNSSummaryTask is null");
         }
 
         writeOmKeyInfoOnNamespaceDB(keyInfo);
@@ -173,7 +177,8 @@ public class OBSNSSummaryTask extends NSSummaryTask {
 
     if (parentBucketInfo != null) {
       keyInfo.setParentObjectID(parentBucketInfo.getObjectID());
+    } else {
+      LOG.error("ParentBucketInfo for OBSNSSummaryTask is null");
     }
-
   }
 }

@@ -83,7 +83,8 @@ public class KeyEntityHandler extends EntityHandler {
           .getOzonePathKey(parentObjectId, fileName);
       keyInfo = getOmMetadataManager()
           .getFileTable().getSkipCache(ozoneKey);
-    } else {
+    } else if (omBucketInfo.getBucketLayout()
+        .equals(BucketLayout.LEGACY)) {
       StringBuilder bld = new StringBuilder();
       for (int i = 0; i < names.length; i++) {
         bld.append(OM_KEY_PREFIX)
@@ -92,6 +93,15 @@ public class KeyEntityHandler extends EntityHandler {
       String ozoneKey = bld.toString();
       keyInfo = getOmMetadataManager()
           .getKeyTable(BucketLayout.LEGACY).get(ozoneKey);
+    } else {    //not done
+      StringBuilder bld = new StringBuilder();
+      for (int i = 0; i < names.length; i++) {
+        bld.append(OM_KEY_PREFIX)
+            .append(names[i]);
+      }
+      String ozoneKey = bld.toString();
+      keyInfo = getOmMetadataManager()
+          .getKeyTable(BucketLayout.OBJECT_STORE).get(ozoneKey);
     }
     duResponse.setSize(keyInfo.getDataSize());
     if (withReplica) {

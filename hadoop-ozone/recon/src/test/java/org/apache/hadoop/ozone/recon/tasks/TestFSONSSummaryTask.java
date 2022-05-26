@@ -398,10 +398,7 @@ public final class TestFSONSSummaryTask {
 
     @Test
     public void testProcessUpdateFileSize() throws IOException {
-      // file 5 is added under bucket 2, so bucket 2 has 3 keys now
       // file 1 is gone, so bucket 1 is empty now
-      // file 2 is updated with new datasize,
-      // so file size dist for bucket 2 should be updated
       Assert.assertNotNull(nsSummaryForBucket1);
       Assert.assertEquals(0, nsSummaryForBucket1.getNumOfFiles());
 
@@ -416,6 +413,9 @@ public final class TestFSONSSummaryTask {
 
     @Test
     public void testProcessBucket() throws IOException {
+      // file 5 is added under bucket 2, so bucket 2 has 3 keys now
+      // file 2 is updated with new datasize,
+      // so file size dist for bucket 2 should be updated
       Assert.assertNotNull(nsSummaryForBucket2);
       Assert.assertEquals(3, nsSummaryForBucket2.getNumOfFiles());
       // key 4 + key 5 + updated key 2
