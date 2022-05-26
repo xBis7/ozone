@@ -98,7 +98,7 @@ public class LegacyBucketHandler extends BucketHandler {
         iterator = keyTable.iterator();
 
     String seekPrefix =
-        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket;
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
 
     // handle nested keys (DFS)
     NSSummary nsSummary = getReconNamespaceSummaryManager()
@@ -158,7 +158,7 @@ public class LegacyBucketHandler extends BucketHandler {
         iterator = keyTable.iterator();
 
     String seekPrefix =
-        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket;
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
 
     NSSummary nsSummary = getReconNamespaceSummaryManager()
         .getNSSummary(parentId);
