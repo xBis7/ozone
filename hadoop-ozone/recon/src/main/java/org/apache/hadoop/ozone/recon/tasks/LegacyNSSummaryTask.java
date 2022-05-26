@@ -92,6 +92,8 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
         if (updatedKeyInfo != null) {
           setKeyParentID(updatedKeyInfo);
+        } else {
+          LOG.error("UpdatedKeyInfo for LegacyNSSummaryTask is null");
         }
 
         if (!updatedKeyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
@@ -191,6 +193,8 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
         if (keyInfo != null) {
           setKeyParentID(keyInfo);
+        } else {
+          LOG.error("Reprocess KeyInfo for LegacyNSSummaryTask is null");
         }
 
         if (keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
@@ -237,7 +241,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
       if (parentKeyInfo != null) {
         keyInfo.setParentObjectID(parentKeyInfo.getObjectID());
       } else {
-        LOG.info("OmKeyInfo for parent dir is null");
+        LOG.error("ParentKeyInfo for LegacyNSSummaryTask is null");
       }
     } else {
       String bucketKey = reconOMMetadataManager
@@ -248,7 +252,7 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
       if (parentBucketInfo != null) {
         keyInfo.setParentObjectID(parentBucketInfo.getObjectID());
       } else {
-        LOG.info("OmBucketInfo for parent bucket is null");
+        LOG.error("ParentBucketInfo for LegacyNSSummaryTask is null");
       }
     }
   }
