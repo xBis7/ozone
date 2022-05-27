@@ -166,14 +166,28 @@ public final class TestOBSNSSummaryTask {
 
     @Test
     public void testReprocessGetFiles() {
-      Assert.assertEquals(1, nsSummaryForBucket1.getNumOfFiles());
+      //dir1/dir2/file3 is also considered a file in OBS
+      Assert.assertEquals(2, nsSummaryForBucket1.getNumOfFiles());
       Assert.assertEquals(2, nsSummaryForBucket2.getNumOfFiles());
 
-      Assert.assertEquals(KEY_ONE_SIZE, nsSummaryForBucket1.getSizeOfFiles());
+      Assert.assertEquals(KEY_ONE_SIZE + KEY_THREE_SIZE, nsSummaryForBucket1.getSizeOfFiles());
       Assert.assertEquals(KEY_TWO_OLD_SIZE + KEY_FOUR_SIZE,
           nsSummaryForBucket2.getSizeOfFiles());
     }
 
+    /**
+     *        bucket1
+     *        /    \
+     *     file1  dir1
+     *            /
+     *         dir2
+     *          /
+     *        file3
+     * In a legacy bucket we would have a key and a dir.
+     * In an OBS bucket we have two keys(file1, dir1/dir2/file3).
+     * FileSize for bucket1 is different
+     * than the FileSize we would expect for a legacy bucket.
+     */
     @Test
     public void testReprocessFileBucketSize() {
       int[] fileDistBucket1 = nsSummaryForBucket1.getFileSizeBucket();
@@ -182,9 +196,11 @@ public final class TestOBSNSSummaryTask {
       Assert.assertEquals(ReconConstants.NUM_OF_BINS, fileDistBucket2.length);
 
       Assert.assertEquals(1, fileDistBucket1[0]);
-      for (int i = 1; i < ReconConstants.NUM_OF_BINS; ++i) {
+      for (int i = 1; i < (ReconConstants.NUM_OF_BINS-1); ++i) {
         Assert.assertEquals(0, fileDistBucket1[i]);
       }
+      Assert.assertEquals(1, fileDistBucket1[ReconConstants.NUM_OF_BINS-1]);
+
       Assert.assertEquals(1, fileDistBucket2[1]);
       Assert.assertEquals(1, fileDistBucket2[2]);
       for (int i = 0; i < ReconConstants.NUM_OF_BINS; ++i) {
@@ -288,19 +304,19 @@ public final class TestOBSNSSummaryTask {
 
     @Test
     public void testProcessUpdateFileSize() throws IOException {
-      // file 1 is gone, so bucket 1 is empty now
+      // file1 is gone, so bucket1 only contains dir1/dir2/file3
       Assert.assertNotNull(nsSummaryForBucket1);
-      Assert.assertEquals(0, nsSummaryForBucket1.getNumOfFiles());
+      Assert.assertEquals(1, nsSummaryForBucket1.getNumOfFiles());
     }
 
     @Test
     public void testProcessBucket() throws IOException {
-      // file 5 is added under bucket 2, so bucket 2 has 3 keys now
-      // file 2 is updated with new datasize,
-      // so file size dist for bucket 2 should be updated
+      // file5 is added under bucket2, so bucket2 has 3 keys now
+      // file2 is updated with new datasize,
+      // so file size dist for bucket2 should be updated
       Assert.assertNotNull(nsSummaryForBucket2);
       Assert.assertEquals(3, nsSummaryForBucket2.getNumOfFiles());
-      // key 4 + key 5 + updated key 2
+      // key4 + key5 + updated key 2
       Assert.assertEquals(KEY_FOUR_SIZE + KEY_FIVE_SIZE + KEY_TWO_UPDATE_SIZE,
           nsSummaryForBucket2.getSizeOfFiles());
 
