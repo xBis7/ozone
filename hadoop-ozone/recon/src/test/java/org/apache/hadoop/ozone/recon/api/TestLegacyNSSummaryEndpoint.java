@@ -153,16 +153,23 @@ public class TestLegacyNSSummaryEndpoint {
   private static final long CONTAINER_ONE_ID = 1L;
   private static final long CONTAINER_TWO_ID = 2L;
   private static final long CONTAINER_THREE_ID = 3L;
+  private static final long CONTAINER_FOUR_ID = 4L;
+  private static final long CONTAINER_FIVE_ID = 5L;
+  private static final long CONTAINER_SIX_ID = 6L;
 
   // replication factors
   private static final int THREE = 3;
   private static final int TWO = 2;
   private static final int FOUR = 4;
+  private static final int FIVE = 5;
 
   // block lengths
   private static final long BLOCK_ONE_LENGTH = 1000L;
   private static final long BLOCK_TWO_LENGTH = 2000L;
   private static final long BLOCK_THREE_LENGTH = 3000L;
+  private static final long BLOCK_FOUR_LENGTH = 4000L;
+  private static final long BLOCK_FIVE_LENGTH = 5000L;
+  private static final long BLOCK_SIX_LENGTH = 6000L;
 
   // data size in bytes
   private static final long KEY_ONE_SIZE = 500L; // bin 0
@@ -175,6 +182,38 @@ public class TestLegacyNSSummaryEndpoint {
       = THREE * BLOCK_ONE_LENGTH
       + TWO * BLOCK_TWO_LENGTH
       + FOUR * BLOCK_THREE_LENGTH;
+  private static final long MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA
+      = FIVE * BLOCK_FOUR_LENGTH
+      + TWO * BLOCK_FIVE_LENGTH
+      + THREE * BLOCK_SIX_LENGTH;
+
+
+  private static final long DIR1_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long DIR1_DIR2_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long DIR1_DIR2_FILE2_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long DIR1_DIR3_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long DIR1_DIR3_FILE3_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long DIR1_DIR4_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long DIR1_DIR4_FILE6_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+
+  //under dir1 we have 6 keys
+  //under bucket1 we have 7 direct keys
+  private static final long MULTI_BLOCK_TOTAL_SIZE_WITH_REPLICA
+      = DIR1_DIR2_SIZE_WITH_REPLICA + DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
+      + DIR1_DIR3_SIZE_WITH_REPLICA + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
+      + DIR1_DIR4_SIZE_WITH_REPLICA + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA
+      + DIR1_SIZE_WITH_REPLICA
+      + DIR1_DIR2_SIZE_WITH_REPLICA + DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
+      + DIR1_DIR3_SIZE_WITH_REPLICA + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
+      + DIR1_DIR4_SIZE_WITH_REPLICA + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA;
+
   private static final long DIR_ONE_SIZE = 0L;
   private static final long DIR_TWO_SIZE = 0L;
   private static final long DIR_THREE_SIZE = 0L;
@@ -390,6 +429,22 @@ public class TestLegacyNSSummaryEndpoint {
     DUResponse replicaDUResponse = (DUResponse) keyResponse.getEntity();
     Assert.assertEquals(ResponseStatus.OK, replicaDUResponse.getStatus());
     Assert.assertEquals(MULTI_BLOCK_KEY_SIZE_WITH_REPLICA,
+        replicaDUResponse.getSizeWithReplica());
+  }
+
+  /**
+   * Testing calculateDUUnderObject and handleDirectKeys
+   * from LegacyBucketHandler
+   * @throws IOException
+   */
+  @Test
+  public void testDirDataSizeWithReplication() throws IOException {
+    setUpMultiBlockDir1();
+    Response dir1Response = nsSummaryEndpoint.getDiskUsage(DIR_ONE_PATH,
+        false, true);
+    DUResponse replicaDUResponse = (DUResponse) dir1Response.getEntity();
+    Assert.assertEquals(ResponseStatus.OK, replicaDUResponse.getStatus());
+    Assert.assertEquals(MULTI_BLOCK_TOTAL_SIZE_WITH_REPLICA,
         replicaDUResponse.getSizeWithReplica());
   }
 
@@ -651,6 +706,110 @@ public class TestLegacyNSSummaryEndpoint {
   }
 
   /**
+   * Replicate dir1 and all subdirs and keys
+   * to test total directory data size for dir1
+   *                 vol
+   *              /
+   *         bucket1
+   *              \
+   *              dir1
+   *            /   \   \
+   *         dir2  dir3  dir4
+   *          /     \      \
+   *        file2   file3  file6
+   * @throws IOException
+   */
+  private void setUpMultiBlockDir1() throws IOException {
+    List<OmKeyLocationInfo> locationInfoList = new ArrayList<>();
+    BlockID block4 = new BlockID(CONTAINER_FOUR_ID, 0L);
+    BlockID block5 = new BlockID(CONTAINER_FIVE_ID, 0L);
+    BlockID block6 = new BlockID(CONTAINER_SIX_ID, 0L);
+
+    OmKeyLocationInfo location4 = new OmKeyLocationInfo.Builder()
+        .setBlockID(block4)
+        .setLength(BLOCK_FOUR_LENGTH)
+        .build();
+    OmKeyLocationInfo location5 = new OmKeyLocationInfo.Builder()
+        .setBlockID(block5)
+        .setLength(BLOCK_FIVE_LENGTH)
+        .build();
+    OmKeyLocationInfo location6 = new OmKeyLocationInfo.Builder()
+        .setBlockID(block6)
+        .setLength(BLOCK_SIX_LENGTH)
+        .build();
+    locationInfoList.add(location4);
+    locationInfoList.add(location5);
+    locationInfoList.add(location6);
+
+    OmKeyLocationInfoGroup locationInfoGroup =
+        new OmKeyLocationInfoGroup(0L, locationInfoList);
+
+    // add the multi-block dir, subdirs and keys to Recon's OM
+    writeKeyToOm(reconOMMetadataManager,
+        BUCKET_ONE_OBJECT_ID,
+        DIR_ONE_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        (DIR_ONE + OM_KEY_PREFIX),
+        DIR_ONE,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_ONE_OBJECT_ID,
+        DIR_TWO_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        (DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX),
+        DIR_TWO,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_ONE_OBJECT_ID,
+        DIR_THREE_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        (DIR_ONE + OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX),
+        DIR_THREE,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_ONE_OBJECT_ID,
+        DIR_FOUR_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        (DIR_ONE + OM_KEY_PREFIX + DIR_FOUR + OM_KEY_PREFIX),
+        DIR_FOUR,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_TWO_OBJECT_ID,
+        KEY_TWO_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        KEY_TWO,
+        FILE_TWO,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_THREE_OBJECT_ID,
+        KEY_THREE_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        KEY_THREE,
+        FILE_THREE,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_FOUR_OBJECT_ID,
+        KEY_SIX_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        KEY_SIX,
+        FILE_SIX,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+  }
+
+  /**
    * Generate a set of mock container replica with a size of
    * replication factor for container.
    * @param replicationFactor number of replica
@@ -698,6 +857,27 @@ public class TestLegacyNSSummaryEndpoint {
         FOUR, containerID3);
     when(containerManager.getContainerReplicas(containerID3))
         .thenReturn(containerReplicas3);
+
+    // Container 4 is replicated with 5 replica
+    ContainerID containerID4 = new ContainerID(CONTAINER_FOUR_ID);
+    Set<ContainerReplica> containerReplicas4 = generateMockContainerReplicas(
+        FIVE, containerID4);
+    when(containerManager.getContainerReplicas(containerID4))
+        .thenReturn(containerReplicas4);
+
+    // Container 5 is replicated with 2 replica
+    ContainerID containerID5 = new ContainerID(CONTAINER_FIVE_ID);
+    Set<ContainerReplica> containerReplicas5 = generateMockContainerReplicas(
+        TWO, containerID5);
+    when(containerManager.getContainerReplicas(containerID5))
+        .thenReturn(containerReplicas5);
+
+    // Container 6 is replicated with 3 replica
+    ContainerID containerID6 = new ContainerID(CONTAINER_SIX_ID);
+    Set<ContainerReplica> containerReplicas6 = generateMockContainerReplicas(
+        THREE, containerID6);
+    when(containerManager.getContainerReplicas(containerID6))
+        .thenReturn(containerReplicas6);
 
     when(reconSCM.getContainerManager()).thenReturn(containerManager);
     return reconSCM;

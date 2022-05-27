@@ -110,7 +110,7 @@ public class LegacyBucketHandler extends BucketHandler {
 
     if (omBucketInfo.getObjectID() != parentId) {
       String dirName = nsSummary.getDirName();
-      seekPrefix += dirName + OM_KEY_PREFIX;
+      seekPrefix += dirName;
     }
 
     iterator.seek(seekPrefix);
@@ -169,7 +169,7 @@ public class LegacyBucketHandler extends BucketHandler {
 
     if (omBucketInfo.getObjectID() != parentId) {
       String dirName = nsSummary.getDirName();
-      seekPrefix += dirName + OM_KEY_PREFIX;
+      seekPrefix += dirName;
     }
 
     iterator.seek(seekPrefix);
