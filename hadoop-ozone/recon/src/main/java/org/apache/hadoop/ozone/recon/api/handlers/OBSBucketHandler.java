@@ -30,6 +30,7 @@ import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
@@ -190,21 +191,15 @@ public class OBSBucketHandler extends BucketHandler {
     return keyDataSizeWithReplica;
   }
 
-  /**
-   * Given a valid path request for a directory,
-   * return the directory object ID.
-   * @param names parsed path request in a list of names
-   * @return directory object ID
-   */
   @Override
   public long getDirObjectId(String[] names) throws IOException {
     return getDirObjectId(names, names.length);
   }
 
   /**
-   * Given a valid path request and a cutoff length where should be iterated
-   * up to.
-   * return the directory object ID for the object at the cutoff length
+   * In an OBS bucket directories are not stored as keys.
+   * Directories only exist in a key's name prefix.
+   * There are no directory IDs in an OBS bucket.
    * @param names parsed path request in a list of names
    * @param cutoff cannot be larger than the names' length. If equals,
    *               return the directory object id for the whole path
@@ -212,21 +207,48 @@ public class OBSBucketHandler extends BucketHandler {
    */
   @Override
   public long getDirObjectId(String[] names, int cutoff) throws IOException {
-    long dirObjectId = getBucketObjectId(names);
-    StringBuilder bld = new StringBuilder();
-    for (int i = 0; i < cutoff; ++i) {
-      bld.append(OM_KEY_PREFIX)
-          .append(names[i]);
-    }
-    bld.append(OM_KEY_PREFIX);
-    String dirKey = bld.toString();
-    OmKeyInfo dirInfo = getOmMetadataManager()
-        .getKeyTable(getBucketLayout()).getSkipCache(dirKey);
+    return 0;
+  }
 
-    if (dirInfo != null) {
-      dirObjectId = dirInfo.getObjectID();
+  public int getTotalDirCountUnderBucket() throws IOException {
+    Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
+    TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
+        iterator = keyTable.iterator();
+
+    String seekPrefix =
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
+
+    iterator.seek(seekPrefix);
+
+    int totalDirCount = 0;
+
+    ArrayList<String> dirList = new ArrayList<>();
+
+    while (iterator.hasNext()) {
+      Table.KeyValue<String, OmKeyInfo> kv = iterator.next();
+      String dbKey = kv.getKey();
+
+      if (!dbKey.startsWith(seekPrefix)) {
+        break;
+      }
+      OmKeyInfo keyInfo = kv.getValue();
+      if (keyInfo != null) {
+        String key = keyInfo.getKeyName();
+
+        // keyNames.length > 1, then there are dirs
+        // the last element of the array is the key
+        String[] keyNames = key.split(OM_KEY_PREFIX);
+
+        for (int i=0; i<(keyNames.length-1); i++) {
+          if (!dirList.contains(keyNames[i])) {
+            dirList.add(keyNames[i]);
+          }
+        }
+        totalDirCount = dirList.size();
+      }
     }
-    return dirObjectId;
+
+    return totalDirCount;
   }
 
   private static BucketLayout getBucketLayout() {

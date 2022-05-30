@@ -270,16 +270,15 @@ public class TestOBSNSSummaryEndpoint {
     Assert.assertEquals(2, bucketTwoObj.getNumTotalKey());
   }
 
-//  @Test
-//  public void testGetBasicInfoDir() throws Exception {
-//    // Test intermediate directory basics
-//    Response dirOneResponse = nsSummaryEndpoint.getBasicInfo(DIR_ONE_PATH);
-//    NamespaceSummaryResponse dirOneObj =
-//        (NamespaceSummaryResponse) dirOneResponse.getEntity();
-//    Assert.assertEquals(EntityType.DIRECTORY, dirOneObj.getEntityType());
-//    Assert.assertEquals(3, dirOneObj.getNumTotalDir());
-//    Assert.assertEquals(3, dirOneObj.getNumTotalKey());
-//  }
+  @Test
+  public void testGetBasicInfoDirCountUsingPrefix() throws Exception {
+    // Test intermediate directory basics
+    Response dirOneResponse = nsSummaryEndpoint.getBasicInfo(BUCKET_ONE_PATH);
+    NamespaceSummaryResponse buckOneObj =
+        (NamespaceSummaryResponse) dirOneResponse.getEntity();
+    Assert.assertEquals(EntityType.BUCKET, buckOneObj.getEntityType());
+    Assert.assertEquals(4, buckOneObj.getNumTotalDir());
+  }
 
   @Test
   public void testGetBasicInfoNoPath() throws Exception {
@@ -300,10 +299,6 @@ public class TestOBSNSSummaryEndpoint {
     Assert.assertEquals(EntityType.KEY, keyResObj.getEntityType());
   }
 
-  /**
-   * It's not going inside DU in OBSBucketHandler
-   * @throws Exception
-   */
   @Test
   public void testDiskUsageWithReplication() throws Exception {
     setUpMultiBlockKey();
@@ -334,13 +329,6 @@ public class TestOBSNSSummaryEndpoint {
         (QuotaUsageResponse) bucketRes2.getEntity();
     Assert.assertEquals(BUCKET_TWO_QUOTA, quBucketRes2.getQuota());
     Assert.assertEquals(BUCKET_TWO_DATA_SIZE, quBucketRes2.getQuotaUsed());
-
-//    // other level not applicable
-//    Response naResponse1 = nsSummaryEndpoint.getQuotaUsage(DIR_ONE_PATH);
-//    QuotaUsageResponse quotaUsageResponse1 =
-//        (QuotaUsageResponse) naResponse1.getEntity();
-//    Assert.assertEquals(ResponseStatus.TYPE_NOT_APPLICABLE,
-//        quotaUsageResponse1.getResponseCode());
 
     Response naResponse2 = nsSummaryEndpoint.getQuotaUsage(KEY_PATH);
     QuotaUsageResponse quotaUsageResponse2 =
@@ -384,7 +372,7 @@ public class TestOBSNSSummaryEndpoint {
   }
 
   /**
-   * Write directories and keys info into OM DB.
+   * Write keys info into OM DB.
    * @throws Exception
    */
   private void populateOMDB() throws Exception {

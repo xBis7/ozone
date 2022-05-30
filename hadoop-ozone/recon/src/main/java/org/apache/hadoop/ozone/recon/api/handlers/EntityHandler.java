@@ -22,6 +22,7 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.om.OzoneManagerUtils;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -55,6 +56,8 @@ public abstract class EntityHandler {
   private final BucketHandler bucketHandler;
 
   private final OzoneStorageContainerManager reconSCM;
+
+  private static OmBucketInfo omBucketInfo;
 
   private static String normalizedPath;
   private static String[] names;
@@ -122,7 +125,6 @@ public abstract class EntityHandler {
           OzoneStorageContainerManager reconSCM,
           String path) throws IOException {
     BucketHandler bucketHandler;
-    OmBucketInfo omBucketInfo;
 
     normalizedPath = normalizePath(path);
     names = parseRequestPath(normalizedPath);
@@ -308,16 +310,25 @@ public abstract class EntityHandler {
    * @throws IOException ioEx
    */
   protected int getTotalDirCount(long objectId) throws IOException {
-    NSSummary nsSummary = reconNamespaceSummaryManager.getNSSummary(objectId);
-    if (nsSummary == null) {
-      return 0;
+    if (omBucketInfo.getBucketLayout()
+        .equals(BucketLayout.OBJECT_STORE)) {
+      OBSBucketHandler obsBucketHandler =
+          new OBSBucketHandler(reconNamespaceSummaryManager,
+              omMetadataManager, reconSCM, omBucketInfo);
+      return obsBucketHandler.getTotalDirCountUnderBucket();
+    } else {
+      NSSummary nsSummary = reconNamespaceSummaryManager.getNSSummary(objectId);
+      if (nsSummary == null) {
+        return 0;
+      }
+
+      Set<Long> subdirs = nsSummary.getChildDir();
+      int totalCnt = subdirs.size();
+      for (long subdir : subdirs) {
+        totalCnt += getTotalDirCount(subdir);
+      }
+      return totalCnt;
     }
-    Set<Long> subdirs = nsSummary.getChildDir();
-    int totalCnt = subdirs.size();
-    for (long subdir: subdirs) {
-      totalCnt += getTotalDirCount(subdir);
-    }
-    return totalCnt;
   }
 
   /**
