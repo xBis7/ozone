@@ -242,7 +242,7 @@ public class TestOBSNSSummaryEndpoint {
         (NamespaceSummaryResponse) volResponse.getEntity();
     Assert.assertEquals(EntityType.VOLUME, volResponseObj.getEntityType());
     Assert.assertEquals(2, volResponseObj.getNumBucket());
-//    Assert.assertEquals(4, volResponseObj.getNumTotalDir());
+    Assert.assertEquals(4, volResponseObj.getNumTotalDir());
     Assert.assertEquals(6, volResponseObj.getNumTotalKey());
   }
 
@@ -254,7 +254,7 @@ public class TestOBSNSSummaryEndpoint {
     NamespaceSummaryResponse bucketOneObj =
         (NamespaceSummaryResponse) bucketOneResponse.getEntity();
     Assert.assertEquals(EntityType.BUCKET, bucketOneObj.getEntityType());
-//    Assert.assertEquals(4, bucketOneObj.getNumTotalDir());
+    Assert.assertEquals(4, bucketOneObj.getNumTotalDir());
     Assert.assertEquals(4, bucketOneObj.getNumTotalKey());
   }
 
@@ -266,18 +266,8 @@ public class TestOBSNSSummaryEndpoint {
     NamespaceSummaryResponse bucketTwoObj =
         (NamespaceSummaryResponse) bucketTwoResponse.getEntity();
     Assert.assertEquals(EntityType.BUCKET, bucketTwoObj.getEntityType());
-//    Assert.assertEquals(0, bucketTwoObj.getNumTotalDir());
+    Assert.assertEquals(0, bucketTwoObj.getNumTotalDir());
     Assert.assertEquals(2, bucketTwoObj.getNumTotalKey());
-  }
-
-  @Test
-  public void testGetBasicInfoDirCountUsingPrefix() throws Exception {
-    // Test intermediate directory basics
-    Response dirOneResponse = nsSummaryEndpoint.getBasicInfo(BUCKET_ONE_PATH);
-    NamespaceSummaryResponse buckOneObj =
-        (NamespaceSummaryResponse) dirOneResponse.getEntity();
-    Assert.assertEquals(EntityType.BUCKET, buckOneObj.getEntityType());
-    Assert.assertEquals(4, buckOneObj.getNumTotalDir());
   }
 
   @Test

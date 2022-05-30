@@ -210,7 +210,7 @@ public class OBSBucketHandler extends BucketHandler {
     return 0;
   }
 
-  public int getTotalDirCountUnderBucket() throws IOException {
+  public int getTotalDirCountUnderPrefix() throws IOException {
     Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();

@@ -110,6 +110,10 @@ public abstract class EntityHandler {
     return names.clone();
   }
 
+  public void setOmBucketInfo(OmBucketInfo BucketInfo) {
+    omBucketInfo = BucketInfo;
+  }
+
   /**
    * Return the entity handler of client's request, check path existence.
    * If path doesn't exist, return UnknownEntityHandler
@@ -315,7 +319,7 @@ public abstract class EntityHandler {
       OBSBucketHandler obsBucketHandler =
           new OBSBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);
-      return obsBucketHandler.getTotalDirCountUnderBucket();
+      return obsBucketHandler.getTotalDirCountUnderPrefix();
     } else {
       NSSummary nsSummary = reconNamespaceSummaryManager.getNSSummary(objectId);
       if (nsSummary == null) {
