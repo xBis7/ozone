@@ -188,36 +188,30 @@ public class TestLegacyNSSummaryEndpoint {
       + THREE * BLOCK_SIX_LENGTH;
 
 
-  private static final long DIR1_SIZE_WITH_REPLICA =
-      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-  private static final long DIR1_DIR2_SIZE_WITH_REPLICA =
-      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+//  private static final long DIR1_SIZE_WITH_REPLICA =
+//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+//  private static final long DIR1_DIR2_SIZE_WITH_REPLICA =
+//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
   private static final long DIR1_DIR2_FILE2_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-  private static final long DIR1_DIR3_SIZE_WITH_REPLICA =
-      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+//  private static final long DIR1_DIR3_SIZE_WITH_REPLICA =
+//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
   private static final long DIR1_DIR3_FILE3_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-  private static final long DIR1_DIR4_SIZE_WITH_REPLICA =
-      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+//  private static final long DIR1_DIR4_SIZE_WITH_REPLICA =
+//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
   private static final long DIR1_DIR4_FILE6_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
 
-  //under dir1 we have 6 keys
-  //under bucket1 we have 7 direct keys
+  //calculateDUUnderObject 3 keys
+  //handleDirectKeys 3 keys
   private static final long MULTI_BLOCK_TOTAL_SIZE_WITH_REPLICA
-      = DIR1_DIR2_SIZE_WITH_REPLICA + DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
-      + DIR1_DIR3_SIZE_WITH_REPLICA + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
-      + DIR1_DIR4_SIZE_WITH_REPLICA + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA
-      + DIR1_SIZE_WITH_REPLICA
-      + DIR1_DIR2_SIZE_WITH_REPLICA + DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
-      + DIR1_DIR3_SIZE_WITH_REPLICA + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
-      + DIR1_DIR4_SIZE_WITH_REPLICA + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA;
-
-  private static final long DIR_ONE_SIZE = 0L;
-  private static final long DIR_TWO_SIZE = 0L;
-  private static final long DIR_THREE_SIZE = 0L;
-  private static final long DIR_FOUR_SIZE = 0L;
+      = DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
+      + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
+      + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA
+      + DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
+      + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
+      + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA;
 
   // quota in bytes
   private static final long VOL_QUOTA = 2 * OzoneConsts.MB;
@@ -529,7 +523,6 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_ONE,
         DIR_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
-        DIR_ONE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         (DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX),
@@ -538,7 +531,6 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_TWO,
         DIR_TWO_OBJECT_ID,
         DIR_ONE_OBJECT_ID,
-        DIR_TWO_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         (DIR_ONE + OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX),
@@ -547,7 +539,6 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_THREE,
         DIR_THREE_OBJECT_ID,
         DIR_ONE_OBJECT_ID,
-        DIR_THREE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         (DIR_ONE + OM_KEY_PREFIX + DIR_FOUR + OM_KEY_PREFIX),
@@ -556,7 +547,6 @@ public class TestLegacyNSSummaryEndpoint {
         DIR_FOUR,
         DIR_FOUR_OBJECT_ID,
         DIR_ONE_OBJECT_ID,
-        DIR_FOUR_SIZE,
         getBucketLayout());
 
     // write all 6 keys

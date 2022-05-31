@@ -111,12 +111,6 @@ public final class TestLegacyNSSummaryTask {
   private static final long KEY_FOUR_SIZE = 2050L;
   private static final long KEY_FIVE_SIZE = 100L;
 
-  private static final long DIR_ONE_SIZE = 0L;
-  private static final long DIR_TWO_SIZE = 0L;
-  private static final long DIR_THREE_SIZE = 0L;
-  private static final long DIR_FOUR_SIZE = 0L;
-  private static final long DIR_FIVE_SIZE = 0L;
-
   private static Set<Long> bucketOneAns = new HashSet<>();
   private static Set<Long> bucketTwoAns = new HashSet<>();
   private static Set<Long> dirOneAns = new HashSet<>();
@@ -357,9 +351,9 @@ public final class TestLegacyNSSummaryTask {
           OM_KEY_PREFIX + VOL +
           OM_KEY_PREFIX + BUCKET_ONE +
           OM_KEY_PREFIX + DIR_FOUR + OM_KEY_PREFIX;
-      OmKeyInfo omDirPutValue1 = buildOmKeyInfo(VOL, BUCKET_ONE,
+      OmKeyInfo omDirPutValue1 = buildOmDirKeyInfo(VOL, BUCKET_ONE,
           (DIR_FOUR + OM_KEY_PREFIX), DIR_FOUR,
-          DIR_FOUR_OBJECT_ID, DIR_FOUR_SIZE);
+          DIR_FOUR_OBJECT_ID);
       keyEvent4 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey1)
@@ -373,9 +367,9 @@ public final class TestLegacyNSSummaryTask {
           OM_KEY_PREFIX + VOL +
           OM_KEY_PREFIX + BUCKET_TWO +
           OM_KEY_PREFIX + DIR_FIVE + OM_KEY_PREFIX;
-      OmKeyInfo omDirPutValue2 = buildOmKeyInfo(VOL, BUCKET_TWO,
+      OmKeyInfo omDirPutValue2 = buildOmDirKeyInfo(VOL, BUCKET_TWO,
           (DIR_FIVE + OM_KEY_PREFIX), DIR_FIVE,
-          DIR_FIVE_OBJECT_ID, DIR_FIVE_SIZE);
+          DIR_FIVE_OBJECT_ID);
       keyEvent5 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirPutKey2)
@@ -406,12 +400,12 @@ public final class TestLegacyNSSummaryTask {
           OM_KEY_PREFIX + VOL +
           OM_KEY_PREFIX + BUCKET_ONE +
           OM_KEY_PREFIX + DIR_ONE + OM_KEY_PREFIX;
-      OmKeyInfo omDirOldValue = buildOmKeyInfo(VOL, BUCKET_ONE,
+      OmKeyInfo omDirOldValue = buildOmDirKeyInfo(VOL, BUCKET_ONE,
           (DIR_ONE + OM_KEY_PREFIX), DIR_ONE,
-          DIR_ONE_OBJECT_ID, DIR_ONE_SIZE);
-      OmKeyInfo omDirUpdateValue = buildOmKeyInfo(VOL, BUCKET_ONE,
+          DIR_ONE_OBJECT_ID);
+      OmKeyInfo omDirUpdateValue = buildOmDirKeyInfo(VOL, BUCKET_ONE,
           (DIR_ONE_RENAME + OM_KEY_PREFIX), DIR_ONE_RENAME,
-          DIR_ONE_OBJECT_ID, DIR_ONE_SIZE);
+          DIR_ONE_OBJECT_ID);
       keyEvent7 = new OMDBUpdateEvent.
           OMUpdateEventBuilder<String, OmKeyInfo>()
           .setKey(omDirUpdateKey)
@@ -530,6 +524,33 @@ public final class TestLegacyNSSummaryTask {
   }
 
   /**
+   * Build a directory as key info for put/update action.
+   * We don't need to set size.
+   * @param volume volume name
+   * @param bucket bucket name
+   * @param key key name
+   * @param fileName file name
+   * @param objectID object ID
+   * @return the KeyInfo
+   */
+  private static OmKeyInfo buildOmDirKeyInfo(String volume,
+                                          String bucket,
+                                          String key,
+                                          String fileName,
+                                          long objectID) {
+    return new OmKeyInfo.Builder()
+        .setBucketName(bucket)
+        .setVolumeName(volume)
+        .setKeyName(key)
+        .setFileName(fileName)
+        .setReplicationConfig(
+            StandaloneReplicationConfig.getInstance(
+                HddsProtos.ReplicationFactor.ONE))
+        .setObjectID(objectID)
+        .build();
+  }
+
+  /**
    * Build a key info for delete action.
    * @param volume volume name
    * @param bucket bucket name
@@ -604,7 +625,6 @@ public final class TestLegacyNSSummaryTask {
         DIR_ONE,
         DIR_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
-        DIR_ONE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         (DIR_ONE + OM_KEY_PREFIX +
@@ -614,7 +634,6 @@ public final class TestLegacyNSSummaryTask {
         DIR_TWO,
         DIR_TWO_OBJECT_ID,
         DIR_ONE_OBJECT_ID,
-        DIR_TWO_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         KEY_THREE,
@@ -633,7 +652,6 @@ public final class TestLegacyNSSummaryTask {
         DIR_TWO,
         DIR_THREE_OBJECT_ID,
         DIR_ONE_OBJECT_ID,
-        DIR_THREE_SIZE,
         getBucketLayout());
   }
 
