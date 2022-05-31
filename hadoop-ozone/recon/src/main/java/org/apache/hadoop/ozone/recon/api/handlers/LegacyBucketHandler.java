@@ -91,7 +91,7 @@ public class LegacyBucketHandler extends BucketHandler {
   // Make use of RocksDB's order to seek to the prefix and avoid full iteration
   @Override
   public long calculateDUUnderObject(long parentId)
-          throws IOException {
+      throws IOException {
     Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
@@ -172,6 +172,7 @@ public class LegacyBucketHandler extends BucketHandler {
       String dirName = nsSummary.getDirName();
       seekPrefix += dirName;
     }
+    String[] seekKeys = seekPrefix.split(OM_KEY_PREFIX);
 
     iterator.seek(seekPrefix);
 
@@ -184,6 +185,15 @@ public class LegacyBucketHandler extends BucketHandler {
       if (!dbKey.startsWith(seekPrefix)) {
         break;
       }
+
+      String[] keys = dbKey.split(OM_KEY_PREFIX);
+
+      // we are at the next level and
+      // we are not iterating direct keys
+      if (keys.length - seekKeys.length > 1) {
+        break;
+      }
+
       OmKeyInfo keyInfo = kv.getValue();
       if (keyInfo != null &&
           !keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {

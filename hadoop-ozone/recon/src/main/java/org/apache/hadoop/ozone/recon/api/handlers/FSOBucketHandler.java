@@ -104,7 +104,8 @@ public class FSOBucketHandler extends BucketHandler {
   // FileTable's key is in the format of "parentId/fileName"
   // Make use of RocksDB's order to seek to the prefix and avoid full iteration
   @Override
-  public long calculateDUUnderObject(long parentId) throws IOException {
+  public long calculateDUUnderObject(long parentId)
+      throws IOException {
     Table keyTable = getOmMetadataManager().getFileTable();
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>

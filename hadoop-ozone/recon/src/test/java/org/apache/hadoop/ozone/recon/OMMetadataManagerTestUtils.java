@@ -220,6 +220,7 @@ public final class OMMetadataManagerTestUtils {
                     .build());
   }
 
+  @SuppressWarnings("checkstyle:parameternumber")
   /**
    * Write a directory as key on OM instance.
    * We don't need to set size.

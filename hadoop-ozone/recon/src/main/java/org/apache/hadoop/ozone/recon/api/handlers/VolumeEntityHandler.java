@@ -59,7 +59,7 @@ public class VolumeEntityHandler extends EntityHandler {
     // iterate all buckets to collect the total object count.
     for (OmBucketInfo bucket : buckets) {
       long bucketObjectId = bucket.getObjectID();
-      setOmBucketInfo(bucket);
+      EntityHandler.setOmBucketInfo(bucket);
       totalDir += getTotalDirCount(bucketObjectId);
       totalKey += getTotalKeyCount(bucketObjectId);
     }

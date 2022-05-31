@@ -110,8 +110,8 @@ public abstract class EntityHandler {
     return names.clone();
   }
 
-  public void setOmBucketInfo(OmBucketInfo BucketInfo) {
-    omBucketInfo = BucketInfo;
+  public static void setOmBucketInfo(OmBucketInfo bucketInfo) {
+    omBucketInfo = bucketInfo;
   }
 
   /**
@@ -271,7 +271,7 @@ public abstract class EntityHandler {
       Table.KeyValue<String, OmBucketInfo> kv = iterator.next();
 
       String key = kv.getKey();
-      OmBucketInfo omBucketInfo = kv.getValue();
+      omBucketInfo = kv.getValue();
 
       if (omBucketInfo != null) {
         // We should return only the keys, whose keys match with the seek prefix

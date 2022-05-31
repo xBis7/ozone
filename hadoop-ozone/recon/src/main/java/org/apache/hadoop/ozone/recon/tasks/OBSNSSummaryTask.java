@@ -35,7 +35,6 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.Iterator;
 
-import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
 
 /**
@@ -91,11 +90,8 @@ public class OBSNSSummaryTask extends NSSummaryTask {
 
         if (updatedKeyInfo != null) {
           setKeyParentID(updatedKeyInfo);
-        } else {
-          LOG.error("UpdatedKeyInfo for OBSNSSummaryTask is null");
-        }
 
-        switch (action) {
+          switch (action) {
           case PUT:
             writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
             break;
@@ -119,6 +115,9 @@ public class OBSNSSummaryTask extends NSSummaryTask {
           default:
             LOG.debug("Skipping DB update event : {}",
                 omdbUpdateEvent.getAction());
+          }
+        } else {
+          LOG.error("UpdatedKeyInfo for OBSNSSummaryTask is null");
         }
       } catch (IOException ioEx) {
         LOG.error("Unable to process Namespace Summary data in Recon DB. ",
@@ -147,13 +146,11 @@ public class OBSNSSummaryTask extends NSSummaryTask {
 
         if (keyInfo != null) {
           setKeyParentID(keyInfo);
+          writeOmKeyInfoOnNamespaceDB(keyInfo);
         } else {
           LOG.error("Reprocess KeyInfo for OBSNSSummaryTask is null");
         }
-
-        writeOmKeyInfoOnNamespaceDB(keyInfo);
       }
-
     } catch (IOException ioEx) {
       LOG.error("Unable to reprocess Namespace Summary data in Recon DB. ",
           ioEx);
@@ -165,7 +162,7 @@ public class OBSNSSummaryTask extends NSSummaryTask {
   }
 
   /**
-   * For an OBS key the parent object will always be the bucket
+   * For an OBS key the parent object will always be the bucket.
    * @param keyInfo
    * @throws IOException
    */

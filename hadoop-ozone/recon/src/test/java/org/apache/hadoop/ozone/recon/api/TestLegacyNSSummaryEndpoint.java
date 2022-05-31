@@ -187,29 +187,15 @@ public class TestLegacyNSSummaryEndpoint {
       + TWO * BLOCK_FIVE_LENGTH
       + THREE * BLOCK_SIX_LENGTH;
 
-
-//  private static final long DIR1_SIZE_WITH_REPLICA =
-//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-//  private static final long DIR1_DIR2_SIZE_WITH_REPLICA =
-//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
   private static final long DIR1_DIR2_FILE2_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-//  private static final long DIR1_DIR3_SIZE_WITH_REPLICA =
-//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
   private static final long DIR1_DIR3_FILE3_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-//  private static final long DIR1_DIR4_SIZE_WITH_REPLICA =
-//      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
   private static final long DIR1_DIR4_FILE6_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
 
-  //calculateDUUnderObject 3 keys
-  //handleDirectKeys 3 keys
   private static final long MULTI_BLOCK_TOTAL_SIZE_WITH_REPLICA
       = DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
-      + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
-      + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA
-      + DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
       + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
       + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA;
 
@@ -427,13 +413,14 @@ public class TestLegacyNSSummaryEndpoint {
   }
 
   /**
-   * Testing calculateDUUnderObject and handleDirectKeys
-   * from LegacyBucketHandler
+   * When calculating DU under dir1
+   * there are 3 keys, file2, file3, file6.
+   * There are no direct keys.
    * @throws IOException
    */
   @Test
-  public void testDirDataSizeWithReplication() throws IOException {
-    setUpMultiBlockDir1();
+  public void testDataSizeUnderDirWithReplication() throws IOException {
+    setUpMultiBlockKeysUnderDir1();
     Response dir1Response = nsSummaryEndpoint.getDiskUsage(DIR_ONE_PATH,
         false, true);
     DUResponse replicaDUResponse = (DUResponse) dir1Response.getEntity();
@@ -696,9 +683,8 @@ public class TestLegacyNSSummaryEndpoint {
   }
 
   /**
-   * Replicate dir1 and all subdirs and keys
-   * to test total directory data size for dir1
-   *                 vol
+   * Replicate all keys under dir1.
+   *              vol
    *              /
    *         bucket1
    *              \
@@ -709,7 +695,7 @@ public class TestLegacyNSSummaryEndpoint {
    *        file2   file3  file6
    * @throws IOException
    */
-  private void setUpMultiBlockDir1() throws IOException {
+  private void setUpMultiBlockKeysUnderDir1() throws IOException {
     List<OmKeyLocationInfo> locationInfoList = new ArrayList<>();
     BlockID block4 = new BlockID(CONTAINER_FOUR_ID, 0L);
     BlockID block5 = new BlockID(CONTAINER_FIVE_ID, 0L);
@@ -734,43 +720,7 @@ public class TestLegacyNSSummaryEndpoint {
     OmKeyLocationInfoGroup locationInfoGroup =
         new OmKeyLocationInfoGroup(0L, locationInfoList);
 
-    // add the multi-block dir, subdirs and keys to Recon's OM
-    writeKeyToOm(reconOMMetadataManager,
-        BUCKET_ONE_OBJECT_ID,
-        DIR_ONE_OBJECT_ID,
-        VOL, BUCKET_ONE,
-        (DIR_ONE + OM_KEY_PREFIX),
-        DIR_ONE,
-        Collections.singletonList(locationInfoGroup),
-        getBucketLayout());
-
-    writeKeyToOm(reconOMMetadataManager,
-        DIR_ONE_OBJECT_ID,
-        DIR_TWO_OBJECT_ID,
-        VOL, BUCKET_ONE,
-        (DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX),
-        DIR_TWO,
-        Collections.singletonList(locationInfoGroup),
-        getBucketLayout());
-
-    writeKeyToOm(reconOMMetadataManager,
-        DIR_ONE_OBJECT_ID,
-        DIR_THREE_OBJECT_ID,
-        VOL, BUCKET_ONE,
-        (DIR_ONE + OM_KEY_PREFIX + DIR_THREE + OM_KEY_PREFIX),
-        DIR_THREE,
-        Collections.singletonList(locationInfoGroup),
-        getBucketLayout());
-
-    writeKeyToOm(reconOMMetadataManager,
-        DIR_ONE_OBJECT_ID,
-        DIR_FOUR_OBJECT_ID,
-        VOL, BUCKET_ONE,
-        (DIR_ONE + OM_KEY_PREFIX + DIR_FOUR + OM_KEY_PREFIX),
-        DIR_FOUR,
-        Collections.singletonList(locationInfoGroup),
-        getBucketLayout());
-
+    // add the multi-block keys to Recon's OM
     writeKeyToOm(reconOMMetadataManager,
         DIR_TWO_OBJECT_ID,
         KEY_TWO_OBJECT_ID,

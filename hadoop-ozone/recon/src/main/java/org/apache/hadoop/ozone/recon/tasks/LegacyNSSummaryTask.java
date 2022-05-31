@@ -92,79 +92,79 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
         if (updatedKeyInfo != null) {
           setKeyParentID(updatedKeyInfo);
+
+          if (!updatedKeyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+            switch (action) {
+            case PUT:
+              writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+              break;
+
+            case DELETE:
+              deleteOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+              break;
+
+            case UPDATE:
+              if (oldKeyInfo != null) {
+                // delete first, then put
+                setKeyParentID(oldKeyInfo);
+                deleteOmKeyInfoOnNamespaceDB(oldKeyInfo);
+              } else {
+                LOG.warn("Update event does not have the old keyInfo for {}.",
+                    updatedKey);
+              }
+              writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
+              break;
+
+            default:
+              LOG.debug("Skipping DB update event : {}",
+                  omdbUpdateEvent.getAction());
+            }
+          } else {
+            OmDirectoryInfo updatedDirectoryInfo =
+                new OmDirectoryInfo.Builder()
+                    .setName(updatedKeyInfo.getKeyName())
+                    .setObjectID(updatedKeyInfo.getObjectID())
+                    .setParentObjectID(updatedKeyInfo.getParentObjectID())
+                    .build();
+
+            OmDirectoryInfo oldDirectoryInfo = null;
+
+            if (oldKeyInfo != null) {
+              oldDirectoryInfo =
+                  new OmDirectoryInfo.Builder()
+                      .setName(oldKeyInfo.getKeyName())
+                      .setObjectID(oldKeyInfo.getObjectID())
+                      .setParentObjectID(oldKeyInfo.getParentObjectID())
+                      .build();
+            }
+
+            switch (action) {
+            case PUT:
+              writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+              break;
+
+            case DELETE:
+              deleteOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+              break;
+
+            case UPDATE:
+              if (oldDirectoryInfo != null) {
+                // delete first, then put
+                deleteOmDirectoryInfoOnNamespaceDB(oldDirectoryInfo);
+              } else {
+                LOG.warn("Update event does not have the old dirInfo for {}.",
+                    updatedKey);
+              }
+              writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
+              break;
+
+            default:
+              LOG.debug("Skipping DB update event : {}",
+                  omdbUpdateEvent.getAction());
+            }
+          }
         } else {
           LOG.error("UpdatedKeyInfo for LegacyNSSummaryTask is null");
-        }
-
-        if (!updatedKeyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
-          switch (action) {
-          case PUT:
-            writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-            break;
-
-          case DELETE:
-            deleteOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-            break;
-
-          case UPDATE:
-            if (oldKeyInfo != null) {
-              // delete first, then put
-              setKeyParentID(oldKeyInfo);
-              deleteOmKeyInfoOnNamespaceDB(oldKeyInfo);
-            } else {
-              LOG.warn("Update event does not have the old keyInfo for {}.",
-                  updatedKey);
-            }
-            writeOmKeyInfoOnNamespaceDB(updatedKeyInfo);
-            break;
-
-          default:
-            LOG.debug("Skipping DB update event : {}",
-                omdbUpdateEvent.getAction());
-          }
-        } else {
-          OmDirectoryInfo updatedDirectoryInfo =
-              new OmDirectoryInfo.Builder()
-                  .setName(updatedKeyInfo.getKeyName())
-                  .setObjectID(updatedKeyInfo.getObjectID())
-                  .setParentObjectID(updatedKeyInfo.getParentObjectID())
-                  .build();
-
-          OmDirectoryInfo oldDirectoryInfo = null;
-
-          if (oldKeyInfo != null) {
-            oldDirectoryInfo =
-                new OmDirectoryInfo.Builder()
-                    .setName(oldKeyInfo.getKeyName())
-                    .setObjectID(oldKeyInfo.getObjectID())
-                    .setParentObjectID(oldKeyInfo.getParentObjectID())
-                    .build();
-          }
-
-          switch (action) {
-          case PUT:
-            writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
-            break;
-
-          case DELETE:
-            deleteOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
-            break;
-
-          case UPDATE:
-            if (oldDirectoryInfo != null) {
-              // delete first, then put
-              deleteOmDirectoryInfoOnNamespaceDB(oldDirectoryInfo);
-            } else {
-              LOG.warn("Update event does not have the old dirInfo for {}.",
-                  updatedKey);
-            }
-            writeOmDirectoryInfoOnNamespaceDB(updatedDirectoryInfo);
-            break;
-
-          default:
-            LOG.debug("Skipping DB update event : {}",
-                omdbUpdateEvent.getAction());
-          }
         }
       } catch (IOException ioEx) {
         LOG.error("Unable to process Namespace Summary data in Recon DB. ",
@@ -193,23 +193,22 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
 
         if (keyInfo != null) {
           setKeyParentID(keyInfo);
+
+          if (keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+            OmDirectoryInfo directoryInfo =
+                new OmDirectoryInfo.Builder()
+                   .setName(keyInfo.getKeyName())
+                   .setObjectID(keyInfo.getObjectID())
+                   .setParentObjectID(keyInfo.getParentObjectID())
+                   .build();
+            writeOmDirectoryInfoOnNamespaceDB(directoryInfo);
+          } else {
+            writeOmKeyInfoOnNamespaceDB(keyInfo);
+          }
         } else {
           LOG.error("Reprocess KeyInfo for LegacyNSSummaryTask is null");
         }
-
-        if (keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
-          OmDirectoryInfo directoryInfo =
-              new OmDirectoryInfo.Builder()
-                 .setName(keyInfo.getKeyName())
-                 .setObjectID(keyInfo.getObjectID())
-                 .setParentObjectID(keyInfo.getParentObjectID())
-                 .build();
-          writeOmDirectoryInfoOnNamespaceDB(directoryInfo);
-        } else {
-          writeOmKeyInfoOnNamespaceDB(keyInfo);
-        }
       }
-
     } catch (IOException ioEx) {
       LOG.error("Unable to reprocess Namespace Summary data in Recon DB. ",
           ioEx);

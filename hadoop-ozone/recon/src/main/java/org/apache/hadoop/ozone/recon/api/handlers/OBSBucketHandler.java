@@ -200,10 +200,7 @@ public class OBSBucketHandler extends BucketHandler {
    * In an OBS bucket directories are not stored as keys.
    * Directories only exist in a key's name prefix.
    * There are no directory IDs in an OBS bucket.
-   * @param names parsed path request in a list of names
-   * @param cutoff cannot be larger than the names' length. If equals,
-   *               return the directory object id for the whole path
-   * @return directory object ID
+   * @return 0
    */
   @Override
   public long getDirObjectId(String[] names, int cutoff) throws IOException {
@@ -239,7 +236,7 @@ public class OBSBucketHandler extends BucketHandler {
         // the last element of the array is the key
         String[] keyNames = key.split(OM_KEY_PREFIX);
 
-        for (int i=0; i<(keyNames.length-1); i++) {
+        for (int i = 0; i < (keyNames.length - 1); i++) {
           if (!dirList.contains(keyNames[i])) {
             dirList.add(keyNames[i]);
           }

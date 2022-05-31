@@ -43,8 +43,6 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
@@ -170,7 +168,8 @@ public final class TestOBSNSSummaryTask {
       Assert.assertEquals(2, nsSummaryForBucket1.getNumOfFiles());
       Assert.assertEquals(2, nsSummaryForBucket2.getNumOfFiles());
 
-      Assert.assertEquals(KEY_ONE_SIZE + KEY_THREE_SIZE, nsSummaryForBucket1.getSizeOfFiles());
+      Assert.assertEquals(KEY_ONE_SIZE + KEY_THREE_SIZE,
+          nsSummaryForBucket1.getSizeOfFiles());
       Assert.assertEquals(KEY_TWO_OLD_SIZE + KEY_FOUR_SIZE,
           nsSummaryForBucket2.getSizeOfFiles());
     }
@@ -196,10 +195,11 @@ public final class TestOBSNSSummaryTask {
       Assert.assertEquals(ReconConstants.NUM_OF_BINS, fileDistBucket2.length);
 
       Assert.assertEquals(1, fileDistBucket1[0]);
-      for (int i = 1; i < (ReconConstants.NUM_OF_BINS-1); ++i) {
+      for (int i = 1; i < (ReconConstants.NUM_OF_BINS - 1); ++i) {
         Assert.assertEquals(0, fileDistBucket1[i]);
       }
-      Assert.assertEquals(1, fileDistBucket1[ReconConstants.NUM_OF_BINS-1]);
+      Assert.assertEquals(1,
+          fileDistBucket1[ReconConstants.NUM_OF_BINS - 1]);
 
       Assert.assertEquals(1, fileDistBucket2[1]);
       Assert.assertEquals(1, fileDistBucket2[2]);
@@ -294,10 +294,10 @@ public final class TestOBSNSSummaryTask {
 
       OMUpdateEventBatch omUpdateEventBatch = new OMUpdateEventBatch(
           new ArrayList<OMDBUpdateEvent>() {{
-            add(keyEvent1);
-            add(keyEvent2);
-            add(keyEvent3);
-          }});
+              add(keyEvent1);
+              add(keyEvent2);
+              add(keyEvent3);
+            }});
 
       return omUpdateEventBatch;
     }
