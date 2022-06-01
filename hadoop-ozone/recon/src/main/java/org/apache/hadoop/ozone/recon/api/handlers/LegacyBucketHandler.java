@@ -124,8 +124,11 @@ public class LegacyBucketHandler extends BucketHandler {
         break;
       }
       OmKeyInfo keyInfo = kv.getValue();
-      if (keyInfo != null &&
-          !keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+      if (keyInfo != null) {
+        // skip directory markers, just include directKeys
+        if (keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+          continue;
+        }
         totalDU += getKeySizeWithReplication(keyInfo);
       }
     }
@@ -188,15 +191,18 @@ public class LegacyBucketHandler extends BucketHandler {
 
       String[] keys = dbKey.split(OM_KEY_PREFIX);
 
-      // we are at the next level and
-      // we are not iterating direct keys
+      // iteration moved to the next level
+      // and not handling direct keys
       if (keys.length - seekKeys.length > 1) {
         break;
       }
 
       OmKeyInfo keyInfo = kv.getValue();
-      if (keyInfo != null &&
-          !keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+      if (keyInfo != null) {
+        // skip directory markers, just include directKeys
+        if (keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+          continue;
+        }
         DUResponse.DiskUsage diskUsage = new DUResponse.DiskUsage();
         String subpath = buildSubpath(normalizedPath,
             keyInfo.getFileName());
