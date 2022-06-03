@@ -14,7 +14,7 @@
 # limitations under the License.
 
 *** Settings ***
-Documentation       Smoke test for Recon Namespace Summary Endpoint for Legacy buckets.
+Documentation       Smoke test for Recon Namespace Summary Endpoint for OBS buckets.
 Library             OperatingSystem
 Library             String
 Library             BuiltIn
@@ -26,11 +26,10 @@ ${ENDPOINT_URL}             http://recon:9888
 ${API_ENDPOINT_URL}         ${ENDPOINT_URL}/api/v1
 ${ADMIN_NAMESPACE_URL}      ${API_ENDPOINT_URL}/namespace
 ${SUMMARY_URL}              ${ADMIN_NAMESPACE_URL}/summary
-${DISK_USAGE_URL}           ${ADMIN_NAMESPACE_URL}/du
 ${QUOTA_USAGE_URL}          ${ADMIN_NAMESPACE_URL}/quota
 ${FILE_SIZE_DIST_URL}       ${ADMIN_NAMESPACE_URL}/dist
-${volume}                   volume2
-${bucket}                   bucket2
+${volume}                   volume3
+${bucket}                   bucket3
 
 *** Keywords ***
 Create volume
@@ -111,19 +110,6 @@ Check Summary api access
     kinit as recon admin
     Check http return code      ${SUMMARY_URL}?path=/       200
 
-Check Disk Usage api access
-    Execute    kdestroy
-    Check http return code      ${DISK_USAGE_URL}?path=/       401
-
-    kinit as non admin
-    Check http return code      ${DISK_USAGE_URL}?path=/       403
-
-    kinit as ozone admin
-    Check http return code      ${DISK_USAGE_URL}?path=/       200
-
-    kinit as recon admin
-    Check http return code      ${DISK_USAGE_URL}?path=/       200
-
 Check Quota Usage api access
     Execute    kdestroy
     Check http return code      ${QUOTA_USAGE_URL}?path=/       401
@@ -171,17 +157,9 @@ Check Recon Namespace Summary Key
                         Should contain      ${result}       OK
                         Should contain      ${result}       KEY
 
-Check Recon Namespace Summary Directory
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}/dir1/dir2/
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       DIRECTORY
-
-Check Recon Namespace Disk Usage
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${DISK_USAGE_URL}?path=/${volume}/${bucket}&files=true&replica=true
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       \"sizeWithReplica\"
-                        Should contain      ${result}       \"subPathCount\"
-                        Should contain      ${result}       \"subPaths\"
+Check Recon Namespace Summary Directory (Path not found)
+    ${result} =         Execute                             curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}/dir1/dir2
+                        Should contain      ${result}       PATH_NOT_FOUND
 
 Check Recon Namespace Quota Usage
     ${result} =         Execute                             curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}
