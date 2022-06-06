@@ -39,7 +39,7 @@ Create volume
                     Sleep               10s
 
 Create bucket
-    ${result} =     Execute             ozone sh bucket create -l LEGACY /${volume}/${bucket}
+    ${result} =     Execute             ozone sh bucket create -l FILE_SYSTEM_OPTIMIZED /${volume}/${bucket}
                     Should not contain  ${result}       Failed
                     Sleep               20s
 
