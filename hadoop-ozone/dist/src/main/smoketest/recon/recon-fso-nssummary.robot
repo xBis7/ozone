@@ -41,7 +41,7 @@ Create volume
 Create bucket
     ${result} =     Execute             ozone sh bucket create -l FILE_SYSTEM_OPTIMIZED /${volume}/${bucket}
                     Should not contain  ${result}       Failed
-                    Sleep               20s
+                    Sleep               30s
 
 Create keys
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/file1 README.md
@@ -54,7 +54,7 @@ Create keys
                     Should not contain  ${result}       Failed
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/dir1/dir4/file5 LICENSE.txt
                     Should not contain  ${result}       Failed
-                    Sleep               20s
+                    Sleep               60s
 
 Kinit as non admin
     Run Keyword if      '${SECURITY_ENABLED}' == 'true'     Kinit test user     scm     scm.keytab
@@ -183,12 +183,17 @@ Check Recon Namespace Disk Usage
                         Should contain      ${result}       \"subPathCount\"
                         Should contain      ${result}       \"subPaths\"
 
-Check Recon Namespace Quota Usage
+Check Recon Namespace Volume Quota Usage
     ${result} =         Execute                             curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}
                         Should contain      ${result}       OK
                         Should contain      ${result}       \"used\"
 
-Check Recon Namespace File Size Distribution
+Check Recon Namespace Bucket Quota Usage
+    ${result} =         Execute                             curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}/${bucket}
+                        Should contain      ${result}       OK
+                        Should contain      ${result}       \"used\"
+
+Check Recon Namespace File Size Distribution Root
     ${result} =         Execute                             curl --negotiate -u : -LSs ${FILE_SIZE_DIST_URL}?path=/
                         Should contain      ${result}       OK
                         Should contain      ${result}       \"dist\"

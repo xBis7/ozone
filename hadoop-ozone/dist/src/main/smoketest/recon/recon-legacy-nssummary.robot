@@ -187,12 +187,17 @@ Check Recon Namespace Disk Usage
                         Should contain      ${result}       \"subPathCount\"
                         Should contain      ${result}       \"subPaths\"
 
-Check Recon Namespace Quota Usage
+Check Recon Namespace Volume Quota Usage
     ${result} =         Execute                             curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}
                         Should contain      ${result}       OK
                         Should contain      ${result}       \"used\"
 
-Check Recon Namespace File Size Distribution
+Check Recon Namespace Bucket Quota Usage
+    ${result} =         Execute                             curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}/${bucket}
+                        Should contain      ${result}       OK
+                        Should contain      ${result}       \"used\"
+
+Check Recon Namespace File Size Distribution Root
     ${result} =         Execute                             curl --negotiate -u : -LSs ${FILE_SIZE_DIST_URL}?path=/
                         Should contain      ${result}       OK
                         Should contain      ${result}       \"dist\"
