@@ -36,12 +36,10 @@ ${bucket}                   bucket1
 Create volume
     ${result} =     Execute             ozone sh volume create /${volume}
                     Should not contain  ${result}       Failed
-                    Sleep               10s
 
 Create bucket
     ${result} =     Execute             ozone sh bucket create -l FILE_SYSTEM_OPTIMIZED /${volume}/${bucket}
                     Should not contain  ${result}       Failed
-                    Sleep               30s
 
 Create keys
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/file1 README.md
@@ -54,7 +52,6 @@ Create keys
                     Should not contain  ${result}       Failed
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/dir1/dir4/file5 LICENSE.txt
                     Should not contain  ${result}       Failed
-                    Sleep               60s
 
 Kinit as non admin
     Run Keyword if      '${SECURITY_ENABLED}' == 'true'     Kinit test user     scm     scm.keytab
@@ -152,48 +149,102 @@ Check File Size Distribution api access
 
 
 Check Recon Namespace Summary Root
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       ROOT
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       ROOT
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace Summary Volume
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       VOLUME
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       VOLUME
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace Summary Bucket
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       BUCKET
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       BUCKET
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace Summary Key
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}/file1
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       KEY
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}/file1
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       KEY
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace Summary Directory
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}/dir1/dir2
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       DIRECTORY
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${SUMMARY_URL}?path=/${volume}/${bucket}/dir1/dir2
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       DIRECTORY
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace Disk Usage
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${DISK_USAGE_URL}?path=/${volume}/${bucket}&files=true&replica=true
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       \"sizeWithReplica\"
-                        Should contain      ${result}       \"subPathCount\"
-                        Should contain      ${result}       \"subPaths\"
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${DISK_USAGE_URL}?path=/${volume}/${bucket}&files=true&replica=true
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       \"sizeWithReplica\"
+                            Should contain      ${result}       \"subPathCount\"
+                            Should contain      ${result}       \"subPaths\"
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace Volume Quota Usage
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       \"used\"
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       \"used\"
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace Bucket Quota Usage
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}/${bucket}
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       \"used\"
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${QUOTA_USAGE_URL}?path=/${volume}/${bucket}
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       \"used\"
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
 
 Check Recon Namespace File Size Distribution Root
-    ${result} =         Execute                             curl --negotiate -u : -LSs ${FILE_SIZE_DIST_URL}?path=/
-                        Should contain      ${result}       OK
-                        Should contain      ${result}       \"dist\"
+    FOR    ${index}    IN RANGE    9999999
+           ${result} =         Execute                              curl --negotiate -u : -LSs ${FILE_SIZE_DIST_URL}?path=/
+                ${success} =    Run Keyword And Return Status       Should contain      ${result}       OK
+                    IF      ${success}
+                            Should contain      ${result}       \"dist\"
+                            Exit For Loop
+                    END
+    END
+    [Timeout]           2 minute
