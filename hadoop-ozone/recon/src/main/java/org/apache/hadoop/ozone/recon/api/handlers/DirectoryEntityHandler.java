@@ -100,12 +100,13 @@ public class DirectoryEntityHandler extends EntityHandler {
       OmBucketInfo omBucketInfo = OzoneManagerUtils
           .getOmBucketInfo(getOmMetadataManager(), names[0], names[1]);
 
-      // if dirName > 1, then we need to skip the first dir since
-      // it has been added in the subpath from the BucketEntityHandler
+      // In a Legacy bucket all the subDirs are part of the KeyName.
+      // The first subDir get appended to the subPath from the
+      // parent object EntityHandler, which is the BucketEntityHandler.
+      // Skip the first subDir, to avoid adding it twice.
       StringBuilder bld = new StringBuilder();
       if (!omBucketInfo.getBucketLayout()
-          .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)
-          && subdirName.length() > 1) {
+          .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
         String[] subDirs = subdirName.split(OM_KEY_PREFIX);
         for (int i = 1; i < subDirs.length; i++) {
           bld.append(subDirs[i])

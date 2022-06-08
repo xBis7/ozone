@@ -221,7 +221,6 @@ public class LegacyBucketHandler extends BucketHandler {
         }
       }
     }
-
     return keyDataSizeWithReplica;
   }
 

@@ -196,7 +196,6 @@ public class FSOBucketHandler extends BucketHandler {
         }
       }
     }
-
     return keyDataSizeWithReplica;
   }
 

@@ -121,7 +121,6 @@ public class OBSBucketHandler extends BucketHandler {
         totalDU += getKeySizeWithReplication(keyInfo);
       }
     }
-
     return totalDU;
   }
 
@@ -187,7 +186,6 @@ public class OBSBucketHandler extends BucketHandler {
         }
       }
     }
-
     return keyDataSizeWithReplica;
   }
 
@@ -244,7 +242,6 @@ public class OBSBucketHandler extends BucketHandler {
         totalDirCount = dirList.size();
       }
     }
-
     return totalDirCount;
   }
 
