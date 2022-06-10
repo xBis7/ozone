@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.recon.api.handlers;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
+import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -43,10 +44,12 @@ import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 public class FSOBucketHandler extends BucketHandler {
 
   public FSOBucketHandler(
-          ReconNamespaceSummaryManager reconNamespaceSummaryManager,
-          ReconOMMetadataManager omMetadataManager,
-          OzoneStorageContainerManager reconSCM) {
-    super(reconNamespaceSummaryManager, omMetadataManager, reconSCM);
+      ReconNamespaceSummaryManager reconNamespaceSummaryManager,
+      ReconOMMetadataManager omMetadataManager,
+      OzoneStorageContainerManager reconSCM,
+      OmBucketInfo omBucketInfo) {
+    super(reconNamespaceSummaryManager, omMetadataManager,
+        reconSCM, omBucketInfo);
   }
 
   /**

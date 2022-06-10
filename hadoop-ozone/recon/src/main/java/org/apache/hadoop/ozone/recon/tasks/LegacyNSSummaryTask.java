@@ -195,9 +195,14 @@ public class LegacyNSSummaryTask extends NSSummaryTask {
           setKeyParentID(keyInfo);
 
           if (keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+
+            String[] names = keyInfo.getKeyName().split(OM_KEY_PREFIX);
+
+            String keyName = names[names.length - 1] + OM_KEY_PREFIX;
+
             OmDirectoryInfo directoryInfo =
                 new OmDirectoryInfo.Builder()
-                   .setName(keyInfo.getKeyName())
+                   .setName(keyName)
                    .setObjectID(keyInfo.getObjectID())
                    .setParentObjectID(keyInfo.getParentObjectID())
                    .build();

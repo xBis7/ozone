@@ -18,9 +18,6 @@
 package org.apache.hadoop.ozone.recon.api.handlers;
 
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
-import org.apache.hadoop.ozone.om.OzoneManagerUtils;
-import org.apache.hadoop.ozone.om.helpers.BucketLayout;
-import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.api.types.ResponseStatus;
@@ -36,8 +33,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
-import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
 /**
  * Class for handling directory entity type.
@@ -93,33 +88,9 @@ public class DirectoryEntityHandler extends EntityHandler {
       NSSummary subdirNSSummary =
               getReconNamespaceSummaryManager().getNSSummary(subdirObjectId);
       String subdirName = subdirNSSummary.getDirName();
-
-      // find OmBucketInfo to get the BucketLayout
-      String[] names = getNames();
-
-      OmBucketInfo omBucketInfo = OzoneManagerUtils
-          .getOmBucketInfo(getOmMetadataManager(), names[0], names[1]);
-
-      // In a Legacy bucket all the subDirs are part of the KeyName.
-      // The first subDir get appended to the subPath from the
-      // parent object EntityHandler, which is the BucketEntityHandler.
-      // Skip the first subDir, to avoid adding it twice.
-      StringBuilder bld = new StringBuilder();
-      if (!omBucketInfo.getBucketLayout()
-          .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
-        String[] subDirs = subdirName.split(OM_KEY_PREFIX);
-        for (int i = 1; i < subDirs.length; i++) {
-          bld.append(subDirs[i])
-              .append(OM_KEY_PREFIX);
-        }
-      } else {
-        bld.append(subdirName);
-      }
-      String subDir = bld.toString();
-
       // build the path for subdirectory
       String subpath = BucketHandler
-              .buildSubpath(getNormalizedPath(), subDir);
+              .buildSubpath(getNormalizedPath(), subdirName);
       DUResponse.DiskUsage diskUsage = new DUResponse.DiskUsage();
       // reformat the response
       diskUsage.setSubpath(subpath);

@@ -20,7 +20,6 @@ package org.apache.hadoop.ozone.recon.api.handlers;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
-import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -39,8 +38,6 @@ import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
  * Class for handling Legacy buckets.
  */
 public class LegacyBucketHandler extends BucketHandler {
-
-  private OmBucketInfo omBucketInfo;
   private String vol;
   private String bucket;
 
@@ -49,10 +46,10 @@ public class LegacyBucketHandler extends BucketHandler {
       ReconOMMetadataManager omMetadataManager,
       OzoneStorageContainerManager reconSCM,
       OmBucketInfo bucketInfo) {
-    super(reconNamespaceSummaryManager, omMetadataManager, reconSCM);
-    this.omBucketInfo = bucketInfo;
-    this.vol = omBucketInfo.getVolumeName();
-    this.bucket = omBucketInfo.getBucketName();
+    super(reconNamespaceSummaryManager, omMetadataManager,
+        reconSCM, bucketInfo);
+    this.vol = bucketInfo.getVolumeName();
+    this.bucket = bucketInfo.getBucketName();
   }
 
   /**
@@ -108,7 +105,7 @@ public class LegacyBucketHandler extends BucketHandler {
       return 0;
     }
 
-    if (omBucketInfo.getObjectID() != parentId) {
+    if (getOmBucketInfo().getObjectID() != parentId) {
       String dirName = nsSummary.getDirName();
       seekPrefix += dirName;
     }
@@ -171,7 +168,7 @@ public class LegacyBucketHandler extends BucketHandler {
       return 0;
     }
 
-    if (omBucketInfo.getObjectID() != parentId) {
+    if (getOmBucketInfo().getObjectID() != parentId) {
       String dirName = nsSummary.getDirName();
       seekPrefix += dirName;
     }
@@ -261,9 +258,5 @@ public class LegacyBucketHandler extends BucketHandler {
       dirObjectId = dirInfo.getObjectID();
     }
     return dirObjectId;
-  }
-
-  private static BucketLayout getBucketLayout() {
-    return BucketLayout.LEGACY;
   }
 }

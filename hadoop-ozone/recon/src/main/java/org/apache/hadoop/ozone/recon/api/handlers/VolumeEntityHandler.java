@@ -40,9 +40,10 @@ public class VolumeEntityHandler extends EntityHandler {
   public VolumeEntityHandler(
       ReconNamespaceSummaryManager reconNamespaceSummaryManager,
       ReconOMMetadataManager omMetadataManager,
-      OzoneStorageContainerManager reconSCM) {
+      OzoneStorageContainerManager reconSCM,
+      BucketHandler bucketHandler) {
     super(reconNamespaceSummaryManager, omMetadataManager,
-            reconSCM, null);
+            reconSCM, bucketHandler);
   }
 
   @Override
@@ -59,7 +60,7 @@ public class VolumeEntityHandler extends EntityHandler {
     // iterate all buckets to collect the total object count.
     for (OmBucketInfo bucket : buckets) {
       long bucketObjectId = bucket.getObjectID();
-      EntityHandler.setOmBucketInfo(bucket);
+      getBucketHandler().setOmBucketInfo(bucket);
       totalDir += getTotalDirCount(bucketObjectId);
       totalKey += getTotalKeyCount(bucketObjectId);
     }

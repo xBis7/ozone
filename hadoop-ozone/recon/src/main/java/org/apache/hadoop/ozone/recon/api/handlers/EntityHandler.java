@@ -57,8 +57,6 @@ public abstract class EntityHandler {
 
   private final OzoneStorageContainerManager reconSCM;
 
-  private static OmBucketInfo omBucketInfo;
-
   private static String normalizedPath;
   private static String[] names;
 
@@ -110,10 +108,6 @@ public abstract class EntityHandler {
     return names.clone();
   }
 
-  public static void setOmBucketInfo(OmBucketInfo bucketInfo) {
-    omBucketInfo = bucketInfo;
-  }
-
   /**
    * Return the entity handler of client's request, check path existence.
    * If path doesn't exist, return UnknownEntityHandler
@@ -152,7 +146,7 @@ public abstract class EntityHandler {
     } else if (names.length == 2) { // bucket level check
       String volName = names[0];
       String bucketName = names[1];
-      omBucketInfo = OzoneManagerUtils
+      OmBucketInfo omBucketInfo = OzoneManagerUtils
           .getOmBucketInfo(omMetadataManager, volName, bucketName);
       if (omBucketInfo == null) {
         return EntityType.UNKNOWN.create(reconNamespaceSummaryManager,
@@ -170,7 +164,7 @@ public abstract class EntityHandler {
     } else { // length > 3. check dir or key existence
       String volName = names[0];
       String bucketName = names[1];
-      omBucketInfo = OzoneManagerUtils
+      OmBucketInfo omBucketInfo = OzoneManagerUtils
           .getOmBucketInfo(omMetadataManager, volName, bucketName);
       if (omBucketInfo == null) {
         return EntityType.UNKNOWN.create(reconNamespaceSummaryManager,
@@ -271,7 +265,7 @@ public abstract class EntityHandler {
       Table.KeyValue<String, OmBucketInfo> kv = iterator.next();
 
       String key = kv.getKey();
-      omBucketInfo = kv.getValue();
+      OmBucketInfo omBucketInfo = kv.getValue();
 
       if (omBucketInfo != null) {
         // We should return only the keys, whose keys match with the seek prefix
@@ -314,8 +308,9 @@ public abstract class EntityHandler {
    * @throws IOException ioEx
    */
   protected int getTotalDirCount(long objectId) throws IOException {
-    if (omBucketInfo.getBucketLayout()
+    if (bucketHandler.getBucketLayout()
         .equals(BucketLayout.OBJECT_STORE)) {
+      OmBucketInfo omBucketInfo = bucketHandler.getOmBucketInfo();
       OBSBucketHandler obsBucketHandler =
           new OBSBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);

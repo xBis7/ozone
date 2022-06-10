@@ -20,7 +20,6 @@ package org.apache.hadoop.ozone.recon.api.handlers;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
-import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -40,7 +39,6 @@ import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
  */
 public class OBSBucketHandler extends BucketHandler {
 
-  private OmBucketInfo omBucketInfo;
   private String vol;
   private String bucket;
 
@@ -49,10 +47,10 @@ public class OBSBucketHandler extends BucketHandler {
       ReconOMMetadataManager omMetadataManager,
       OzoneStorageContainerManager reconSCM,
       OmBucketInfo bucketInfo) {
-    super(reconNamespaceSummaryManager, omMetadataManager, reconSCM);
-    this.omBucketInfo = bucketInfo;
-    this.vol = omBucketInfo.getVolumeName();
-    this.bucket = omBucketInfo.getBucketName();
+    super(reconNamespaceSummaryManager, omMetadataManager,
+        reconSCM, bucketInfo);
+    this.vol = bucketInfo.getVolumeName();
+    this.bucket = bucketInfo.getBucketName();
   }
 
   /**
@@ -244,9 +242,4 @@ public class OBSBucketHandler extends BucketHandler {
     }
     return totalDirCount;
   }
-
-  private static BucketLayout getBucketLayout() {
-    return BucketLayout.OBJECT_STORE;
-  }
-
 }

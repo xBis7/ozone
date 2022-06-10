@@ -55,13 +55,17 @@ public abstract class BucketHandler {
 
   private final ContainerManager containerManager;
 
+  private OmBucketInfo omBucketInfo;
+
   public BucketHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
           ReconOMMetadataManager omMetadataManager,
-          OzoneStorageContainerManager reconSCM) {
+          OzoneStorageContainerManager reconSCM,
+          OmBucketInfo omBucketInfo) {
     this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
     this.omMetadataManager = omMetadataManager;
     this.containerManager = reconSCM.getContainerManager();
+    this.omBucketInfo = omBucketInfo;
   }
 
   public ReconOMMetadataManager getOmMetadataManager() {
@@ -92,6 +96,18 @@ public abstract class BucketHandler {
 
   public abstract long getDirObjectId(String[] names, int cutoff)
           throws IOException;
+
+  public void setOmBucketInfo(OmBucketInfo omBucketInfo) {
+    this.omBucketInfo = omBucketInfo;
+  }
+
+  public OmBucketInfo getOmBucketInfo() {
+    return omBucketInfo;
+  }
+
+  public BucketLayout getBucketLayout() {
+    return omBucketInfo.getBucketLayout();
+  }
 
   /**
    *
@@ -171,7 +187,7 @@ public abstract class BucketHandler {
     if (bucketInfo.getBucketLayout()
             .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
       return new FSOBucketHandler(reconNamespaceSummaryManager,
-              omMetadataManager, reconSCM);
+              omMetadataManager, reconSCM, bucketInfo);
     } else if (bucketInfo.getBucketLayout()
         .equals(BucketLayout.LEGACY)) {
       return new LegacyBucketHandler(reconNamespaceSummaryManager,

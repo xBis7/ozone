@@ -257,7 +257,7 @@ public final class TestLegacyNSSummaryTask {
       Assert.assertEquals(DIR_ONE + OM_KEY_PREFIX,
           nsSummaryInDir1.getDirName());
       Assert.assertEquals(
-          DIR_ONE + OM_KEY_PREFIX + DIR_TWO + OM_KEY_PREFIX,
+          DIR_TWO + OM_KEY_PREFIX,
           nsSummaryInDir2.getDirName());
     }
   }

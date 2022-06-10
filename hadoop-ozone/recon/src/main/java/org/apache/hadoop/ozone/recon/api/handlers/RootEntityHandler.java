@@ -40,9 +40,10 @@ public class RootEntityHandler extends EntityHandler {
   public RootEntityHandler(
       ReconNamespaceSummaryManager reconNamespaceSummaryManager,
       ReconOMMetadataManager omMetadataManager,
-      OzoneStorageContainerManager reconSCM) {
+      OzoneStorageContainerManager reconSCM,
+      BucketHandler bucketHandler) {
     super(reconNamespaceSummaryManager, omMetadataManager,
-            reconSCM, null);
+            reconSCM, bucketHandler);
   }
 
   @Override
@@ -58,7 +59,7 @@ public class RootEntityHandler extends EntityHandler {
     long totalNumKey = 0L;
     for (OmBucketInfo bucket : allBuckets) {
       long bucketObjectId = bucket.getObjectID();
-      EntityHandler.setOmBucketInfo(bucket);
+      getBucketHandler().setOmBucketInfo(bucket);
       totalNumDir += getTotalDirCount(bucketObjectId);
       totalNumKey += getTotalKeyCount(bucketObjectId);
     }
