@@ -59,7 +59,7 @@ public class RootEntityHandler extends EntityHandler {
     long totalNumKey = 0L;
     for (OmBucketInfo bucket : allBuckets) {
       long bucketObjectId = bucket.getObjectID();
-      getBucketHandler().setOmBucketInfo(bucket);
+      initBucketHandler(bucket);
       totalNumDir += getTotalDirCount(bucketObjectId);
       totalNumKey += getTotalKeyCount(bucketObjectId);
     }

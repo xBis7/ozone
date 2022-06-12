@@ -53,7 +53,7 @@ public abstract class EntityHandler {
 
   private final ReconOMMetadataManager omMetadataManager;
 
-  private final BucketHandler bucketHandler;
+  private BucketHandler bucketHandler;
 
   private final OzoneStorageContainerManager reconSCM;
 
@@ -100,6 +100,11 @@ public abstract class EntityHandler {
     return bucketHandler;
   }
 
+  public void initBucketHandler(OmBucketInfo omBucketInfo) {
+    bucketHandler = BucketHandler.getBucketHandler(
+        getReconNamespaceSummaryManager(),getOmMetadataManager(),
+        getReconSCM(), omBucketInfo);
+  }
   public String getNormalizedPath() {
     return normalizedPath;
   }

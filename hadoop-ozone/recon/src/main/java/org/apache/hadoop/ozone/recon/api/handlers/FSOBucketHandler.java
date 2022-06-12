@@ -46,10 +46,9 @@ public class FSOBucketHandler extends BucketHandler {
   public FSOBucketHandler(
       ReconNamespaceSummaryManager reconNamespaceSummaryManager,
       ReconOMMetadataManager omMetadataManager,
-      OzoneStorageContainerManager reconSCM,
-      OmBucketInfo omBucketInfo) {
+      OzoneStorageContainerManager reconSCM) {
     super(reconNamespaceSummaryManager, omMetadataManager,
-        reconSCM, omBucketInfo);
+        reconSCM);
   }
 
   /**

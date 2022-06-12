@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.recon.api.handlers;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -27,6 +28,7 @@ import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
+import org.eclipse.jetty.io.ByteBufferPool;
 
 import java.io.IOException;
 import java.util.List;
@@ -38,8 +40,10 @@ import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
  * Class for handling Legacy buckets.
  */
 public class LegacyBucketHandler extends BucketHandler {
+
   private String vol;
   private String bucket;
+  private OmBucketInfo omBucketInfo;
 
   public LegacyBucketHandler(
       ReconNamespaceSummaryManager reconNamespaceSummaryManager,
@@ -47,9 +51,10 @@ public class LegacyBucketHandler extends BucketHandler {
       OzoneStorageContainerManager reconSCM,
       OmBucketInfo bucketInfo) {
     super(reconNamespaceSummaryManager, omMetadataManager,
-        reconSCM, bucketInfo);
-    this.vol = bucketInfo.getVolumeName();
-    this.bucket = bucketInfo.getBucketName();
+        reconSCM);
+    this.omBucketInfo = bucketInfo;
+    this.vol = omBucketInfo.getVolumeName();
+    this.bucket = omBucketInfo.getBucketName();
   }
 
   /**
@@ -105,7 +110,7 @@ public class LegacyBucketHandler extends BucketHandler {
       return 0;
     }
 
-    if (getOmBucketInfo().getObjectID() != parentId) {
+    if (omBucketInfo.getObjectID() != parentId) {
       String dirName = nsSummary.getDirName();
       seekPrefix += dirName;
     }
@@ -168,7 +173,7 @@ public class LegacyBucketHandler extends BucketHandler {
       return 0;
     }
 
-    if (getOmBucketInfo().getObjectID() != parentId) {
+    if (omBucketInfo.getObjectID() != parentId) {
       String dirName = nsSummary.getDirName();
       seekPrefix += dirName;
     }
@@ -258,5 +263,9 @@ public class LegacyBucketHandler extends BucketHandler {
       dirObjectId = dirInfo.getObjectID();
     }
     return dirObjectId;
+  }
+
+  public BucketLayout getBucketLayout() {
+    return BucketLayout.LEGACY;
   }
 }
