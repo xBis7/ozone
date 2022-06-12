@@ -315,7 +315,7 @@ public abstract class EntityHandler {
   protected int getTotalDirCount(long objectId) throws IOException {
     if (bucketHandler.getBucketLayout()
         .equals(BucketLayout.OBJECT_STORE)) {
-      OmBucketInfo omBucketInfo = bucketHandler.getOmBucketInfo();
+      OmBucketInfo omBucketInfo = BucketHandler.omBucketInfo;
       OBSBucketHandler obsBucketHandler =
           new OBSBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, omBucketInfo);

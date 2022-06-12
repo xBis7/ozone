@@ -28,7 +28,6 @@ import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.api.types.NSSummary;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
-import org.eclipse.jetty.io.ByteBufferPool;
 
 import java.io.IOException;
 import java.util.List;
@@ -265,6 +264,7 @@ public class LegacyBucketHandler extends BucketHandler {
     return dirObjectId;
   }
 
+  @Override
   public BucketLayout getBucketLayout() {
     return BucketLayout.LEGACY;
   }

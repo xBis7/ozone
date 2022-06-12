@@ -246,6 +246,7 @@ public class OBSBucketHandler extends BucketHandler {
     return totalDirCount;
   }
 
+  @Override
   public BucketLayout getBucketLayout() {
     return BucketLayout.OBJECT_STORE;
   }

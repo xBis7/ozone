@@ -95,13 +95,7 @@ public abstract class BucketHandler {
   public abstract long getDirObjectId(String[] names, int cutoff)
           throws IOException;
 
-  public OmBucketInfo getOmBucketInfo() {
-    return omBucketInfo;
-  }
-
-  public BucketLayout getBucketLayout() {
-    return omBucketInfo.getBucketLayout();
-  }
+  public abstract BucketLayout getBucketLayout();
 
   /**
    *
