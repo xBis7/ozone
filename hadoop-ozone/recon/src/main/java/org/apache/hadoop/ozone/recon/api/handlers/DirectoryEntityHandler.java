@@ -98,6 +98,7 @@ public class DirectoryEntityHandler extends EntityHandler {
       dirDataSize += dataSize;
 
       if (withReplica) {
+        BucketHandler.parentDirPath = getNormalizedPath();
         long subdirDU = getBucketHandler()
                 .calculateDUUnderObject(subdirObjectId);
         diskUsage.setSizeWithReplica(subdirDU);

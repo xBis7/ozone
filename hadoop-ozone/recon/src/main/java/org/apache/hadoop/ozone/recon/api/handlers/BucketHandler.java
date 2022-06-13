@@ -57,6 +57,8 @@ public abstract class BucketHandler {
 
   public static OmBucketInfo omBucketInfo;
 
+  public static String parentDirPath;
+
   public BucketHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
           ReconOMMetadataManager omMetadataManager,
