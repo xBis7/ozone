@@ -66,43 +66,8 @@ public class KeyEntityHandler extends EntityHandler {
     // DU for key doesn't have subpaths
     duResponse.setCount(0);
     String[] names = getNames();
-    // The object ID for the directory that the key is directly in
-    long parentObjectId = getBucketHandler().getDirObjectId(names,
-            names.length - 1);
+    OmKeyInfo keyInfo = getBucketHandler().getKeyInfo(names);
 
-    String volName = names[0];
-    String bucketName = names[1];
-    String fileName = names[names.length - 1];
-
-    OmBucketInfo omBucketInfo = OzoneManagerUtils
-        .getOmBucketInfo(getOmMetadataManager(), volName, bucketName);
-    OmKeyInfo keyInfo;
-    if (omBucketInfo.getBucketLayout()
-        .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
-      String ozoneKey = getOmMetadataManager()
-          .getOzonePathKey(parentObjectId, fileName);
-      keyInfo = getOmMetadataManager()
-          .getFileTable().getSkipCache(ozoneKey);
-    } else if (omBucketInfo.getBucketLayout()
-        .equals(BucketLayout.LEGACY)) {
-      StringBuilder bld = new StringBuilder();
-      for (int i = 0; i < names.length; i++) {
-        bld.append(OM_KEY_PREFIX)
-            .append(names[i]);
-      }
-      String ozoneKey = bld.toString();
-      keyInfo = getOmMetadataManager()
-          .getKeyTable(BucketLayout.LEGACY).get(ozoneKey);
-    } else {    //not done
-      StringBuilder bld = new StringBuilder();
-      for (int i = 0; i < names.length; i++) {
-        bld.append(OM_KEY_PREFIX)
-            .append(names[i]);
-      }
-      String ozoneKey = bld.toString();
-      keyInfo = getOmMetadataManager()
-          .getKeyTable(BucketLayout.OBJECT_STORE).get(ozoneKey);
-    }
     duResponse.setSize(keyInfo.getDataSize());
     if (withReplica) {
       long keySizeWithReplica = getBucketHandler()

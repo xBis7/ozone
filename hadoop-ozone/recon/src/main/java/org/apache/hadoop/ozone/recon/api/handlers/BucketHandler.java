@@ -53,9 +53,9 @@ public abstract class BucketHandler {
 
   private final ReconOMMetadataManager omMetadataManager;
 
-  private final ContainerManager containerManager;
+  private final OzoneStorageContainerManager reconSCM;
 
-  public static OmBucketInfo omBucketInfo;
+  private final ContainerManager containerManager;
 
   public static String parentDirPath;
 
@@ -65,6 +65,7 @@ public abstract class BucketHandler {
           OzoneStorageContainerManager reconSCM) {
     this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
     this.omMetadataManager = omMetadataManager;
+    this.reconSCM = reconSCM;
     this.containerManager = reconSCM.getContainerManager();
   }
 
@@ -78,6 +79,10 @@ public abstract class BucketHandler {
 
   public ContainerManager getContainerManager() {
     return containerManager;
+  }
+
+  public OzoneStorageContainerManager getReconSCM() {
+    return reconSCM;
   }
 
   public abstract EntityType determineKeyPath(String keyName,
@@ -98,6 +103,12 @@ public abstract class BucketHandler {
           throws IOException;
 
   public abstract BucketLayout getBucketLayout();
+
+  public abstract int getTotalDirCount(long objectId)
+      throws IOException;
+
+  public abstract OmKeyInfo getKeyInfo(String[] names)
+      throws IOException;
 
   /**
    *
@@ -173,7 +184,6 @@ public abstract class BucketHandler {
                 ReconOMMetadataManager omMetadataManager,
                 OzoneStorageContainerManager reconSCM,
                 OmBucketInfo bucketInfo) {
-    omBucketInfo = bucketInfo;
 
     if (bucketInfo.getBucketLayout()
             .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {

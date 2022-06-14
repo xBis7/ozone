@@ -253,4 +253,32 @@ public class LegacyBucketHandler extends BucketHandler {
   public BucketLayout getBucketLayout() {
     return BucketLayout.LEGACY;
   }
+
+  @Override
+  public int getTotalDirCount(long objectId) throws IOException {
+    NSSummary nsSummary = getReconNamespaceSummaryManager().getNSSummary(objectId);
+    if (nsSummary == null) {
+      return 0;
+    }
+
+    Set<Long> subdirs = nsSummary.getChildDir();
+    int totalCnt = subdirs.size();
+    for (long subdir : subdirs) {
+      totalCnt += getTotalDirCount(subdir);
+    }
+    return totalCnt;
+  }
+
+  @Override
+  public OmKeyInfo getKeyInfo(String[] names) throws IOException {
+    StringBuilder bld = new StringBuilder();
+    for (int i = 0; i < names.length; i++) {
+      bld.append(OM_KEY_PREFIX)
+          .append(names[i]);
+    }
+    String ozoneKey = bld.toString();
+    OmKeyInfo keyInfo = getOmMetadataManager()
+        .getKeyTable(BucketLayout.LEGACY).get(ozoneKey);
+    return keyInfo;
+  }
 }

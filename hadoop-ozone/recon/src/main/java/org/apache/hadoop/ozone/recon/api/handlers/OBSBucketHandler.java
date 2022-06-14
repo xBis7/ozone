@@ -250,4 +250,25 @@ public class OBSBucketHandler extends BucketHandler {
   public BucketLayout getBucketLayout() {
     return BucketLayout.OBJECT_STORE;
   }
+
+  @Override
+  public int getTotalDirCount(long objectId) throws IOException {
+    OBSBucketHandler obsBucketHandler =
+        new OBSBucketHandler(getReconNamespaceSummaryManager(),
+            getOmMetadataManager(), getReconSCM(), omBucketInfo);
+    return obsBucketHandler.getTotalDirCountUnderPrefix();
+  }
+
+  @Override
+  public OmKeyInfo getKeyInfo(String[] names) throws IOException {
+    StringBuilder bld = new StringBuilder();
+    for (int i = 0; i < names.length; i++) {
+      bld.append(OM_KEY_PREFIX)
+          .append(names[i]);
+    }
+    String ozoneKey = bld.toString();
+    OmKeyInfo keyInfo = getOmMetadataManager()
+        .getKeyTable(BucketLayout.OBJECT_STORE).get(ozoneKey);
+    return keyInfo;
+  }
 }

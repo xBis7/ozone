@@ -313,26 +313,8 @@ public abstract class EntityHandler {
    * @throws IOException ioEx
    */
   protected int getTotalDirCount(long objectId) throws IOException {
-    if (bucketHandler.getBucketLayout()
-        .equals(BucketLayout.OBJECT_STORE)) {
-      OmBucketInfo omBucketInfo = BucketHandler.omBucketInfo;
-      OBSBucketHandler obsBucketHandler =
-          new OBSBucketHandler(reconNamespaceSummaryManager,
-              omMetadataManager, reconSCM, omBucketInfo);
-      return obsBucketHandler.getTotalDirCountUnderPrefix();
-    } else {
-      NSSummary nsSummary = reconNamespaceSummaryManager.getNSSummary(objectId);
-      if (nsSummary == null) {
-        return 0;
-      }
-
-      Set<Long> subdirs = nsSummary.getChildDir();
-      int totalCnt = subdirs.size();
-      for (long subdir : subdirs) {
-        totalCnt += getTotalDirCount(subdir);
-      }
-      return totalCnt;
-    }
+    int totalCnt = bucketHandler.getTotalDirCount(objectId);
+    return totalCnt;
   }
 
   /**

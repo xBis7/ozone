@@ -239,4 +239,32 @@ public class FSOBucketHandler extends BucketHandler {
   public BucketLayout getBucketLayout() {
     return BucketLayout.FILE_SYSTEM_OPTIMIZED;
   }
+
+  @Override
+  public int getTotalDirCount(long objectId) throws IOException {
+    NSSummary nsSummary = getReconNamespaceSummaryManager().getNSSummary(objectId);
+    if (nsSummary == null) {
+      return 0;
+    }
+
+    Set<Long> subdirs = nsSummary.getChildDir();
+    int totalCnt = subdirs.size();
+    for (long subdir : subdirs) {
+      totalCnt += getTotalDirCount(subdir);
+    }
+    return totalCnt;
+  }
+
+  @Override
+  public OmKeyInfo getKeyInfo(String[] names) throws IOException {
+    // The object ID for the directory that the key is directly in
+    long parentObjectId = getDirObjectId(names,
+        names.length - 1);
+    String fileName = names[names.length - 1];
+    String ozoneKey = getOmMetadataManager()
+        .getOzonePathKey(parentObjectId, fileName);
+    OmKeyInfo keyInfo = getOmMetadataManager()
+        .getFileTable().getSkipCache(ozoneKey);
+    return keyInfo;
+  }
 }
