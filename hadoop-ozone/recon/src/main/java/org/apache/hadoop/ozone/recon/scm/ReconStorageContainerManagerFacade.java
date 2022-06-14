@@ -21,7 +21,6 @@ package org.apache.hadoop.ozone.recon.scm;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,8 +37,7 @@ import org.apache.hadoop.hdds.scm.container.ContainerActionsHandler;
 import org.apache.hadoop.hdds.scm.container.ContainerManager;
 import org.apache.hadoop.hdds.scm.container.ContainerReportHandler;
 import org.apache.hadoop.hdds.scm.container.IncrementalContainerReportHandler;
-import org.apache.hadoop.hdds.scm.container.replication.ContainerReplicaPendingOps;
-import org.apache.hadoop.hdds.scm.container.replication.ReplicationManager;
+import org.apache.hadoop.hdds.scm.container.ReplicationManager;
 import org.apache.hadoop.hdds.scm.container.balancer.ContainerBalancer;
 import org.apache.hadoop.hdds.scm.container.placement.algorithms.ContainerPlacementPolicyFactory;
 import org.apache.hadoop.hdds.scm.container.placement.algorithms.SCMContainerPlacementMetrics;
@@ -73,7 +71,6 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.Table.KeyValue;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.io.IOUtils;
-import org.apache.hadoop.ozone.common.MonotonicClock;
 import org.apache.hadoop.ozone.recon.ReconServerConfigKeys;
 import org.apache.hadoop.ozone.recon.ReconUtils;
 import org.apache.hadoop.ozone.recon.fsck.ContainerHealthTask;
@@ -86,7 +83,6 @@ import static org.apache.hadoop.hdds.recon.ReconConfigKeys.RECON_SCM_CONFIG_PREF
 import static org.apache.hadoop.hdds.scm.server.StorageContainerManager.buildRpcServerStartMessage;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
 
-import org.apache.ratis.util.ExitUtils;
 import org.hadoop.ozone.recon.schema.tables.daos.ReconTaskStatusDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,14 +161,12 @@ public class ReconStorageContainerManagerFacade
         eventQueue,
         scmhaManager,
         scmContext);
-    ContainerReplicaPendingOps pendingOps = new ContainerReplicaPendingOps(
-        conf, new MonotonicClock(ZoneId.systemDefault()));
     this.containerManager = new ReconContainerManager(conf,
         dbStore,
         ReconSCMDBDefinition.CONTAINERS.getTable(dbStore),
         pipelineManager, scmServiceProvider,
         containerHealthSchemaManager, reconContainerMetadataManager,
-        scmhaManager, sequenceIdGen, pendingOps);
+        scmhaManager, sequenceIdGen);
     this.scmServiceProvider = scmServiceProvider;
 
     NodeReportHandler nodeReportHandler =
@@ -244,7 +238,7 @@ public class ReconStorageContainerManagerFacade
     OzoneConfiguration reconScmConfiguration =
         new OzoneConfiguration(configuration);
     Map<String, String> reconScmConfigs =
-        configuration.getPropsMatchPrefixAndTrimPrefix(RECON_SCM_CONFIG_PREFIX);
+        configuration.getPropsWithPrefix(RECON_SCM_CONFIG_PREFIX);
     for (Map.Entry<String, String> entry : reconScmConfigs.entrySet()) {
       reconScmConfiguration.set(entry.getKey(), entry.getValue());
     }
@@ -317,12 +311,6 @@ public class ReconStorageContainerManagerFacade
     } catch (Exception e) {
       LOG.error("Can't close dbStore ", e);
     }
-  }
-
-  @Override
-  public void shutDown(String message) {
-    stop();
-    ExitUtils.terminate(1, message, LOG);
   }
 
   public ReconDatanodeProtocolServer getDatanodeProtocolServer() {

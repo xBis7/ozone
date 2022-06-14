@@ -19,7 +19,6 @@ package org.apache.hadoop.ozone.recon.api.types;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline.PipelineState;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -58,10 +57,8 @@ public final class PipelineMetadata {
   @XmlElement(name = "replicationType")
   private String replicationType;
 
-  // TODO: name can be changed to just "replication". Currently EC replication
-  //  also showed with below parameter but in String format.
   @XmlElement(name = "replicationFactor")
-  private String replicationFactor;
+  private int replicationFactor;
 
   @XmlElement(name = "containers")
   private int containers;
@@ -98,7 +95,7 @@ public final class PipelineMetadata {
     return replicationType;
   }
 
-  public String getReplicationFactor() {
+  public int getReplicationFactor() {
     return replicationFactor;
   }
 
@@ -142,7 +139,7 @@ public final class PipelineMetadata {
     private long duration;
     private long leaderElections;
     private String replicationType;
-    private String replicationFactor;
+    private int replicationFactor;
     private int containers;
 
     public Builder() {
@@ -203,9 +200,13 @@ public final class PipelineMetadata {
       return this;
     }
 
-    public Builder setReplicationConfig(ReplicationConfig replicationConfig) {
-      this.replicationType = replicationConfig.getReplicationType().toString();
-      this.replicationFactor = replicationConfig.getReplication();
+    public Builder setReplicationType(String replicationType) {
+      this.replicationType = replicationType;
+      return this;
+    }
+
+    public Builder setReplicationFactor(int replicationFactor) {
+      this.replicationFactor = replicationFactor;
       return this;
     }
 

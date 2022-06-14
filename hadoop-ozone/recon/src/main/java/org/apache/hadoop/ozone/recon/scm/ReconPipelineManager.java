@@ -19,7 +19,6 @@
 package org.apache.hadoop.ozone.recon.scm;
 
 import java.io.IOException;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,7 +39,6 @@ import org.apache.hadoop.ozone.ClientVersion;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import org.apache.hadoop.ozone.common.MonotonicClock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,8 +60,7 @@ public final class ReconPipelineManager extends PipelineManagerImpl {
                                EventPublisher eventPublisher,
                                SCMContext scmContext) {
     super(conf, scmhaManager, nodeManager, pipelineStateManager,
-        pipelineFactory, eventPublisher, scmContext,
-        new MonotonicClock(ZoneOffset.UTC));
+        pipelineFactory, eventPublisher, scmContext);
   }
 
   public static ReconPipelineManager newReconPipelineManager(

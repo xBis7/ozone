@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.recon.api;
 
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.ozone.recon.MetricsServiceProviderFactory;
@@ -104,7 +105,9 @@ public class PipelineEndpoint {
               .setDatanodes(datanodes)
               .setDuration(duration)
               .setStatus(pipeline.getPipelineState())
-              .setReplicationConfig(pipeline.getReplicationConfig());
+              .setReplicationFactor(ReplicationConfig
+                  .getLegacyFactor(pipeline.getReplicationConfig()).getNumber())
+          .setReplicationType(pipeline.getType().toString());
       // If any metrics service providers like Prometheus
       // is configured, then query it for metrics and populate
       // leader election count and last leader election time

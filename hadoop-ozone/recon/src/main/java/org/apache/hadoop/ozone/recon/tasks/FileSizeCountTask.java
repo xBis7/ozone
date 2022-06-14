@@ -36,12 +36,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.KEY_TABLE;
@@ -167,9 +165,6 @@ public class FileSizeCountTask implements ReconOmTask {
    */
   private void writeCountsToDB(boolean isDbTruncated,
                                Map<FileSizeCountKey, Long> fileSizeCountMap) {
-    List<FileCountBySize> insertToDb = new ArrayList<>();
-    List<FileCountBySize> updateInDb = new ArrayList<>();
-
     fileSizeCountMap.keySet().forEach((FileSizeCountKey key) -> {
       FileCountBySize newRecord = new FileCountBySize();
       newRecord.setVolume(key.volume);
@@ -190,19 +185,17 @@ public class FileSizeCountTask implements ReconOmTask {
             fileCountBySizeDao.findById(recordToFind);
         if (fileCountRecord == null && newRecord.getCount() > 0L) {
           // insert new row only for non-zero counts.
-          insertToDb.add(newRecord);
+          fileCountBySizeDao.insert(newRecord);
         } else if (fileCountRecord != null) {
           newRecord.setCount(fileCountRecord.getCount() +
               fileSizeCountMap.get(key));
-          updateInDb.add(newRecord);
+          fileCountBySizeDao.update(newRecord);
         }
       } else if (newRecord.getCount() > 0) {
         // insert new row only for non-zero counts.
-        insertToDb.add(newRecord);
+        fileCountBySizeDao.insert(newRecord);
       }
     });
-    fileCountBySizeDao.insert(insertToDb);
-    fileCountBySizeDao.update(updateInDb);
   }
 
   private FileSizeCountKey getFileSizeCountKey(OmKeyInfo omKeyInfo) {

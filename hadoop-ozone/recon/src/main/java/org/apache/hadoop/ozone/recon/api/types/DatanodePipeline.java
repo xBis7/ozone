@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.ozone.recon.api.types;
 
-import org.apache.hadoop.hdds.client.ReplicationConfig;
-
 import java.util.UUID;
 
 /**
@@ -27,14 +25,14 @@ import java.util.UUID;
 public class DatanodePipeline {
   private UUID pipelineID;
   private String replicationType;
-  private String replicationFactor;
+  private int replicationFactor;
   private String leaderNode;
 
-  public DatanodePipeline(UUID pipelineID, ReplicationConfig replicationConfig,
-      String leaderNode) {
+  public DatanodePipeline(UUID pipelineID, String replicationType,
+                          int replicationFactor, String leaderNode) {
     this.pipelineID = pipelineID;
-    this.replicationType = replicationConfig.getReplicationType().toString();
-    this.replicationFactor = replicationConfig.getReplication();
+    this.replicationType = replicationType;
+    this.replicationFactor = replicationFactor;
     this.leaderNode = leaderNode;
   }
 
@@ -46,7 +44,7 @@ public class DatanodePipeline {
     return replicationType;
   }
 
-  public String getReplicationFactor() {
+  public int getReplicationFactor() {
     return replicationFactor;
   }
 

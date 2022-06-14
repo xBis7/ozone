@@ -44,7 +44,7 @@ interface IPipelineResponse {
   lastLeaderElection: number;
   duration: number;
   leaderElections: number;
-  replicationFactor: string;
+  replicationFactor: number;
   containers: number;
 }
 

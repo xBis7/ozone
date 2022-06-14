@@ -16,24 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.ozone.recon.spi;
-
-import org.apache.hadoop.hdds.annotation.InterfaceStability;
-import org.apache.hadoop.ozone.recon.api.types.NSSummary;
-
-import java.io.IOException;
-
 /**
- * Interface for DB operations on NSSummary.
+ * Classes for handling different entity and bucket types.
  */
-@InterfaceStability.Unstable
-public interface ReconNamespaceSummaryManager {
-
-  void clearNSSummaryTable() throws IOException;
-
-  void storeNSSummary(long objectId, NSSummary nsSummary) throws IOException;
-
-  void deleteNSSummary(long objectId) throws IOException;
-
-  NSSummary getNSSummary(long objectId) throws IOException;
-}
+package org.apache.hadoop.ozone.recon.api.handlers;

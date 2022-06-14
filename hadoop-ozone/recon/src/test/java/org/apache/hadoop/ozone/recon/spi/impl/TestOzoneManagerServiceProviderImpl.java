@@ -57,7 +57,6 @@ import java.nio.file.Paths;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.utils.db.DBCheckpoint;
 import org.apache.hadoop.hdds.utils.db.RDBStore;
-import org.apache.hadoop.hdds.utils.db.RocksDatabase;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.DBUpdates;
@@ -78,6 +77,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.ArgumentCaptor;
+import org.rocksdb.RocksDB;
 import org.rocksdb.TransactionLogIterator;
 import org.rocksdb.WriteBatch;
 
@@ -204,11 +204,6 @@ public class TestOzoneManagerServiceProviderImpl {
         .listFiles().length == 2);
   }
 
-
-  static RocksDatabase getRocksDatabase(OMMetadataManager om) {
-    return ((RDBStore)om.getStore()).getDb();
-  }
-
   @Test
   public void testGetAndApplyDeltaUpdatesFromOM() throws Exception {
 
@@ -219,7 +214,7 @@ public class TestOzoneManagerServiceProviderImpl {
     writeDataToOm(sourceOMMetadataMgr, "key_one");
     writeDataToOm(sourceOMMetadataMgr, "key_two");
 
-    final RocksDatabase rocksDB = getRocksDatabase(sourceOMMetadataMgr);
+    RocksDB rocksDB = ((RDBStore)sourceOMMetadataMgr.getStore()).getDb();
     TransactionLogIterator transactionLogIterator = rocksDB.getUpdatesSince(0L);
     DBUpdates dbUpdatesWrapper = new DBUpdates();
     while (transactionLogIterator.isValid()) {
@@ -281,7 +276,7 @@ public class TestOzoneManagerServiceProviderImpl {
     writeDataToOm(sourceOMMetadataMgr, "key_one");
     writeDataToOm(sourceOMMetadataMgr, "key_two");
 
-    final RocksDatabase rocksDB = getRocksDatabase(sourceOMMetadataMgr);
+    RocksDB rocksDB = ((RDBStore)sourceOMMetadataMgr.getStore()).getDb();
     TransactionLogIterator transactionLogIterator = rocksDB.getUpdatesSince(0L);
     DBUpdates[] dbUpdatesWrapper = new DBUpdates[4];
     int index = 0;

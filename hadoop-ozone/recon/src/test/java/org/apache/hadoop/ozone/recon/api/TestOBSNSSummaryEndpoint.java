@@ -30,12 +30,15 @@ import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
-import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.recon.ReconConstants;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
+import org.apache.hadoop.ozone.recon.api.handlers.BucketHandler;
+import org.apache.hadoop.ozone.recon.api.handlers.EntityHandler;
 import org.apache.hadoop.ozone.recon.api.types.NamespaceSummaryResponse;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
@@ -48,7 +51,7 @@ import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.apache.hadoop.ozone.recon.spi.StorageContainerServiceProvider;
 import org.apache.hadoop.ozone.recon.spi.impl.OzoneManagerServiceProviderImpl;
 import org.apache.hadoop.ozone.recon.spi.impl.StorageContainerServiceProviderImpl;
-import org.apache.hadoop.ozone.recon.tasks.NSSummaryTask;
+import org.apache.hadoop.ozone.recon.tasks.OBSNSSummaryTask;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -60,7 +63,6 @@ import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
@@ -68,15 +70,14 @@ import java.util.HashSet;
 
 import static org.apache.hadoop.hdds.protocol.MockDatanodeDetails.randomDatanodeDetails;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_DB_DIRS;
-import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeDirToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.writeKeyToOm;
 import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getTestReconOmMetadataManager;
-import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProviderWithFSO;
+import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getMockOzoneManagerServiceProvider;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Test for NSSummary REST APIs.
+ * Test for OBSNSSummary REST APIs.
  * We tested on a mini file system with the following setting:
  *                vol
  *             /       \
@@ -90,7 +91,7 @@ import static org.mockito.Mockito.when;
  * This is a test for the Rest APIs only. We have tested NSSummaryTask before,
  * so there is no need to test process() on DB's updates
  */
-public class TestNSSummaryEndpoint {
+public class TestOBSNSSummaryEndpoint {
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -101,13 +102,13 @@ public class TestNSSummaryEndpoint {
   private NSSummaryEndpoint nsSummaryEndpoint;
 
   private static final String TEST_PATH_UTILITY =
-          "/vol1/buck1/a/b/c/d/e/file1.txt";
+      "/vol1/buck1/a/b/c/d/e/file1.txt";
   private static final String PARENT_DIR = "vol1/buck1/a/b/c/d/e";
   private static final String[] TEST_NAMES =
-          new String[]{"vol1", "buck1", "a", "b", "c", "d", "e", "file1.txt"};
+      new String[]{"vol1", "buck1", "a", "b", "c", "d", "e", "file1.txt"};
   private static final String TEST_KEY_NAMES = "a/b/c/d/e/file1.txt";
 
-  // Object names in FSO-enabled format
+  // Object names
   private static final String VOL = "vol";
   private static final String BUCKET_ONE = "bucket1";
   private static final String BUCKET_TWO = "bucket2";
@@ -125,25 +126,17 @@ public class TestNSSummaryEndpoint {
   private static final String FILE_FOUR = "file4";
   private static final String FILE_FIVE = "file5";
   private static final String FILE_SIX = "file6";
-  private static final String DIR_ONE = "dir1";
-  private static final String DIR_TWO = "dir2";
-  private static final String DIR_THREE = "dir3";
-  private static final String DIR_FOUR = "dir4";
 
   // objects IDs
   private static final long VOL_OBJECT_ID = 0L;
   private static final long BUCKET_ONE_OBJECT_ID = 1L;
   private static final long BUCKET_TWO_OBJECT_ID = 2L;
   private static final long KEY_ONE_OBJECT_ID = 3L;
-  private static final long DIR_ONE_OBJECT_ID = 4L;
   private static final long KEY_TWO_OBJECT_ID = 5L;
   private static final long KEY_FOUR_OBJECT_ID = 6L;
-  private static final long DIR_TWO_OBJECT_ID = 7L;
   private static final long KEY_THREE_OBJECT_ID = 8L;
   private static final long KEY_FIVE_OBJECT_ID = 9L;
   private static final long KEY_SIX_OBJECT_ID = 10L;
-  private static final long DIR_THREE_OBJECT_ID = 11L;
-  private static final long DIR_FOUR_OBJECT_ID = 12L;
   private static final long MULTI_BLOCK_KEY_OBJECT_ID = 13L;
 
   // container IDs
@@ -169,9 +162,9 @@ public class TestNSSummaryEndpoint {
   private static final long KEY_FIVE_SIZE = 100L; // bin 0
   private static final long KEY_SIX_SIZE = 2 * OzoneConsts.KB + 1; // bin 2
   private static final long MULTI_BLOCK_KEY_SIZE_WITH_REPLICA
-          = THREE * BLOCK_ONE_LENGTH
-          + TWO * BLOCK_TWO_LENGTH
-          + FOUR * BLOCK_THREE_LENGTH;
+      = THREE * BLOCK_ONE_LENGTH
+      + TWO * BLOCK_TWO_LENGTH
+      + FOUR * BLOCK_THREE_LENGTH;
 
   // quota in bytes
   private static final long VOL_QUOTA = 2 * OzoneConsts.MB;
@@ -183,191 +176,127 @@ public class TestNSSummaryEndpoint {
   private static final String VOL_PATH = "/vol";
   private static final String BUCKET_ONE_PATH = "/vol/bucket1";
   private static final String BUCKET_TWO_PATH = "/vol/bucket2";
-  private static final String DIR_ONE_PATH = "/vol/bucket1/dir1";
-  private static final String DIR_TWO_PATH = "/vol/bucket1/dir1/dir2";
-  private static final String DIR_THREE_PATH = "/vol/bucket1/dir1/dir3";
-  private static final String DIR_FOUR_PATH = "/vol/bucket1/dir1/dir4";
   private static final String KEY_PATH = "/vol/bucket2/file4";
   private static final String MULTI_BLOCK_KEY_PATH = "/vol/bucket1/dir1/file7";
   private static final String INVALID_PATH = "/vol/path/not/found";
 
   // some expected answers
   private static final long TOTAL_DATA_SIZE = KEY_ONE_SIZE + KEY_TWO_SIZE +
-          KEY_THREE_SIZE + KEY_FOUR_SIZE + KEY_FIVE_SIZE + KEY_SIX_SIZE;
+      KEY_THREE_SIZE + KEY_FOUR_SIZE + KEY_FIVE_SIZE + KEY_SIX_SIZE;
 
   private static final long BUCKET_ONE_DATA_SIZE = KEY_ONE_SIZE + KEY_TWO_SIZE +
-          KEY_THREE_SIZE + KEY_SIX_SIZE;
+      KEY_THREE_SIZE + KEY_SIX_SIZE;
 
   private static final long BUCKET_TWO_DATA_SIZE =
-          KEY_FOUR_SIZE + KEY_FIVE_SIZE;
-
-  private static final long DIR_ONE_DATA_SIZE = KEY_TWO_SIZE +
-          KEY_THREE_SIZE + KEY_SIX_SIZE;
+      KEY_FOUR_SIZE + KEY_FIVE_SIZE;
 
   @Before
   public void setUp() throws Exception {
     omMetadataManager = initializeNewOmMetadataManager(
-            temporaryFolder.newFolder());
+        temporaryFolder.newFolder());
     ozoneManagerServiceProvider =
-            getMockOzoneManagerServiceProviderWithFSO();
-    reconOMMetadataManager = getTestReconOmMetadataManager(omMetadataManager,
-            temporaryFolder.newFolder());
+        getMockOzoneManagerServiceProvider();
+    reconOMMetadataManager =
+        getTestReconOmMetadataManager(
+            omMetadataManager, temporaryFolder.newFolder());
 
     ReconTestInjector reconTestInjector =
-            new ReconTestInjector.Builder(temporaryFolder)
-                    .withReconOm(reconOMMetadataManager)
-                    .withOmServiceProvider(ozoneManagerServiceProvider)
-                    .withReconSqlDb()
-                    .withContainerDB()
-                    .addBinding(OzoneStorageContainerManager.class,
-                            getMockReconSCM())
-                    .addBinding(StorageContainerServiceProvider.class,
-                            mock(StorageContainerServiceProviderImpl.class))
-                    .addBinding(NSSummaryEndpoint.class)
-                    .build();
+        new ReconTestInjector.Builder(temporaryFolder)
+            .withReconOm(reconOMMetadataManager)
+            .withOmServiceProvider(ozoneManagerServiceProvider)
+            .withReconSqlDb()
+            .withContainerDB()
+            .addBinding(OzoneStorageContainerManager.class,
+                getMockReconSCM())
+            .addBinding(StorageContainerServiceProvider.class,
+                mock(StorageContainerServiceProviderImpl.class))
+            .addBinding(NSSummaryEndpoint.class)
+            .build();
     reconNamespaceSummaryManager =
-            reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
+        reconTestInjector.getInstance(ReconNamespaceSummaryManager.class);
     nsSummaryEndpoint = reconTestInjector.getInstance(NSSummaryEndpoint.class);
 
     // populate OM DB and reprocess into Recon RocksDB
     populateOMDB();
-    NSSummaryTask nsSummaryTask =
-            new NSSummaryTask(reconNamespaceSummaryManager);
-    nsSummaryTask.reprocess(reconOMMetadataManager);
+    OBSNSSummaryTask obsNSSummaryTask = new OBSNSSummaryTask(
+        reconNamespaceSummaryManager, reconOMMetadataManager);
+    obsNSSummaryTask.reprocess(reconOMMetadataManager);
   }
 
   @Test
   public void testUtility() {
-    String[] names = NSSummaryEndpoint.parseRequestPath(TEST_PATH_UTILITY);
+    String[] names = EntityHandler.parseRequestPath(TEST_PATH_UTILITY);
     Assert.assertArrayEquals(TEST_NAMES, names);
-    String keyName = NSSummaryEndpoint.getKeyName(names);
+    String keyName = BucketHandler.getKeyName(names);
     Assert.assertEquals(TEST_KEY_NAMES, keyName);
-    String subpath = NSSummaryEndpoint.buildSubpath(PARENT_DIR, "file1.txt");
+    String subpath = BucketHandler.buildSubpath(PARENT_DIR, "file1.txt");
     Assert.assertEquals(TEST_PATH_UTILITY, subpath);
   }
 
   @Test
-  public void testBasic() throws Exception {
+  public void testGetBasicInfoVol() throws Exception {
     // Test volume basics
     Response volResponse = nsSummaryEndpoint.getBasicInfo(VOL_PATH);
     NamespaceSummaryResponse volResponseObj =
-            (NamespaceSummaryResponse) volResponse.getEntity();
+        (NamespaceSummaryResponse) volResponse.getEntity();
     Assert.assertEquals(EntityType.VOLUME, volResponseObj.getEntityType());
     Assert.assertEquals(2, volResponseObj.getNumBucket());
     Assert.assertEquals(4, volResponseObj.getNumTotalDir());
     Assert.assertEquals(6, volResponseObj.getNumTotalKey());
-
-    // Test bucket 1's basics
-    Response bucketOneResponse =
-            nsSummaryEndpoint.getBasicInfo(BUCKET_ONE_PATH);
-    NamespaceSummaryResponse bucketOneObj =
-            (NamespaceSummaryResponse) bucketOneResponse.getEntity();
-    Assert.assertEquals(EntityType.BUCKET, bucketOneObj.getEntityType());
-    Assert.assertEquals(4, bucketOneObj.getNumTotalDir());
-    Assert.assertEquals(4, bucketOneObj.getNumTotalKey());
-
-    // Test bucket 2's basics
-    Response bucketTwoResponse =
-            nsSummaryEndpoint.getBasicInfo(BUCKET_TWO_PATH);
-    NamespaceSummaryResponse bucketTwoObj =
-            (NamespaceSummaryResponse) bucketTwoResponse.getEntity();
-    Assert.assertEquals(EntityType.BUCKET, bucketTwoObj.getEntityType());
-    Assert.assertEquals(0, bucketTwoObj.getNumTotalDir());
-    Assert.assertEquals(2, bucketTwoObj.getNumTotalKey());
-
-    // Test intermediate directory basics
-    Response dirOneResponse = nsSummaryEndpoint.getBasicInfo(DIR_ONE_PATH);
-    NamespaceSummaryResponse dirOneObj =
-            (NamespaceSummaryResponse) dirOneResponse.getEntity();
-    Assert.assertEquals(EntityType.DIRECTORY, dirOneObj.getEntityType());
-    Assert.assertEquals(3, dirOneObj.getNumTotalDir());
-    Assert.assertEquals(3, dirOneObj.getNumTotalKey());
-
-    // Test invalid path
-    Response invalidResponse = nsSummaryEndpoint.getBasicInfo(INVALID_PATH);
-    NamespaceSummaryResponse invalidObj =
-            (NamespaceSummaryResponse) invalidResponse.getEntity();
-    Assert.assertEquals(ResponseStatus.PATH_NOT_FOUND,
-            invalidObj.getStatus());
-
-    // Test key
-    Response keyResponse = nsSummaryEndpoint.getBasicInfo(KEY_PATH);
-    NamespaceSummaryResponse keyResObj =
-            (NamespaceSummaryResponse) keyResponse.getEntity();
-    Assert.assertEquals(EntityType.KEY, keyResObj.getEntityType());
   }
 
   @Test
-  public void testDiskUsage() throws Exception {
-    // volume level DU
-    Response volResponse = nsSummaryEndpoint.getDiskUsage(VOL_PATH,
-            false, false);
-    DUResponse duVolRes = (DUResponse) volResponse.getEntity();
-    Assert.assertEquals(2, duVolRes.getCount());
-    List<DUResponse.DiskUsage> duData = duVolRes.getDuData();
-    // sort based on subpath
-    Collections.sort(duData,
-            Comparator.comparing(DUResponse.DiskUsage::getSubpath));
-    DUResponse.DiskUsage duBucket1 = duData.get(0);
-    DUResponse.DiskUsage duBucket2 = duData.get(1);
-    Assert.assertEquals(BUCKET_ONE_PATH, duBucket1.getSubpath());
-    Assert.assertEquals(BUCKET_TWO_PATH, duBucket2.getSubpath());
-    Assert.assertEquals(BUCKET_ONE_DATA_SIZE, duBucket1.getSize());
-    Assert.assertEquals(BUCKET_TWO_DATA_SIZE, duBucket2.getSize());
+  public void testGetBasicInfoBucketOne() throws Exception {
+    // Test bucket 1's basics
+    Response bucketOneResponse =
+        nsSummaryEndpoint.getBasicInfo(BUCKET_ONE_PATH);
+    NamespaceSummaryResponse bucketOneObj =
+        (NamespaceSummaryResponse) bucketOneResponse.getEntity();
+    Assert.assertEquals(EntityType.BUCKET, bucketOneObj.getEntityType());
+    Assert.assertEquals(4, bucketOneObj.getNumTotalDir());
+    Assert.assertEquals(4, bucketOneObj.getNumTotalKey());
+  }
 
-    // bucket level DU
-    Response bucketResponse = nsSummaryEndpoint.getDiskUsage(BUCKET_ONE_PATH,
-            false, false);
-    DUResponse duBucketResponse = (DUResponse) bucketResponse.getEntity();
-    Assert.assertEquals(1, duBucketResponse.getCount());
-    DUResponse.DiskUsage duDir1 = duBucketResponse.getDuData().get(0);
-    Assert.assertEquals(DIR_ONE_PATH, duDir1.getSubpath());
-    Assert.assertEquals(DIR_ONE_DATA_SIZE, duDir1.getSize());
+  @Test
+  public void testGetBasicInfoBucketTwo() throws Exception {
+    // Test bucket 2's basics
+    Response bucketTwoResponse =
+        nsSummaryEndpoint.getBasicInfo(BUCKET_TWO_PATH);
+    NamespaceSummaryResponse bucketTwoObj =
+        (NamespaceSummaryResponse) bucketTwoResponse.getEntity();
+    Assert.assertEquals(EntityType.BUCKET, bucketTwoObj.getEntityType());
+    Assert.assertEquals(0, bucketTwoObj.getNumTotalDir());
+    Assert.assertEquals(2, bucketTwoObj.getNumTotalKey());
+  }
 
-    // dir level DU
-    Response dirResponse = nsSummaryEndpoint.getDiskUsage(DIR_ONE_PATH,
-            false, false);
-    DUResponse duDirReponse = (DUResponse) dirResponse.getEntity();
-    Assert.assertEquals(3, duDirReponse.getCount());
-    List<DUResponse.DiskUsage> duSubDir = duDirReponse.getDuData();
-    Collections.sort(duSubDir,
-            Comparator.comparing(DUResponse.DiskUsage::getSubpath));
-    DUResponse.DiskUsage duDir2 = duSubDir.get(0);
-    DUResponse.DiskUsage duDir3 = duSubDir.get(1);
-    DUResponse.DiskUsage duDir4 = duSubDir.get(2);
-    Assert.assertEquals(DIR_TWO_PATH, duDir2.getSubpath());
-    Assert.assertEquals(KEY_TWO_SIZE, duDir2.getSize());
-
-    Assert.assertEquals(DIR_THREE_PATH, duDir3.getSubpath());
-    Assert.assertEquals(KEY_THREE_SIZE, duDir3.getSize());
-
-    Assert.assertEquals(DIR_FOUR_PATH, duDir4.getSubpath());
-    Assert.assertEquals(KEY_SIX_SIZE, duDir4.getSize());
-
-    // key level DU
-    Response keyResponse = nsSummaryEndpoint.getDiskUsage(KEY_PATH,
-            false, false);
-    DUResponse keyObj = (DUResponse) keyResponse.getEntity();
-    Assert.assertEquals(0, keyObj.getCount());
-    Assert.assertEquals(KEY_FOUR_SIZE, keyObj.getSize());
-
-    // invalid path check
-    Response invalidResponse = nsSummaryEndpoint.getDiskUsage(INVALID_PATH,
-            false, false);
-    DUResponse invalidObj = (DUResponse) invalidResponse.getEntity();
+  @Test
+  public void testGetBasicInfoNoPath() throws Exception {
+    // Test invalid path
+    Response invalidResponse = nsSummaryEndpoint.getBasicInfo(INVALID_PATH);
+    NamespaceSummaryResponse invalidObj =
+        (NamespaceSummaryResponse) invalidResponse.getEntity();
     Assert.assertEquals(ResponseStatus.PATH_NOT_FOUND,
-            invalidObj.getStatus());
+        invalidObj.getStatus());
+  }
+
+  @Test
+  public void testGetBasicInfoKey() throws Exception {
+    // Test key
+    Response keyResponse = nsSummaryEndpoint.getBasicInfo(KEY_PATH);
+    NamespaceSummaryResponse keyResObj =
+        (NamespaceSummaryResponse) keyResponse.getEntity();
+    Assert.assertEquals(EntityType.KEY, keyResObj.getEntityType());
   }
 
   @Test
   public void testDiskUsageWithReplication() throws Exception {
     setUpMultiBlockKey();
     Response keyResponse = nsSummaryEndpoint.getDiskUsage(MULTI_BLOCK_KEY_PATH,
-            false, true);
+        false, true);
     DUResponse replicaDUResponse = (DUResponse) keyResponse.getEntity();
     Assert.assertEquals(ResponseStatus.OK, replicaDUResponse.getStatus());
     Assert.assertEquals(MULTI_BLOCK_KEY_SIZE_WITH_REPLICA,
-            replicaDUResponse.getSizeWithReplica());
+        replicaDUResponse.getSizeWithReplica());
   }
 
   @Test
@@ -386,29 +315,22 @@ public class TestNSSummaryEndpoint {
 
     Response bucketRes2 = nsSummaryEndpoint.getQuotaUsage(BUCKET_TWO_PATH);
     QuotaUsageResponse quBucketRes2 =
-            (QuotaUsageResponse) bucketRes2.getEntity();
+        (QuotaUsageResponse) bucketRes2.getEntity();
     Assert.assertEquals(BUCKET_TWO_QUOTA, quBucketRes2.getQuota());
     Assert.assertEquals(BUCKET_TWO_DATA_SIZE, quBucketRes2.getQuotaUsed());
 
-    // other level not applicable
-    Response naResponse1 = nsSummaryEndpoint.getQuotaUsage(DIR_ONE_PATH);
-    QuotaUsageResponse quotaUsageResponse1 =
-            (QuotaUsageResponse) naResponse1.getEntity();
-    Assert.assertEquals(ResponseStatus.TYPE_NOT_APPLICABLE,
-            quotaUsageResponse1.getResponseCode());
-
     Response naResponse2 = nsSummaryEndpoint.getQuotaUsage(KEY_PATH);
     QuotaUsageResponse quotaUsageResponse2 =
-            (QuotaUsageResponse) naResponse2.getEntity();
+        (QuotaUsageResponse) naResponse2.getEntity();
     Assert.assertEquals(ResponseStatus.TYPE_NOT_APPLICABLE,
-            quotaUsageResponse2.getResponseCode());
+        quotaUsageResponse2.getResponseCode());
 
     // invalid path request
     Response invalidRes = nsSummaryEndpoint.getQuotaUsage(INVALID_PATH);
     QuotaUsageResponse invalidResObj =
-            (QuotaUsageResponse) invalidRes.getEntity();
+        (QuotaUsageResponse) invalidRes.getEntity();
     Assert.assertEquals(ResponseStatus.PATH_NOT_FOUND,
-            invalidResObj.getResponseCode());
+        invalidResObj.getResponseCode());
   }
 
   /**
@@ -422,7 +344,7 @@ public class TestNSSummaryEndpoint {
   public void testFileSizeDist() throws Exception {
     Response volRes = nsSummaryEndpoint.getFileSizeDistribution(VOL_PATH);
     FileSizeDistributionResponse volFileSizeDistResObj =
-            (FileSizeDistributionResponse) volRes.getEntity();
+        (FileSizeDistributionResponse) volRes.getEntity();
     // If the volume has the correct file size distribution,
     // other lower level should be correct as well, given all
     // other previous tests have passed.
@@ -439,85 +361,66 @@ public class TestNSSummaryEndpoint {
   }
 
   /**
-   * Write directories and keys info into OM DB.
+   * Write keys info into OM DB.
    * @throws Exception
    */
   private void populateOMDB() throws Exception {
-    // write all 4 directories
-    writeDirToOm(reconOMMetadataManager, DIR_ONE_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID, DIR_ONE);
-    writeDirToOm(reconOMMetadataManager, DIR_TWO_OBJECT_ID,
-            DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID, DIR_TWO);
-    writeDirToOm(reconOMMetadataManager, DIR_THREE_OBJECT_ID,
-            DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID, DIR_THREE);
-    writeDirToOm(reconOMMetadataManager, DIR_FOUR_OBJECT_ID,
-            DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID, DIR_FOUR);
-
+    // no directories are created in OM
     // write all 6 keys
     writeKeyToOm(reconOMMetadataManager,
-            KEY_ONE,
-            BUCKET_ONE,
-            VOL,
-            FILE_ONE,
-            KEY_ONE_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID,
-            KEY_ONE_SIZE);
+        KEY_ONE,
+        BUCKET_ONE,
+        VOL,
+        FILE_ONE,
+        KEY_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        KEY_ONE_SIZE,
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-            KEY_TWO,
-            BUCKET_ONE,
-            VOL,
-            FILE_TWO,
-            KEY_TWO_OBJECT_ID,
-            DIR_TWO_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID,
-            KEY_TWO_SIZE);
+        KEY_TWO,
+        BUCKET_ONE,
+        VOL,
+        FILE_TWO,
+        KEY_TWO_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        KEY_TWO_SIZE,
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-            KEY_THREE,
-            BUCKET_ONE,
-            VOL,
-            FILE_THREE,
-            KEY_THREE_OBJECT_ID,
-            DIR_THREE_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID,
-            KEY_THREE_SIZE);
+        KEY_THREE,
+        BUCKET_ONE,
+        VOL,
+        FILE_THREE,
+        KEY_THREE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        KEY_THREE_SIZE,
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-            KEY_FOUR,
-            BUCKET_TWO,
-            VOL,
-            FILE_FOUR,
-            KEY_FOUR_OBJECT_ID,
-            BUCKET_TWO_OBJECT_ID,
-            BUCKET_TWO_OBJECT_ID,
-            VOL_OBJECT_ID,
-            KEY_FOUR_SIZE);
+        KEY_FOUR,
+        BUCKET_TWO,
+        VOL,
+        FILE_FOUR,
+        KEY_FOUR_OBJECT_ID,
+        BUCKET_TWO_OBJECT_ID,
+        KEY_FOUR_SIZE,
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-            KEY_FIVE,
-            BUCKET_TWO,
-            VOL,
-            FILE_FIVE,
-            KEY_FIVE_OBJECT_ID,
-            BUCKET_TWO_OBJECT_ID,
-            BUCKET_TWO_OBJECT_ID,
-            VOL_OBJECT_ID,
-            KEY_FIVE_SIZE);
+        KEY_FIVE,
+        BUCKET_TWO,
+        VOL,
+        FILE_FIVE,
+        KEY_FIVE_OBJECT_ID,
+        BUCKET_TWO_OBJECT_ID,
+        KEY_FIVE_SIZE,
+        getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
-            KEY_SIX,
-            BUCKET_ONE,
-            VOL,
-            FILE_SIX,
-            KEY_SIX_OBJECT_ID,
-            DIR_FOUR_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID,
-            VOL_OBJECT_ID,
-            KEY_SIX_SIZE);
+        KEY_SIX,
+        BUCKET_ONE,
+        VOL,
+        FILE_SIX,
+        KEY_SIX_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        KEY_SIX_SIZE,
+        getBucketLayout());
   }
 
 
@@ -527,43 +430,45 @@ public class TestNSSummaryEndpoint {
    * @throws IOException ioEx
    */
   private static OMMetadataManager initializeNewOmMetadataManager(
-          File omDbDir)
-          throws IOException {
+      File omDbDir)
+      throws IOException {
     OzoneConfiguration omConfiguration = new OzoneConfiguration();
     omConfiguration.set(OZONE_OM_DB_DIRS,
-            omDbDir.getAbsolutePath());
+        omDbDir.getAbsolutePath());
     OMMetadataManager omMetadataManager = new OmMetadataManagerImpl(
-            omConfiguration);
+        omConfiguration);
 
     String volumeKey = omMetadataManager.getVolumeKey(VOL);
     OmVolumeArgs args =
-            OmVolumeArgs.newBuilder()
-                    .setObjectID(VOL_OBJECT_ID)
-                    .setVolume(VOL)
-                    .setAdminName(TEST_USER)
-                    .setOwnerName(TEST_USER)
-                    .setQuotaInBytes(VOL_QUOTA)
-                    .build();
+        OmVolumeArgs.newBuilder()
+            .setObjectID(VOL_OBJECT_ID)
+            .setVolume(VOL)
+            .setAdminName(TEST_USER)
+            .setOwnerName(TEST_USER)
+            .setQuotaInBytes(VOL_QUOTA)
+            .build();
     omMetadataManager.getVolumeTable().put(volumeKey, args);
 
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-            .setVolumeName(VOL)
-            .setBucketName(BUCKET_ONE)
-            .setObjectID(BUCKET_ONE_OBJECT_ID)
-            .setQuotaInBytes(BUCKET_ONE_QUOTA)
-            .build();
+        .setVolumeName(VOL)
+        .setBucketName(BUCKET_ONE)
+        .setObjectID(BUCKET_ONE_OBJECT_ID)
+        .setQuotaInBytes(BUCKET_ONE_QUOTA)
+        .setBucketLayout(getBucketLayout())
+        .build();
 
     OmBucketInfo bucketInfo2 = OmBucketInfo.newBuilder()
-            .setVolumeName(VOL)
-            .setBucketName(BUCKET_TWO)
-            .setObjectID(BUCKET_TWO_OBJECT_ID)
-            .setQuotaInBytes(BUCKET_TWO_QUOTA)
-            .build();
+        .setVolumeName(VOL)
+        .setBucketName(BUCKET_TWO)
+        .setObjectID(BUCKET_TWO_OBJECT_ID)
+        .setQuotaInBytes(BUCKET_TWO_QUOTA)
+        .setBucketLayout(getBucketLayout())
+        .build();
 
     String bucketKey = omMetadataManager.getBucketKey(
-            bucketInfo.getVolumeName(), bucketInfo.getBucketName());
+        bucketInfo.getVolumeName(), bucketInfo.getBucketName());
     String bucketKey2 = omMetadataManager.getBucketKey(
-            bucketInfo2.getVolumeName(), bucketInfo2.getBucketName());
+        bucketInfo2.getVolumeName(), bucketInfo2.getBucketName());
 
     omMetadataManager.getBucketTable().put(bucketKey, bucketInfo);
     omMetadataManager.getBucketTable().put(bucketKey2, bucketInfo2);
@@ -578,34 +483,33 @@ public class TestNSSummaryEndpoint {
     BlockID block3 = new BlockID(CONTAINER_THREE_ID, 0L);
 
     OmKeyLocationInfo location1 = new OmKeyLocationInfo.Builder()
-            .setBlockID(block1)
-            .setLength(BLOCK_ONE_LENGTH)
-            .build();
+        .setBlockID(block1)
+        .setLength(BLOCK_ONE_LENGTH)
+        .build();
     OmKeyLocationInfo location2 = new OmKeyLocationInfo.Builder()
-            .setBlockID(block2)
-            .setLength(BLOCK_TWO_LENGTH)
-            .build();
+        .setBlockID(block2)
+        .setLength(BLOCK_TWO_LENGTH)
+        .build();
     OmKeyLocationInfo location3 = new OmKeyLocationInfo.Builder()
-            .setBlockID(block3)
-            .setLength(BLOCK_THREE_LENGTH)
-            .build();
+        .setBlockID(block3)
+        .setLength(BLOCK_THREE_LENGTH)
+        .build();
     locationInfoList.add(location1);
     locationInfoList.add(location2);
     locationInfoList.add(location3);
 
     OmKeyLocationInfoGroup locationInfoGroup =
-            new OmKeyLocationInfoGroup(0L, locationInfoList);
+        new OmKeyLocationInfoGroup(0L, locationInfoList);
 
     // add the multi-block key to Recon's OM
     writeKeyToOm(reconOMMetadataManager,
-            VOL_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID,
-            DIR_ONE_OBJECT_ID,
-            MULTI_BLOCK_KEY_OBJECT_ID,
-            VOL, BUCKET_ONE,
-            MULTI_BLOCK_KEY,
-            MULTI_BLOCK_FILE,
-            Collections.singletonList(locationInfoGroup));
+        BUCKET_ONE_OBJECT_ID,
+        MULTI_BLOCK_KEY_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        MULTI_BLOCK_KEY,
+        MULTI_BLOCK_FILE,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
   }
 
   /**
@@ -616,48 +520,52 @@ public class TestNSSummaryEndpoint {
    * @return a set of container replica for testing
    */
   private static Set<ContainerReplica> generateMockContainerReplicas(
-          int replicationFactor, ContainerID containerID) {
+      int replicationFactor, ContainerID containerID) {
     Set<ContainerReplica> result = new HashSet<>();
     for (int i = 0; i < replicationFactor; ++i) {
       DatanodeDetails randomDatanode = randomDatanodeDetails();
       ContainerReplica replica = new ContainerReplica.ContainerReplicaBuilder()
-              .setContainerID(containerID)
-              .setContainerState(State.OPEN)
-              .setDatanodeDetails(randomDatanode)
-              .build();
+          .setContainerID(containerID)
+          .setContainerState(State.OPEN)
+          .setDatanodeDetails(randomDatanode)
+          .build();
       result.add(replica);
     }
     return result;
   }
 
   private static ReconStorageContainerManagerFacade getMockReconSCM()
-          throws ContainerNotFoundException {
+      throws ContainerNotFoundException {
     ReconStorageContainerManagerFacade reconSCM =
-            mock(ReconStorageContainerManagerFacade.class);
+        mock(ReconStorageContainerManagerFacade.class);
     ContainerManager containerManager = mock(ContainerManager.class);
 
     // Container 1 is 3-way replicated
     ContainerID containerID1 = new ContainerID(CONTAINER_ONE_ID);
     Set<ContainerReplica> containerReplicas1 = generateMockContainerReplicas(
-            THREE, containerID1);
+        THREE, containerID1);
     when(containerManager.getContainerReplicas(containerID1))
-            .thenReturn(containerReplicas1);
+        .thenReturn(containerReplicas1);
 
     // Container 2 is under replicated with 2 replica
     ContainerID containerID2 = new ContainerID(CONTAINER_TWO_ID);
     Set<ContainerReplica> containerReplicas2 = generateMockContainerReplicas(
-            TWO, containerID2);
+        TWO, containerID2);
     when(containerManager.getContainerReplicas(containerID2))
-            .thenReturn(containerReplicas2);
+        .thenReturn(containerReplicas2);
 
     // Container 3 is over replicated with 4 replica
     ContainerID containerID3 = new ContainerID(CONTAINER_THREE_ID);
     Set<ContainerReplica> containerReplicas3 = generateMockContainerReplicas(
-            FOUR, containerID3);
+        FOUR, containerID3);
     when(containerManager.getContainerReplicas(containerID3))
-            .thenReturn(containerReplicas3);
+        .thenReturn(containerReplicas3);
 
     when(reconSCM.getContainerManager()).thenReturn(containerManager);
     return reconSCM;
+  }
+
+  private static BucketLayout getBucketLayout() {
+    return BucketLayout.OBJECT_STORE;
   }
 }
