@@ -38,6 +38,7 @@ import java.util.Set;
  * Class for handling directory entity type.
  */
 public class DirectoryEntityHandler extends EntityHandler {
+
   public DirectoryEntityHandler(
       ReconNamespaceSummaryManager reconNamespaceSummaryManager,
       ReconOMMetadataManager omMetadataManager,
@@ -98,7 +99,7 @@ public class DirectoryEntityHandler extends EntityHandler {
       dirDataSize += dataSize;
 
       if (withReplica) {
-        BucketHandler.parentDirPath = getNormalizedPath();
+        getBucketHandler().setParentDirPath(getNormalizedPath());
         long subdirDU = getBucketHandler()
                 .calculateDUUnderObject(subdirObjectId);
         diskUsage.setSizeWithReplica(subdirDU);

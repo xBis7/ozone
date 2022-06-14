@@ -21,7 +21,6 @@ import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
-import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -242,7 +241,8 @@ public class FSOBucketHandler extends BucketHandler {
 
   @Override
   public int getTotalDirCount(long objectId) throws IOException {
-    NSSummary nsSummary = getReconNamespaceSummaryManager().getNSSummary(objectId);
+    NSSummary nsSummary =
+        getReconNamespaceSummaryManager().getNSSummary(objectId);
     if (nsSummary == null) {
       return 0;
     }

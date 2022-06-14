@@ -22,7 +22,6 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.om.OzoneManagerUtils;
-import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -40,7 +39,6 @@ import java.io.IOException;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
@@ -102,7 +100,7 @@ public abstract class EntityHandler {
 
   public void initBucketHandler(OmBucketInfo omBucketInfo) {
     bucketHandler = BucketHandler.getBucketHandler(
-        getReconNamespaceSummaryManager(),getOmMetadataManager(),
+        getReconNamespaceSummaryManager(), getOmMetadataManager(),
         getReconSCM(), omBucketInfo);
   }
   public String getNormalizedPath() {
