@@ -44,16 +44,12 @@ Create bucket
 Create keys
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/file1 README.md
                     Should not contain  ${result}       Failed
-                    Sleep               10s
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/dir1/dir2/file2 HISTORY.md
                     Should not contain  ${result}       Failed
-                    Sleep               10s
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/dir1/dir3/file3 CONTRIBUTING.md
                     Should not contain  ${result}       Failed
-                    Sleep               10s
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/dir1/dir4/file4 NOTICE.txt
                     Should not contain  ${result}       Failed
-                    Sleep               10s
     ${result} =     Execute             ozone sh key put /${volume}/${bucket}/dir1/dir4/file5 LICENSE.txt
                     Should not contain  ${result}       Failed
 
