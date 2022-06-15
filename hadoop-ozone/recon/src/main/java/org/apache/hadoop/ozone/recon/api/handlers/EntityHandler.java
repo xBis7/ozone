@@ -22,7 +22,6 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.om.OzoneManagerUtils;
-import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -40,7 +39,6 @@ import java.io.IOException;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 
 import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 
@@ -102,7 +100,7 @@ public abstract class EntityHandler {
 
   public void initBucketHandler(OmBucketInfo omBucketInfo) {
     bucketHandler = BucketHandler.getBucketHandler(
-        getReconNamespaceSummaryManager(),getOmMetadataManager(),
+        getReconNamespaceSummaryManager(), getOmMetadataManager(),
         getReconSCM(), omBucketInfo);
   }
   public String getNormalizedPath() {
@@ -191,10 +189,11 @@ public abstract class EntityHandler {
         return EntityType.UNKNOWN.create(reconNamespaceSummaryManager,
                 omMetadataManager, reconSCM, null);
       }
+      long volumeObjectId = bucketHandler.getVolumeObjectId(names);
       long bucketObjectId = bucketHandler.getBucketObjectId(names);
-      return bucketHandler.determineKeyPath(keyName,
-          bucketObjectId).create(reconNamespaceSummaryManager,
-              omMetadataManager, reconSCM, bucketHandler);
+      return bucketHandler.determineKeyPath(keyName, volumeObjectId, bucketObjectId)
+          .create(reconNamespaceSummaryManager,
+          omMetadataManager, reconSCM, bucketHandler);
     }
   }
 
@@ -313,26 +312,8 @@ public abstract class EntityHandler {
    * @throws IOException ioEx
    */
   protected int getTotalDirCount(long objectId) throws IOException {
-    if (bucketHandler.getBucketLayout()
-        .equals(BucketLayout.OBJECT_STORE)) {
-      OmBucketInfo omBucketInfo = BucketHandler.omBucketInfo;
-      OBSBucketHandler obsBucketHandler =
-          new OBSBucketHandler(reconNamespaceSummaryManager,
-              omMetadataManager, reconSCM, omBucketInfo);
-      return obsBucketHandler.getTotalDirCountUnderPrefix();
-    } else {
-      NSSummary nsSummary = reconNamespaceSummaryManager.getNSSummary(objectId);
-      if (nsSummary == null) {
-        return 0;
-      }
-
-      Set<Long> subdirs = nsSummary.getChildDir();
-      int totalCnt = subdirs.size();
-      for (long subdir : subdirs) {
-        totalCnt += getTotalDirCount(subdir);
-      }
-      return totalCnt;
-    }
+    int totalCnt = bucketHandler.getTotalDirCount(objectId);
+    return totalCnt;
   }
 
   /**

@@ -21,7 +21,6 @@ import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
-import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmDirectoryInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
@@ -59,8 +58,8 @@ public class FSOBucketHandler extends BucketHandler {
    * @throws IOException
    */
   @Override
-  public EntityType determineKeyPath(String keyName, long bucketObjectId)
-          throws IOException {
+  public EntityType determineKeyPath(String keyName, long volumeId,
+      long bucketObjectId) throws IOException {
     Path keyPath = Paths.get(keyName);
     Iterator<Path> elements = keyPath.iterator();
 
@@ -74,8 +73,8 @@ public class FSOBucketHandler extends BucketHandler {
       // 'buck1' to the leaf node component, which is 'file1.txt'.
       // 2. If there is no dir exists for the leaf node component 'file1.txt'
       // then do look it on fileTable.
-      String dbNodeName = getOmMetadataManager()
-              .getOzonePathKey(lastKnownParentId, fileName);
+      String dbNodeName = getOmMetadataManager().getOzonePathKey(volumeId,
+          bucketObjectId, lastKnownParentId, fileName);
       omDirInfo = getOmMetadataManager().getDirectoryTable()
               .getSkipCache(dbNodeName);
 
@@ -227,7 +226,8 @@ public class FSOBucketHandler extends BucketHandler {
     long dirObjectId = getBucketObjectId(names);
     String dirKey = null;
     for (int i = 2; i < cutoff; ++i) {
-      dirKey = getOmMetadataManager().getOzonePathKey(dirObjectId, names[i]);
+      dirKey = getOmMetadataManager().getOzonePathKey(getVolumeObjectId(names),
+          getBucketObjectId(names), dirObjectId, names[i]);
       OmDirectoryInfo dirInfo =
               getOmMetadataManager().getDirectoryTable().getSkipCache(dirKey);
       dirObjectId = dirInfo.getObjectID();
@@ -238,5 +238,37 @@ public class FSOBucketHandler extends BucketHandler {
   @Override
   public BucketLayout getBucketLayout() {
     return BucketLayout.FILE_SYSTEM_OPTIMIZED;
+  }
+
+  @Override
+  public int getTotalDirCount(long objectId) throws IOException {
+    NSSummary nsSummary =
+        getReconNamespaceSummaryManager().getNSSummary(objectId);
+    if (nsSummary == null) {
+      return 0;
+    }
+
+    Set<Long> subdirs = nsSummary.getChildDir();
+    int totalCnt = subdirs.size();
+    for (long subdir : subdirs) {
+      totalCnt += getTotalDirCount(subdir);
+    }
+    return totalCnt;
+  }
+
+  @Override
+  public OmKeyInfo getKeyInfo(String[] names) throws IOException {
+    // The object ID for the directory that the key is directly in
+    final long volumeId = getVolumeObjectId(names);
+    final long bucketId = getBucketObjectId(names);
+    long parentObjectId = getDirObjectId(names,
+        names.length - 1);
+    String fileName = names[names.length - 1];
+    String ozoneKey = getOmMetadataManager()
+        .getOzonePathKey(volumeId, bucketId,
+            parentObjectId, fileName);
+    OmKeyInfo keyInfo =
+        getOmMetadataManager().getFileTable().getSkipCache(ozoneKey);
+    return keyInfo;
   }
 }

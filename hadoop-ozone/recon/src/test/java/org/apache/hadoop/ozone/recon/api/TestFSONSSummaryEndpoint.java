@@ -259,8 +259,8 @@ public class TestFSONSSummaryEndpoint {
 
     // populate OM DB and reprocess into Recon RocksDB
     populateOMDB();
-    FSONSSummaryTask fsoNSSummaryTask = new FSONSSummaryTask(
-        reconNamespaceSummaryManager);
+    FSONSSummaryTask fsoNSSummaryTask =
+        new FSONSSummaryTask(reconNamespaceSummaryManager);
     fsoNSSummaryTask.reprocess(reconOMMetadataManager);
   }
 
@@ -505,13 +505,17 @@ public class TestFSONSSummaryEndpoint {
   private void populateOMDB() throws Exception {
     // write all 4 directories
     writeDirToOm(reconOMMetadataManager, DIR_ONE_OBJECT_ID,
-            BUCKET_ONE_OBJECT_ID, DIR_ONE);
+            BUCKET_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID, DIR_ONE);
     writeDirToOm(reconOMMetadataManager, DIR_TWO_OBJECT_ID,
-            DIR_ONE_OBJECT_ID, DIR_TWO);
+            DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID, DIR_TWO);
     writeDirToOm(reconOMMetadataManager, DIR_THREE_OBJECT_ID,
-            DIR_ONE_OBJECT_ID, DIR_THREE);
+            DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID, DIR_THREE);
     writeDirToOm(reconOMMetadataManager, DIR_FOUR_OBJECT_ID,
-            DIR_ONE_OBJECT_ID, DIR_FOUR);
+            DIR_ONE_OBJECT_ID, BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID, DIR_FOUR);
 
     // write all 6 keys
     writeKeyToOm(reconOMMetadataManager,
@@ -521,6 +525,8 @@ public class TestFSONSSummaryEndpoint {
             FILE_ONE,
             KEY_ONE_OBJECT_ID,
             BUCKET_ONE_OBJECT_ID,
+            BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID,
             KEY_ONE_SIZE,
             getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -530,6 +536,8 @@ public class TestFSONSSummaryEndpoint {
             FILE_TWO,
             KEY_TWO_OBJECT_ID,
             DIR_TWO_OBJECT_ID,
+            BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID,
             KEY_TWO_SIZE,
             getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -539,6 +547,8 @@ public class TestFSONSSummaryEndpoint {
             FILE_THREE,
             KEY_THREE_OBJECT_ID,
             DIR_THREE_OBJECT_ID,
+            BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID,
             KEY_THREE_SIZE,
             getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -548,6 +558,8 @@ public class TestFSONSSummaryEndpoint {
             FILE_FOUR,
             KEY_FOUR_OBJECT_ID,
             BUCKET_TWO_OBJECT_ID,
+            BUCKET_TWO_OBJECT_ID,
+            VOL_OBJECT_ID,
             KEY_FOUR_SIZE,
             getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -557,6 +569,8 @@ public class TestFSONSSummaryEndpoint {
             FILE_FIVE,
             KEY_FIVE_OBJECT_ID,
             BUCKET_TWO_OBJECT_ID,
+            BUCKET_TWO_OBJECT_ID,
+            VOL_OBJECT_ID,
             KEY_FIVE_SIZE,
             getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -566,6 +580,8 @@ public class TestFSONSSummaryEndpoint {
             FILE_SIX,
             KEY_SIX_OBJECT_ID,
             DIR_FOUR_OBJECT_ID,
+            BUCKET_ONE_OBJECT_ID,
+            VOL_OBJECT_ID,
             KEY_SIX_SIZE,
             getBucketLayout());
   }
@@ -650,6 +666,8 @@ public class TestFSONSSummaryEndpoint {
 
     // add the multi-block key to Recon's OM
     writeKeyToOm(reconOMMetadataManager,
+            VOL_OBJECT_ID,
+            BUCKET_ONE_OBJECT_ID,
             DIR_ONE_OBJECT_ID,
             MULTI_BLOCK_KEY_OBJECT_ID,
             VOL, BUCKET_ONE,
@@ -699,6 +717,8 @@ public class TestFSONSSummaryEndpoint {
 
     // add the keys to Recon's OM
     writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
         DIR_TWO_OBJECT_ID,
         KEY_TWO_OBJECT_ID,
         VOL, BUCKET_ONE,
@@ -708,6 +728,8 @@ public class TestFSONSSummaryEndpoint {
         getBucketLayout());
 
     writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
         DIR_THREE_OBJECT_ID,
         KEY_THREE_OBJECT_ID,
         VOL, BUCKET_ONE,
@@ -717,6 +739,8 @@ public class TestFSONSSummaryEndpoint {
         getBucketLayout());
 
     writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
         DIR_FOUR_OBJECT_ID,
         KEY_SIX_OBJECT_ID,
         VOL, BUCKET_ONE,
@@ -774,6 +798,7 @@ public class TestFSONSSummaryEndpoint {
             FOUR, containerID3);
     when(containerManager.getContainerReplicas(containerID3))
             .thenReturn(containerReplicas3);
+
     // Container 4 is replicated with 5 replica
     ContainerID containerID4 = new ContainerID(CONTAINER_FOUR_ID);
     Set<ContainerReplica> containerReplicas4 = generateMockContainerReplicas(

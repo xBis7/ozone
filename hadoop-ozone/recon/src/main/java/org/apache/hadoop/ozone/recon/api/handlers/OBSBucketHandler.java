@@ -63,8 +63,8 @@ public class OBSBucketHandler extends BucketHandler {
    * @throws IOException
    */
   @Override
-  public EntityType determineKeyPath(String keyName, long bucketObjectId)
-      throws IOException {
+  public EntityType determineKeyPath(String keyName, long volumeId,
+                                     long bucketObjectId) throws IOException {
 
     // For example, /vol1/buck1/a/b/c/d/e/file1.txt
     // For Object Store buckets, in the KeyTable
@@ -249,5 +249,26 @@ public class OBSBucketHandler extends BucketHandler {
   @Override
   public BucketLayout getBucketLayout() {
     return BucketLayout.OBJECT_STORE;
+  }
+
+  @Override
+  public int getTotalDirCount(long objectId) throws IOException {
+    OBSBucketHandler obsBucketHandler =
+        new OBSBucketHandler(getReconNamespaceSummaryManager(),
+            getOmMetadataManager(), getReconSCM(), omBucketInfo);
+    return obsBucketHandler.getTotalDirCountUnderPrefix();
+  }
+
+  @Override
+  public OmKeyInfo getKeyInfo(String[] names) throws IOException {
+    StringBuilder bld = new StringBuilder();
+    for (int i = 0; i < names.length; i++) {
+      bld.append(OM_KEY_PREFIX)
+          .append(names[i]);
+    }
+    String ozoneKey = bld.toString();
+    OmKeyInfo keyInfo = getOmMetadataManager()
+        .getKeyTable(BucketLayout.OBJECT_STORE).get(ozoneKey);
+    return keyInfo;
   }
 }

@@ -27,6 +27,7 @@ import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
@@ -53,11 +54,11 @@ public abstract class BucketHandler {
 
   private final ReconOMMetadataManager omMetadataManager;
 
+  private final OzoneStorageContainerManager reconSCM;
+
   private final ContainerManager containerManager;
 
-  public static OmBucketInfo omBucketInfo;
-
-  public static String parentDirPath;
+  private String parentDirPath;
 
   public BucketHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
@@ -65,6 +66,7 @@ public abstract class BucketHandler {
           OzoneStorageContainerManager reconSCM) {
     this.reconNamespaceSummaryManager = reconNamespaceSummaryManager;
     this.omMetadataManager = omMetadataManager;
+    this.reconSCM = reconSCM;
     this.containerManager = reconSCM.getContainerManager();
   }
 
@@ -80,8 +82,20 @@ public abstract class BucketHandler {
     return containerManager;
   }
 
-  public abstract EntityType determineKeyPath(String keyName,
-                             long bucketObjectId) throws IOException;
+  public OzoneStorageContainerManager getReconSCM() {
+    return reconSCM;
+  }
+
+  public void setParentDirPath(String parentDirPath) {
+    this.parentDirPath = parentDirPath;
+  }
+
+  public String getParentDirPath() {
+    return parentDirPath;
+  }
+
+  public abstract EntityType determineKeyPath(String keyName, long volumeId,
+                                              long bucketObjectId) throws IOException;
 
   public abstract long calculateDUUnderObject(long parentId)
           throws IOException;
@@ -98,6 +112,12 @@ public abstract class BucketHandler {
           throws IOException;
 
   public abstract BucketLayout getBucketLayout();
+
+  public abstract int getTotalDirCount(long objectId)
+      throws IOException;
+
+  public abstract OmKeyInfo getKeyInfo(String[] names)
+      throws IOException;
 
   /**
    *
@@ -156,6 +176,19 @@ public abstract class BucketHandler {
   }
 
   /**
+   * Given a existent path, get the volume object ID.
+   * @param names valid path request
+   * @return volume objectID
+   * @throws IOException
+   */
+  public long getVolumeObjectId(String[] names) throws IOException {
+    String bucketKey = omMetadataManager.getVolumeKey(names[0]);
+    OmVolumeArgs volumeInfo = omMetadataManager
+        .getVolumeTable().getSkipCache(bucketKey);
+    return volumeInfo.getObjectID();
+  }
+
+  /**
    * Given a existent path, get the bucket object ID.
    * @param names valid path request
    * @return bucket objectID
@@ -173,7 +206,6 @@ public abstract class BucketHandler {
                 ReconOMMetadataManager omMetadataManager,
                 OzoneStorageContainerManager reconSCM,
                 OmBucketInfo bucketInfo) {
-    omBucketInfo = bucketInfo;
 
     if (bucketInfo.getBucketLayout()
             .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {

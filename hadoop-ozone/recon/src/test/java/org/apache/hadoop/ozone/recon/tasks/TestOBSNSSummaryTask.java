@@ -412,6 +412,8 @@ public final class TestOBSNSSummaryTask {
         FILE_ONE,
         KEY_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_ONE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -421,6 +423,8 @@ public final class TestOBSNSSummaryTask {
         FILE_TWO,
         KEY_TWO_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
+        BUCKET_TWO_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_TWO_OLD_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -430,6 +434,8 @@ public final class TestOBSNSSummaryTask {
         FILE_FOUR,
         KEY_FOUR_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
+        BUCKET_TWO_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_FOUR_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -439,6 +445,8 @@ public final class TestOBSNSSummaryTask {
         FILE_THREE,
         KEY_THREE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_THREE_SIZE,
         getBucketLayout());
   }

@@ -374,6 +374,8 @@ public class TestOBSNSSummaryEndpoint {
         FILE_ONE,
         KEY_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_ONE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -383,6 +385,8 @@ public class TestOBSNSSummaryEndpoint {
         FILE_TWO,
         KEY_TWO_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_TWO_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -392,6 +396,8 @@ public class TestOBSNSSummaryEndpoint {
         FILE_THREE,
         KEY_THREE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_THREE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -401,6 +407,8 @@ public class TestOBSNSSummaryEndpoint {
         FILE_FOUR,
         KEY_FOUR_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
+        BUCKET_TWO_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_FOUR_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -410,6 +418,8 @@ public class TestOBSNSSummaryEndpoint {
         FILE_FIVE,
         KEY_FIVE_OBJECT_ID,
         BUCKET_TWO_OBJECT_ID,
+        BUCKET_TWO_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_FIVE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
@@ -419,6 +429,8 @@ public class TestOBSNSSummaryEndpoint {
         FILE_SIX,
         KEY_SIX_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        VOL_OBJECT_ID,
         KEY_SIX_SIZE,
         getBucketLayout());
   }
@@ -503,6 +515,8 @@ public class TestOBSNSSummaryEndpoint {
 
     // add the multi-block key to Recon's OM
     writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
         BUCKET_ONE_OBJECT_ID,
         MULTI_BLOCK_KEY_OBJECT_ID,
         VOL, BUCKET_ONE,
