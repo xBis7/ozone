@@ -180,7 +180,7 @@ public class LegacyBucketHandler extends BucketHandler {
       // iteration moved to the next level
       // and not handling direct keys
       if (keys.length - seekKeys.length > 1) {
-        break;
+        continue;
       }
 
       OmKeyInfo keyInfo = kv.getValue();
