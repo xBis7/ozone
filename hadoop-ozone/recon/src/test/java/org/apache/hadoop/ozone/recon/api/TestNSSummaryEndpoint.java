@@ -112,6 +112,7 @@ public class TestNSSummaryEndpoint {
   private static final String BUCKET_ONE = "bucket1";
   private static final String BUCKET_TWO = "bucket2";
   private static final String KEY_ONE = "file1";
+  private static final String REPL_KEY_ONE = "dir1/file1";
   private static final String KEY_TWO = "dir1/dir2/file2";
   private static final String KEY_THREE = "dir1/dir3/file3";
   private static final String KEY_FOUR = "file4";
@@ -150,16 +151,24 @@ public class TestNSSummaryEndpoint {
   private static final long CONTAINER_ONE_ID = 1L;
   private static final long CONTAINER_TWO_ID = 2L;
   private static final long CONTAINER_THREE_ID = 3L;
+  private static final long CONTAINER_FOUR_ID = 4L;
+  private static final long CONTAINER_FIVE_ID = 5L;
+  private static final long CONTAINER_SIX_ID = 6L;
 
   // replication factors
   private static final int THREE = 3;
   private static final int TWO = 2;
   private static final int FOUR = 4;
+  private static final int FIVE = 5;
+
 
   // block lengths
   private static final long BLOCK_ONE_LENGTH = 1000L;
   private static final long BLOCK_TWO_LENGTH = 2000L;
   private static final long BLOCK_THREE_LENGTH = 3000L;
+  private static final long BLOCK_FOUR_LENGTH = 4000L;
+  private static final long BLOCK_FIVE_LENGTH = 5000L;
+  private static final long BLOCK_SIX_LENGTH = 6000L;
 
   // data size in bytes
   private static final long KEY_ONE_SIZE = 500L; // bin 0
@@ -172,6 +181,26 @@ public class TestNSSummaryEndpoint {
           = THREE * BLOCK_ONE_LENGTH
           + TWO * BLOCK_TWO_LENGTH
           + FOUR * BLOCK_THREE_LENGTH;
+
+  private static final long MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA
+      = FIVE * BLOCK_FOUR_LENGTH
+      + TWO * BLOCK_FIVE_LENGTH
+      + THREE * BLOCK_SIX_LENGTH;
+
+  private static final long FILE1_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long FILE2_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long FILE3_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long FILE6_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+
+  private static final long MULTI_BLOCK_TOTAL_SIZE_WITH_REPLICA
+      = FILE2_SIZE_WITH_REPLICA
+      + FILE3_SIZE_WITH_REPLICA
+      + FILE6_SIZE_WITH_REPLICA
+      + FILE1_SIZE_WITH_REPLICA;
 
   // quota in bytes
   private static final long VOL_QUOTA = 2 * OzoneConsts.MB;
@@ -368,6 +397,23 @@ public class TestNSSummaryEndpoint {
     Assert.assertEquals(ResponseStatus.OK, replicaDUResponse.getStatus());
     Assert.assertEquals(MULTI_BLOCK_KEY_SIZE_WITH_REPLICA,
             replicaDUResponse.getSizeWithReplica());
+  }
+
+  /**
+   * When calculating DU under dir1
+   * there are 3 keys, file2, file3, file6.
+   * There are no direct keys.
+   * @throws IOException
+   */
+  @Test
+  public void testDataSizeUnderDirWithReplication() throws IOException {
+    setUpMultiBlockKeysUnderDir1();
+    Response dir1Response = nsSummaryEndpoint.getDiskUsage(DIR_ONE_PATH,
+        false, true);
+    DUResponse replicaDUResponse = (DUResponse) dir1Response.getEntity();
+    Assert.assertEquals(ResponseStatus.OK, replicaDUResponse.getStatus());
+    Assert.assertEquals(MULTI_BLOCK_TOTAL_SIZE_WITH_REPLICA,
+        replicaDUResponse.getSizeWithReplica());
   }
 
   @Test
@@ -609,6 +655,86 @@ public class TestNSSummaryEndpoint {
   }
 
   /**
+   * Replicate all keys under dir1.
+   *              vol
+   *              /
+   *         bucket1
+   *              \
+   *              dir1
+   *            /   \   \
+   *         dir2  dir3  dir4
+   *          /     \      \
+   *        file2   file3  file6
+   * @throws IOException
+   */
+  private void setUpMultiBlockKeysUnderDir1() throws IOException {
+    List<OmKeyLocationInfo> locationInfoList = new ArrayList<>();
+    BlockID block4 = new BlockID(CONTAINER_FOUR_ID, 0L);
+    BlockID block5 = new BlockID(CONTAINER_FIVE_ID, 0L);
+    BlockID block6 = new BlockID(CONTAINER_SIX_ID, 0L);
+
+    OmKeyLocationInfo location4 = new OmKeyLocationInfo.Builder()
+        .setBlockID(block4)
+        .setLength(BLOCK_FOUR_LENGTH)
+        .build();
+    OmKeyLocationInfo location5 = new OmKeyLocationInfo.Builder()
+        .setBlockID(block5)
+        .setLength(BLOCK_FIVE_LENGTH)
+        .build();
+    OmKeyLocationInfo location6 = new OmKeyLocationInfo.Builder()
+        .setBlockID(block6)
+        .setLength(BLOCK_SIX_LENGTH)
+        .build();
+    locationInfoList.add(location4);
+    locationInfoList.add(location5);
+    locationInfoList.add(location6);
+
+    OmKeyLocationInfoGroup locationInfoGroup =
+        new OmKeyLocationInfoGroup(0L, locationInfoList);
+
+    // add the keys to Recon's OM
+    writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        DIR_TWO_OBJECT_ID,
+        KEY_TWO_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        KEY_TWO,
+        FILE_TWO,
+        Collections.singletonList(locationInfoGroup));
+
+    writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        DIR_THREE_OBJECT_ID,
+        KEY_THREE_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        KEY_THREE,
+        FILE_THREE,
+        Collections.singletonList(locationInfoGroup));
+
+    writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        DIR_FOUR_OBJECT_ID,
+        KEY_SIX_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        KEY_SIX,
+        FILE_SIX,
+        Collections.singletonList(locationInfoGroup));
+
+    writeKeyToOm(reconOMMetadataManager,
+        VOL_OBJECT_ID,
+        BUCKET_ONE_OBJECT_ID,
+        DIR_ONE_OBJECT_ID,
+        KEY_ONE_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        REPL_KEY_ONE,
+        FILE_ONE,
+        Collections.singletonList(locationInfoGroup));
+  }
+
+  /**
    * Generate a set of mock container replica with a size of
    * replication factor for container.
    * @param replicationFactor number of replica
@@ -616,46 +742,67 @@ public class TestNSSummaryEndpoint {
    * @return a set of container replica for testing
    */
   private static Set<ContainerReplica> generateMockContainerReplicas(
-          int replicationFactor, ContainerID containerID) {
+      int replicationFactor, ContainerID containerID) {
     Set<ContainerReplica> result = new HashSet<>();
     for (int i = 0; i < replicationFactor; ++i) {
       DatanodeDetails randomDatanode = randomDatanodeDetails();
       ContainerReplica replica = new ContainerReplica.ContainerReplicaBuilder()
-              .setContainerID(containerID)
-              .setContainerState(State.OPEN)
-              .setDatanodeDetails(randomDatanode)
-              .build();
+          .setContainerID(containerID)
+          .setContainerState(State.OPEN)
+          .setDatanodeDetails(randomDatanode)
+          .build();
       result.add(replica);
     }
     return result;
   }
 
   private static ReconStorageContainerManagerFacade getMockReconSCM()
-          throws ContainerNotFoundException {
+      throws ContainerNotFoundException {
     ReconStorageContainerManagerFacade reconSCM =
-            mock(ReconStorageContainerManagerFacade.class);
+        mock(ReconStorageContainerManagerFacade.class);
     ContainerManager containerManager = mock(ContainerManager.class);
 
     // Container 1 is 3-way replicated
     ContainerID containerID1 = new ContainerID(CONTAINER_ONE_ID);
     Set<ContainerReplica> containerReplicas1 = generateMockContainerReplicas(
-            THREE, containerID1);
+        THREE, containerID1);
     when(containerManager.getContainerReplicas(containerID1))
-            .thenReturn(containerReplicas1);
+        .thenReturn(containerReplicas1);
 
     // Container 2 is under replicated with 2 replica
     ContainerID containerID2 = new ContainerID(CONTAINER_TWO_ID);
     Set<ContainerReplica> containerReplicas2 = generateMockContainerReplicas(
-            TWO, containerID2);
+        TWO, containerID2);
     when(containerManager.getContainerReplicas(containerID2))
-            .thenReturn(containerReplicas2);
+        .thenReturn(containerReplicas2);
 
     // Container 3 is over replicated with 4 replica
     ContainerID containerID3 = new ContainerID(CONTAINER_THREE_ID);
     Set<ContainerReplica> containerReplicas3 = generateMockContainerReplicas(
-            FOUR, containerID3);
+        FOUR, containerID3);
     when(containerManager.getContainerReplicas(containerID3))
-            .thenReturn(containerReplicas3);
+        .thenReturn(containerReplicas3);
+
+    // Container 4 is replicated with 5 replica
+    ContainerID containerID4 = new ContainerID(CONTAINER_FOUR_ID);
+    Set<ContainerReplica> containerReplicas4 = generateMockContainerReplicas(
+        FIVE, containerID4);
+    when(containerManager.getContainerReplicas(containerID4))
+        .thenReturn(containerReplicas4);
+
+    // Container 5 is replicated with 2 replica
+    ContainerID containerID5 = new ContainerID(CONTAINER_FIVE_ID);
+    Set<ContainerReplica> containerReplicas5 = generateMockContainerReplicas(
+        TWO, containerID5);
+    when(containerManager.getContainerReplicas(containerID5))
+        .thenReturn(containerReplicas5);
+
+    // Container 6 is replicated with 3 replica
+    ContainerID containerID6 = new ContainerID(CONTAINER_SIX_ID);
+    Set<ContainerReplica> containerReplicas6 = generateMockContainerReplicas(
+        THREE, containerID6);
+    when(containerManager.getContainerReplicas(containerID6))
+        .thenReturn(containerReplicas6);
 
     when(reconSCM.getContainerManager()).thenReturn(containerManager);
     return reconSCM;
