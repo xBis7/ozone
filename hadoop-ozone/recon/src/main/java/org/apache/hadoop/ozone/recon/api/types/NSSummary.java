@@ -24,8 +24,6 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Arrays;
 
-import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
-
 /**
  * Class to encapsulate namespace metadata summaries from OM.
  */
@@ -73,28 +71,7 @@ public class NSSummary {
     return childDir;
   }
 
-  /**
-   * For Legacy Bucket
-   * @return the last part of the keyName
-   * For FSO Bucket
-   * @return the dirName
-   */
   public String getDirName() {
-    if (dirName.endsWith(OM_KEY_PREFIX)) {
-      String cpDirName = dirName;
-      String[] names = cpDirName.split(OM_KEY_PREFIX);
-      String keyName = names[names.length - 1] + OM_KEY_PREFIX;
-      return keyName;
-    } else {
-      return dirName;
-    }
-  }
-
-  /**
-   * For Legacy Bucket
-   * @return full keyName
-   */
-  public String getDirKeyName() {
     return dirName;
   }
 
