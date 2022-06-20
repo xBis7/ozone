@@ -98,7 +98,8 @@ public class LegacyBucketHandler extends BucketHandler {
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
 
-    String seekPrefix = getParentDirPath() + OM_KEY_PREFIX;
+    String seekPrefix =
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
 
     // handle nested keys (DFS)
     NSSummary nsSummary = getReconNamespaceSummaryManager()
@@ -108,8 +109,10 @@ public class LegacyBucketHandler extends BucketHandler {
       return 0;
     }
 
-    String subDirName = nsSummary.getDirName();
-    seekPrefix += subDirName;
+    if (omBucketInfo.getObjectID() != parentId) {
+      String dirName = nsSummary.getDirName();
+      seekPrefix += dirName;
+    }
 
     iterator.seek(seekPrefix);
     long totalDU = 0L;
@@ -159,8 +162,20 @@ public class LegacyBucketHandler extends BucketHandler {
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
 
-    String seekPrefix = normalizedPath + OM_KEY_PREFIX;
+    String seekPrefix =
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
 
+    NSSummary nsSummary = getReconNamespaceSummaryManager()
+        .getNSSummary(parentId);
+    // empty bucket
+    if (nsSummary == null) {
+      return 0;
+    }
+
+    if (omBucketInfo.getObjectID() != parentId) {
+      String dirName = nsSummary.getDirName();
+      seekPrefix += dirName;
+    }
     String[] seekKeys = seekPrefix.split(OM_KEY_PREFIX);
 
     iterator.seek(seekPrefix);
