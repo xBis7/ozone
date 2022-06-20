@@ -98,7 +98,8 @@ public class LegacyBucketHandler extends BucketHandler {
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
 
-    String seekPrefix = getParentDirPath() + OM_KEY_PREFIX;
+    String seekPrefix =
+        OM_KEY_PREFIX + vol + OM_KEY_PREFIX + bucket + OM_KEY_PREFIX;
 
     // handle nested keys (DFS)
     NSSummary nsSummary = getReconNamespaceSummaryManager()
@@ -108,7 +109,7 @@ public class LegacyBucketHandler extends BucketHandler {
       return 0;
     }
 
-    String subDirName = nsSummary.getDirName();
+    String subDirName = nsSummary.getDirKeyName();
     seekPrefix += subDirName;
 
     iterator.seek(seekPrefix);
