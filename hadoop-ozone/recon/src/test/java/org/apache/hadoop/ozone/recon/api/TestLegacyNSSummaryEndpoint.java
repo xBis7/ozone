@@ -209,10 +209,10 @@ public class TestLegacyNSSummaryEndpoint {
   private static final String VOL_PATH = "/vol";
   private static final String BUCKET_ONE_PATH = "/vol/bucket1";
   private static final String BUCKET_TWO_PATH = "/vol/bucket2";
-  private static final String DIR_ONE_PATH = "/vol/bucket1/dir1/";
-  private static final String DIR_TWO_PATH = "/vol/bucket1/dir1/dir2/";
-  private static final String DIR_THREE_PATH = "/vol/bucket1/dir1/dir3/";
-  private static final String DIR_FOUR_PATH = "/vol/bucket1/dir1/dir4/";
+  private static final String DIR_ONE_PATH = "/vol/bucket1/dir1";
+  private static final String DIR_TWO_PATH = "/vol/bucket1/dir1/dir2";
+  private static final String DIR_THREE_PATH = "/vol/bucket1/dir1/dir3";
+  private static final String DIR_FOUR_PATH = "/vol/bucket1/dir1/dir4";
   private static final String KEY_PATH = "/vol/bucket2/file4";
   private static final String MULTI_BLOCK_KEY_PATH = "/vol/bucket1/dir1/file7";
   private static final String INVALID_PATH = "/vol/path/not/found";

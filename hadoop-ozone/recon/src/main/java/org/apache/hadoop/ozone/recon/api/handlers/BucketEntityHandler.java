@@ -29,6 +29,8 @@ import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -88,7 +90,8 @@ public class BucketEntityHandler extends EntityHandler {
               .getNSSummary(subdirObjectId);
 
       // get directory's name and generate the next-level subpath.
-      String dirName = subdirNSSummary.getDirName();
+      Path dirPath = Paths.get(subdirNSSummary.getDirName());
+      String dirName = dirPath.getFileName().toString();
       String subpath = BucketHandler.buildSubpath(getNormalizedPath(), dirName);
       // we need to reformat the subpath in the response in a
       // format with leading slash and without trailing slash
