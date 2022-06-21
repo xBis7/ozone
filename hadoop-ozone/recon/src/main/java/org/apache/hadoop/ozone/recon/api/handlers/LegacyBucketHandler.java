@@ -114,6 +114,7 @@ public class LegacyBucketHandler extends BucketHandler {
       seekPrefix += dirName;
     }
 
+    String[] seekKeys = seekPrefix.split(OM_KEY_PREFIX);
     iterator.seek(seekPrefix);
     long totalDU = 0L;
     // handle direct keys
@@ -124,6 +125,15 @@ public class LegacyBucketHandler extends BucketHandler {
       if (!dbKey.startsWith(seekPrefix)) {
         break;
       }
+
+      String[] keys = dbKey.split(OM_KEY_PREFIX);
+
+      // iteration moved to the next level
+      // and not handling direct keys
+      if (keys.length - seekKeys.length > 1) {
+        continue;
+      }
+
       OmKeyInfo keyInfo = kv.getValue();
       if (keyInfo != null) {
         // skip directory markers, just include directKeys
@@ -195,7 +205,7 @@ public class LegacyBucketHandler extends BucketHandler {
       // iteration moved to the next level
       // and not handling direct keys
       if (keys.length - seekKeys.length > 1) {
-        break;
+        continue;
       }
 
       OmKeyInfo keyInfo = kv.getValue();
