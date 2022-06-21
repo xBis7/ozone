@@ -67,24 +67,44 @@ public class LegacyBucketHandler extends BucketHandler {
           throws IOException {
 
     // For example, /vol1/buck1/a/b/c/d/e/file1.txt
-    // Look in the KeyTable, if there is a result, check the keyName
-    // if it ends with '/' then we have directory
+    // Look in the KeyTable for the key path,
+    // if we find the key path prefix more than once
+    // then there are objects under this path
+    // and the path points to a dir
     // else we have a key
-    // otherwise we return null, UNKNOWN
+    // if there is nothing found the entity type is unknown
     String key = OM_KEY_PREFIX + vol +
         OM_KEY_PREFIX + bucket +
         OM_KEY_PREFIX + keyName;
-    OmKeyInfo omKeyInfo = getOmMetadataManager()
-        .getKeyTable(getBucketLayout()).get(key);
 
-    if (omKeyInfo != null) {
-      if (keyName.endsWith(OM_KEY_PREFIX)) {
-        return EntityType.DIRECTORY;
-      } else {
-        return EntityType.KEY;
+    Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
+
+    TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
+        iterator = keyTable.iterator();
+
+    iterator.seek(key);
+    int count = 0;
+    // handle direct keys
+    while (iterator.hasNext()) {
+      Table.KeyValue<String, OmKeyInfo> kv = iterator.next();
+      String dbKey = kv.getKey();
+      // since the RocksDB is ordered, seek until the prefix isn't matched
+      if (!dbKey.startsWith(key)) {
+        break;
       }
+
+      OmKeyInfo keyInfo = kv.getValue();
+      if (keyInfo != null) {
+        count++;
+      } else {
+        return EntityType.UNKNOWN;
+      }
+    }
+
+    if (count > 1) {
+      return EntityType.DIRECTORY;
     } else {
-      return EntityType.UNKNOWN;
+      return EntityType.KEY;
     }
   }
 

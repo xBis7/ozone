@@ -254,10 +254,10 @@ public final class TestLegacyNSSummaryTask {
       Assert.assertEquals(0, nsSummaryForBucket1.getDirName().length());
       Assert.assertEquals(0, nsSummaryForBucket2.getDirName().length());
       // check dirName is correctly written
-      Assert.assertEquals(DIR_ONE + OM_KEY_PREFIX,
+      Assert.assertEquals(DIR_ONE,
           nsSummaryInDir1.getDirName());
       Assert.assertEquals(
-          DIR_TWO + OM_KEY_PREFIX,
+          DIR_ONE + OM_KEY_PREFIX + DIR_TWO,
           nsSummaryInDir2.getDirName());
     }
   }
@@ -489,7 +489,7 @@ public final class TestLegacyNSSummaryTask {
       Assert.assertEquals(dirOneAns, childDirForDir1);
 
       // after renaming dir1, check its new name
-      Assert.assertEquals(DIR_ONE_RENAME + OM_KEY_PREFIX,
+      Assert.assertEquals(DIR_ONE_RENAME,
           nsSummaryForDir1.getDirName());
     }
   }

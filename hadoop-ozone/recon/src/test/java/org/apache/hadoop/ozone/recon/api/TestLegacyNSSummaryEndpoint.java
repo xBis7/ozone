@@ -115,6 +115,7 @@ public class TestLegacyNSSummaryEndpoint {
   private static final String BUCKET_ONE = "bucket1";
   private static final String BUCKET_TWO = "bucket2";
   private static final String KEY_ONE = "file1";
+  private static final String REPL_KEY_ONE = "dir1/file1";
   private static final String KEY_TWO = "dir1/dir2/file2";
   private static final String KEY_THREE = "dir1/dir3/file3";
   private static final String KEY_FOUR = "file4";
@@ -187,17 +188,20 @@ public class TestLegacyNSSummaryEndpoint {
       + TWO * BLOCK_FIVE_LENGTH
       + THREE * BLOCK_SIX_LENGTH;
 
-  private static final long DIR1_DIR2_FILE2_SIZE_WITH_REPLICA =
+  private static final long FILE1_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-  private static final long DIR1_DIR3_FILE3_SIZE_WITH_REPLICA =
+  private static final long FILE2_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
-  private static final long DIR1_DIR4_FILE6_SIZE_WITH_REPLICA =
+  private static final long FILE3_SIZE_WITH_REPLICA =
+      MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
+  private static final long FILE6_SIZE_WITH_REPLICA =
       MULTI_BLOCK_OBJECT_SIZE_WITH_REPLICA;
 
   private static final long MULTI_BLOCK_TOTAL_SIZE_WITH_REPLICA
-      = DIR1_DIR2_FILE2_SIZE_WITH_REPLICA
-      + DIR1_DIR3_FILE3_SIZE_WITH_REPLICA
-      + DIR1_DIR4_FILE6_SIZE_WITH_REPLICA;
+      = FILE2_SIZE_WITH_REPLICA
+      + FILE3_SIZE_WITH_REPLICA
+      + FILE6_SIZE_WITH_REPLICA
+      + FILE1_SIZE_WITH_REPLICA;
 
   // quota in bytes
   private static final long VOL_QUOTA = 2 * OzoneConsts.MB;
@@ -684,14 +688,15 @@ public class TestLegacyNSSummaryEndpoint {
 
   /**
    * Replicate all keys under dir1.
+   * The test case.
    *              vol
    *              /
    *         bucket1
    *              \
    *              dir1
-   *            /   \   \
-   *         dir2  dir3  dir4
-   *          /     \      \
+   *            /   \   \    \
+   *        dir2  dir3  dir4  file1
+   *          /      \     \
    *        file2   file3  file6
    * @throws IOException
    */
@@ -745,6 +750,15 @@ public class TestLegacyNSSummaryEndpoint {
         VOL, BUCKET_ONE,
         KEY_SIX,
         FILE_SIX,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
+
+    writeKeyToOm(reconOMMetadataManager,
+        DIR_ONE_OBJECT_ID,
+        KEY_ONE_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        REPL_KEY_ONE,
+        FILE_ONE,
         Collections.singletonList(locationInfoGroup),
         getBucketLayout());
   }
