@@ -57,8 +57,6 @@ public abstract class BucketHandler {
 
   private final ContainerManager containerManager;
 
-  private String parentDirPath;
-
   public BucketHandler(
           ReconNamespaceSummaryManager reconNamespaceSummaryManager,
           ReconOMMetadataManager omMetadataManager,
@@ -83,14 +81,6 @@ public abstract class BucketHandler {
 
   public OzoneStorageContainerManager getReconSCM() {
     return reconSCM;
-  }
-
-  public void setParentDirPath(String parentDirPath) {
-    this.parentDirPath = parentDirPath;
-  }
-
-  public String getParentDirPath() {
-    return parentDirPath;
   }
 
   public abstract EntityType determineKeyPath(String keyName,

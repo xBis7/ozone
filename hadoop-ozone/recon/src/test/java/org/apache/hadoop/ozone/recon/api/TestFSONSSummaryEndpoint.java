@@ -664,8 +664,7 @@ public class TestFSONSSummaryEndpoint {
   }
 
   /**
-   * Replicate all keys under dir1.
-   * The test case.
+   * Testing the following case.
    *              vol
    *              /
    *         bucket1
@@ -675,6 +674,8 @@ public class TestFSONSSummaryEndpoint {
    *        dir2  dir3  dir4  file1
    *          /      \     \
    *        file2   file3  file6
+   * Write these keys to OM and
+   * replicate them.
    * @throws IOException
    */
   private void setUpMultiBlockKeysUnderDir1() throws IOException {

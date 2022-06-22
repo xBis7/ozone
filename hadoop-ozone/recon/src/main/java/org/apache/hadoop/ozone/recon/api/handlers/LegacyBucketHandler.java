@@ -71,7 +71,8 @@ public class LegacyBucketHandler extends BucketHandler {
     // For example, /vol1/buck1/a/b/c/d/e/file1.txt
     // Look in the KeyTable for the key path,
     // if the first one we seek to is the same as the seek key,
-    // it is a key; if it is the seekKey with a trailing slash, it is a directory
+    // it is a key;
+    // if it is the seekKey with a trailing slash, it is a directory
     // else it is unknown
     String key = OM_KEY_PREFIX + vol +
         OM_KEY_PREFIX + bucket +
