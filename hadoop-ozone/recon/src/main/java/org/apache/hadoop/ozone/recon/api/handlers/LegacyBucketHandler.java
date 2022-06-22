@@ -23,6 +23,7 @@ import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
+import org.apache.hadoop.ozone.om.helpers.OzoneFSUtils;
 import org.apache.hadoop.ozone.recon.api.types.DUResponse;
 import org.apache.hadoop.ozone.recon.api.types.EntityType;
 import org.apache.hadoop.ozone.recon.api.types.NSSummary;
@@ -66,16 +67,15 @@ public class LegacyBucketHandler extends BucketHandler {
   public EntityType determineKeyPath(String keyName, long bucketObjectId)
           throws IOException {
 
+    String filename = OzoneFSUtils.removeTrailingSlashIfNeeded(keyName);
     // For example, /vol1/buck1/a/b/c/d/e/file1.txt
     // Look in the KeyTable for the key path,
-    // if we find the key path prefix more than once
-    // then there are objects under this path
-    // and the path points to a dir
-    // else we have a key
-    // if there is nothing found the entity type is unknown
+    // if the first one we seek to is the same as the seek key,
+    // it is a key; if it is the seekKey with a trailing slash, it is a directory
+    // else it is unknown
     String key = OM_KEY_PREFIX + vol +
         OM_KEY_PREFIX + bucket +
-        OM_KEY_PREFIX + keyName;
+        OM_KEY_PREFIX + filename;
 
     Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
 
@@ -83,29 +83,17 @@ public class LegacyBucketHandler extends BucketHandler {
         iterator = keyTable.iterator();
 
     iterator.seek(key);
-    int count = 0;
-    // handle direct keys
-    while (iterator.hasNext()) {
+    if (iterator.hasNext()) {
       Table.KeyValue<String, OmKeyInfo> kv = iterator.next();
       String dbKey = kv.getKey();
-      // since the RocksDB is ordered, seek until the prefix isn't matched
-      if (!dbKey.startsWith(key)) {
-        break;
+      if (dbKey.equals(key)) {
+        return EntityType.KEY;
       }
-
-      OmKeyInfo keyInfo = kv.getValue();
-      if (keyInfo != null) {
-        count++;
-      } else {
-        return EntityType.UNKNOWN;
+      if (dbKey.equals(key + OM_KEY_PREFIX)) {
+        return EntityType.DIRECTORY;
       }
     }
-
-    if (count > 1) {
-      return EntityType.DIRECTORY;
-    } else {
-      return EntityType.KEY;
-    }
+    return EntityType.UNKNOWN;
   }
 
   // KeyTable's key is in the format of "vol/bucket/keyName"
