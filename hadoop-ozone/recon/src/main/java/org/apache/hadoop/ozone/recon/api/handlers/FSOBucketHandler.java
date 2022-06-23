@@ -82,7 +82,7 @@ public class FSOBucketHandler extends BucketHandler {
         lastKnownParentId = omDirInfo.getObjectID();
       } else if (!elements.hasNext()) {
         // reached last path component. Check file exists for the given path.
-        OmKeyInfo omKeyInfo = getOmMetadataManager().getFileTable()
+        OmKeyInfo omKeyInfo = getKeyTable()
                 .getSkipCache(dbNodeName);
         // The path exists as a file
         if (omKeyInfo != null) {
@@ -102,13 +102,12 @@ public class FSOBucketHandler extends BucketHandler {
     return EntityType.UNKNOWN;
   }
 
-
   // FileTable's key is in the format of "parentId/fileName"
   // Make use of RocksDB's order to seek to the prefix and avoid full iteration
   @Override
   public long calculateDUUnderObject(long parentId)
       throws IOException {
-    Table keyTable = getOmMetadataManager().getFileTable();
+    Table keyTable = getKeyTable();
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
             iterator = keyTable.iterator();
@@ -162,7 +161,7 @@ public class FSOBucketHandler extends BucketHandler {
                                List<DUResponse.DiskUsage> duData,
                                String normalizedPath) throws IOException {
 
-    Table keyTable = getOmMetadataManager().getFileTable();
+    Table keyTable = getKeyTable();
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
             iterator = keyTable.iterator();
 
@@ -263,8 +262,14 @@ public class FSOBucketHandler extends BucketHandler {
     String fileName = names[names.length - 1];
     String ozoneKey = getOmMetadataManager()
         .getOzonePathKey(parentObjectId, fileName);
-    OmKeyInfo keyInfo = getOmMetadataManager()
-        .getFileTable().getSkipCache(ozoneKey);
+    OmKeyInfo keyInfo = getKeyTable().getSkipCache(ozoneKey);
     return keyInfo;
+  }
+
+  @Override
+  public Table<String, OmKeyInfo> getKeyTable() {
+    Table keyTable =
+        getOmMetadataManager().getFileTable();
+    return keyTable;
   }
 }

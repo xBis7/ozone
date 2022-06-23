@@ -22,6 +22,7 @@ import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerManager;
 import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
+import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
@@ -85,6 +86,8 @@ public abstract class BucketHandler {
 
   public abstract EntityType determineKeyPath(String keyName,
                              long bucketObjectId) throws IOException;
+
+  public abstract Table<String, OmKeyInfo> getKeyTable();
 
   public abstract long calculateDUUnderObject(long parentId)
           throws IOException;
@@ -187,13 +190,9 @@ public abstract class BucketHandler {
             .equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
       return new FSOBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM);
-    } else if (bucketInfo.getBucketLayout()
-        .equals(BucketLayout.LEGACY)) {
+    } else {
       return new LegacyBucketHandler(reconNamespaceSummaryManager,
               omMetadataManager, reconSCM, bucketInfo);
-    } else {
-      return new OBSBucketHandler(reconNamespaceSummaryManager,
-          omMetadataManager, reconSCM, bucketInfo);
     }
   }
 

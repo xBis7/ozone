@@ -78,7 +78,7 @@ public class LegacyBucketHandler extends BucketHandler {
         OM_KEY_PREFIX + bucket +
         OM_KEY_PREFIX + filename;
 
-    Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
+    Table keyTable = getKeyTable();
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
@@ -102,7 +102,7 @@ public class LegacyBucketHandler extends BucketHandler {
   @Override
   public long calculateDUUnderObject(long parentId)
       throws IOException {
-    Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
+    Table keyTable = getKeyTable();
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
@@ -177,7 +177,7 @@ public class LegacyBucketHandler extends BucketHandler {
                                List<DUResponse.DiskUsage> duData,
                                String normalizedPath) throws IOException {
 
-    Table keyTable = getOmMetadataManager().getKeyTable(getBucketLayout());
+    Table keyTable = getKeyTable();
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
 
@@ -274,8 +274,7 @@ public class LegacyBucketHandler extends BucketHandler {
     }
     bld.append(OM_KEY_PREFIX);
     String dirKey = bld.toString();
-    OmKeyInfo dirInfo = getOmMetadataManager()
-        .getKeyTable(getBucketLayout()).getSkipCache(dirKey);
+    OmKeyInfo dirInfo = getKeyTable().getSkipCache(dirKey);
     
     if (dirInfo != null) {
       dirObjectId = dirInfo.getObjectID();
@@ -312,8 +311,14 @@ public class LegacyBucketHandler extends BucketHandler {
           .append(names[i]);
     }
     String ozoneKey = bld.toString();
-    OmKeyInfo keyInfo = getOmMetadataManager()
-        .getKeyTable(BucketLayout.LEGACY).get(ozoneKey);
+    OmKeyInfo keyInfo = getKeyTable().get(ozoneKey);
     return keyInfo;
+  }
+
+  @Override
+  public Table<String, OmKeyInfo> getKeyTable() {
+    Table keyTable =
+        getOmMetadataManager().getKeyTable(getBucketLayout());
+    return keyTable;
   }
 }

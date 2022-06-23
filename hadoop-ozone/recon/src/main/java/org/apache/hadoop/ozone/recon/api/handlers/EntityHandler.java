@@ -338,7 +338,7 @@ public abstract class EntityHandler {
       throws IOException {
     long result = 0L;
 
-    Table keyTable = omMetadataManager.getFileTable();
+    Table keyTable = bucketHandler.getKeyTable();
 
     TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
         iterator = keyTable.iterator();
@@ -355,7 +355,6 @@ public abstract class EntityHandler {
     }
     return result;
   }
-
   public static String[] parseRequestPath(String path) {
     if (path.startsWith(OM_KEY_PREFIX)) {
       path = path.substring(1);

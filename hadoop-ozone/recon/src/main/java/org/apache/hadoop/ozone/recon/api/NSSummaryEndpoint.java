@@ -207,8 +207,7 @@ public class NSSummaryEndpoint {
         && omMetadataManager.getBucketTable() != null
         && omMetadataManager.getDirectoryTable() != null
         && omMetadataManager.getFileTable() != null
-        && omMetadataManager.getKeyTable(BucketLayout.LEGACY) != null
-        && omMetadataManager.getKeyTable(BucketLayout.OBJECT_STORE) != null;
+        && omMetadataManager.getKeyTable(BucketLayout.LEGACY) != null;
   }
 
 }

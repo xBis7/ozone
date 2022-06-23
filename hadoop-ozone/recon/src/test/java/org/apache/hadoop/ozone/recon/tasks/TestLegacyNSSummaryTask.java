@@ -610,6 +610,15 @@ public final class TestLegacyNSSummaryTask {
         KEY_TWO_OLD_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
+        KEY_THREE,
+        BUCKET_ONE,
+        VOL,
+        FILE_THREE,
+        KEY_THREE_OBJECT_ID,
+        DIR_TWO_OBJECT_ID,
+        KEY_THREE_SIZE,
+        getBucketLayout());
+    writeKeyToOm(reconOMMetadataManager,
         KEY_FOUR,
         BUCKET_TWO,
         VOL,
@@ -634,15 +643,6 @@ public final class TestLegacyNSSummaryTask {
         DIR_TWO,
         DIR_TWO_OBJECT_ID,
         DIR_ONE_OBJECT_ID,
-        getBucketLayout());
-    writeKeyToOm(reconOMMetadataManager,
-        KEY_THREE,
-        BUCKET_ONE,
-        VOL,
-        FILE_THREE,
-        KEY_THREE_OBJECT_ID,
-        DIR_TWO_OBJECT_ID,
-        KEY_THREE_SIZE,
         getBucketLayout());
     writeKeyToOm(reconOMMetadataManager,
         (DIR_ONE + OM_KEY_PREFIX +
