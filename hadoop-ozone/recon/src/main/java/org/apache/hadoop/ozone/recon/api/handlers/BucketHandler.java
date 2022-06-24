@@ -89,8 +89,11 @@ public abstract class BucketHandler {
 
   public abstract Table<String, OmKeyInfo> getKeyTable();
 
+  public abstract long calculateDUForVolume(String volumeName)
+      throws IOException;
+
   public abstract long calculateDUUnderObject(long parentId)
-          throws IOException;
+      throws IOException;
 
   public abstract long handleDirectKeys(long parentId,
                        boolean withReplica, boolean listFile,

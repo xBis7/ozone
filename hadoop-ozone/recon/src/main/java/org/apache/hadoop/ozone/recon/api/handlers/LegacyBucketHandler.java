@@ -97,6 +97,30 @@ public class LegacyBucketHandler extends BucketHandler {
     return EntityType.UNKNOWN;
   }
 
+  @Override
+  public long calculateDUForVolume(String volumeName)
+      throws IOException {
+    long result = 0L;
+
+    Table keyTable = getKeyTable();
+
+    TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
+        iterator = keyTable.iterator();
+
+    while (iterator.hasNext()) {
+      Table.KeyValue<String, OmKeyInfo> kv = iterator.next();
+      OmKeyInfo keyInfo = kv.getValue();
+
+      if (keyInfo != null) {
+        if (volumeName.equals(keyInfo.getVolumeName())) {
+          result += getKeySizeWithReplication(keyInfo);
+        }
+      }
+    }
+    return result;
+  }
+
+
   // KeyTable's key is in the format of "vol/bucket/keyName"
   // Make use of RocksDB's order to seek to the prefix and avoid full iteration
   @Override

@@ -334,27 +334,28 @@ public abstract class EntityHandler {
     return totalSize;
   }
 
-  long calculateDUForVolume(String volumeName)
-      throws IOException {
-    long result = 0L;
+//  long calculateDUForVolume(String volumeName)
+//      throws IOException {
+//    long result = 0L;
+//
+//    Table keyTable = bucketHandler.getKeyTable();
+//
+//    TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
+//        iterator = keyTable.iterator();
+//
+//    while (iterator.hasNext()) {
+//      Table.KeyValue<String, OmKeyInfo> kv = iterator.next();
+//      OmKeyInfo keyInfo = kv.getValue();
+//
+//      if (keyInfo != null) {
+//        if (volumeName.equals(keyInfo.getVolumeName())) {
+//          result += bucketHandler.getKeySizeWithReplication(keyInfo);
+//        }
+//      }
+//    }
+//    return result;
+//  }
 
-    Table keyTable = bucketHandler.getKeyTable();
-
-    TableIterator<String, ? extends Table.KeyValue<String, OmKeyInfo>>
-        iterator = keyTable.iterator();
-
-    while (iterator.hasNext()) {
-      Table.KeyValue<String, OmKeyInfo> kv = iterator.next();
-      OmKeyInfo keyInfo = kv.getValue();
-
-      if (keyInfo != null) {
-        if (volumeName.equals(keyInfo.getVolumeName())) {
-          result += bucketHandler.getKeySizeWithReplication(keyInfo);
-        }
-      }
-    }
-    return result;
-  }
   public static String[] parseRequestPath(String path) {
     if (path.startsWith(OM_KEY_PREFIX)) {
       path = path.substring(1);

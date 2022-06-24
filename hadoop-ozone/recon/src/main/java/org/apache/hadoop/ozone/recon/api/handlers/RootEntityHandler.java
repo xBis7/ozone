@@ -92,6 +92,7 @@ public class RootEntityHandler extends EntityHandler {
       // iterate all buckets per volume to get total data size
       for (OmBucketInfo bucket: listBucketsUnderVolume(volumeName)) {
         long bucketObjectID = bucket.getObjectID();
+        initBucketHandler(bucket);
         dataSize += getTotalSize(bucketObjectID);
       }
       totalDataSize += dataSize;
@@ -99,7 +100,7 @@ public class RootEntityHandler extends EntityHandler {
       // count replicas
       // TODO: to be dropped or optimized in the future
       if (withReplica) {
-        long volumeDU = calculateDUForVolume(volumeName);
+        long volumeDU = getBucketHandler().calculateDUForVolume(volumeName);
         totalDataSizeWithReplica += volumeDU;
         diskUsage.setSizeWithReplica(volumeDU);
       }
