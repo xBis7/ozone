@@ -105,7 +105,8 @@ public class BucketEntityHandler extends EntityHandler {
       bucketDataSize += dataSize;
 
       if (withReplica) {
-        long dirDU = getBucketHandler().calculateDUUnderObject(subdirObjectId);
+        long dirDU = getBucketHandler()
+            .calculateDUUnderObject(subdirObjectId);
         diskUsage.setSizeWithReplica(dirDU);
         bucketDataSizeWithReplica += dirDU;
       }
