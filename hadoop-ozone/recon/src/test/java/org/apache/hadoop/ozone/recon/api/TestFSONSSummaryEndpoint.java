@@ -120,6 +120,7 @@ public class TestFSONSSummaryEndpoint {
   private static final String KEY_FOUR = "file4";
   private static final String KEY_FIVE = "file5";
   private static final String KEY_SIX = "dir1/dir4/file6";
+  private static final String KEY_SEVEN = "dir1/file7";
   private static final String MULTI_BLOCK_KEY = "dir1/file7";
   private static final String MULTI_BLOCK_FILE = "file7";
 
@@ -129,6 +130,8 @@ public class TestFSONSSummaryEndpoint {
   private static final String FILE_FOUR = "file4";
   private static final String FILE_FIVE = "file5";
   private static final String FILE_SIX = "file6";
+  private static final String FILE_SEVEN = "file7";
+
   private static final String DIR_ONE = "dir1";
   private static final String DIR_TWO = "dir2";
   private static final String DIR_THREE = "dir3";
@@ -146,6 +149,7 @@ public class TestFSONSSummaryEndpoint {
   private static final long KEY_THREE_OBJECT_ID = 8L;
   private static final long KEY_FIVE_OBJECT_ID = 9L;
   private static final long KEY_SIX_OBJECT_ID = 10L;
+  private static final long KEY_SEVEN_OBJECT_ID = 13L;
   private static final long DIR_THREE_OBJECT_ID = 11L;
   private static final long DIR_FOUR_OBJECT_ID = 12L;
   private static final long MULTI_BLOCK_KEY_OBJECT_ID = 13L;
@@ -532,19 +536,22 @@ public class TestFSONSSummaryEndpoint {
   public void testQuotaUsage() throws Exception {
     // root level quota usage
     Response rootResponse = nsSummaryEndpoint.getQuotaUsage(ROOT_PATH);
-    QuotaUsageResponse quRootRes = (QuotaUsageResponse) rootResponse.getEntity();
+    QuotaUsageResponse quRootRes =
+        (QuotaUsageResponse) rootResponse.getEntity();
     Assert.assertEquals(ROOT_QUOTA, quRootRes.getQuota());
     Assert.assertEquals(TOTAL_DATA_SIZE, quRootRes.getQuotaUsed());
 
     // volume level quota usage
     Response volResponse = nsSummaryEndpoint.getQuotaUsage(VOL_PATH);
-    QuotaUsageResponse quVolRes = (QuotaUsageResponse) volResponse.getEntity();
+    QuotaUsageResponse quVolRes =
+        (QuotaUsageResponse) volResponse.getEntity();
     Assert.assertEquals(VOL_QUOTA, quVolRes.getQuota());
     Assert.assertEquals(TOTAL_DATA_SIZE, quVolRes.getQuotaUsed());
 
     // bucket level quota usage
     Response bucketRes = nsSummaryEndpoint.getQuotaUsage(BUCKET_ONE_PATH);
-    QuotaUsageResponse quBucketRes = (QuotaUsageResponse) bucketRes.getEntity();
+    QuotaUsageResponse quBucketRes =
+        (QuotaUsageResponse) bucketRes.getEntity();
     Assert.assertEquals(BUCKET_ONE_QUOTA, quBucketRes.getQuota());
     Assert.assertEquals(BUCKET_ONE_DATA_SIZE, quBucketRes.getQuotaUsed());
 
@@ -874,10 +881,10 @@ public class TestFSONSSummaryEndpoint {
 
     writeKeyToOm(reconOMMetadataManager,
         DIR_ONE_OBJECT_ID,
-        MULTI_BLOCK_KEY_OBJECT_ID,
+        KEY_SEVEN_OBJECT_ID,
         VOL, BUCKET_ONE,
-        MULTI_BLOCK_KEY,
-        MULTI_BLOCK_FILE,
+        KEY_SEVEN,
+        FILE_SEVEN,
         Collections.singletonList(locationInfoGroup),
         getBucketLayout());
   }
