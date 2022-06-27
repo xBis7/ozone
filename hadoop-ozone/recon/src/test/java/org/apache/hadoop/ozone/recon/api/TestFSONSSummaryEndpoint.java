@@ -681,45 +681,45 @@ public class TestFSONSSummaryEndpoint {
    * @throws IOException ioEx
    */
   private static OMMetadataManager initializeNewOmMetadataManager(
-          File omDbDir)
-          throws IOException {
+      File omDbDir)
+      throws IOException {
     OzoneConfiguration omConfiguration = new OzoneConfiguration();
     omConfiguration.set(OZONE_OM_DB_DIRS,
-            omDbDir.getAbsolutePath());
+        omDbDir.getAbsolutePath());
     OMMetadataManager omMetadataManager = new OmMetadataManagerImpl(
-            omConfiguration);
+        omConfiguration);
 
     String volumeKey = omMetadataManager.getVolumeKey(VOL);
     OmVolumeArgs args =
-            OmVolumeArgs.newBuilder()
-                    .setObjectID(VOL_OBJECT_ID)
-                    .setVolume(VOL)
-                    .setAdminName(TEST_USER)
-                    .setOwnerName(TEST_USER)
-                    .setQuotaInBytes(VOL_QUOTA)
-                    .build();
+        OmVolumeArgs.newBuilder()
+            .setObjectID(VOL_OBJECT_ID)
+            .setVolume(VOL)
+            .setAdminName(TEST_USER)
+            .setOwnerName(TEST_USER)
+            .setQuotaInBytes(VOL_QUOTA)
+            .build();
     omMetadataManager.getVolumeTable().put(volumeKey, args);
 
     OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-            .setVolumeName(VOL)
-            .setBucketName(BUCKET_ONE)
-            .setObjectID(BUCKET_ONE_OBJECT_ID)
-            .setQuotaInBytes(BUCKET_ONE_QUOTA)
-            .setBucketLayout(getBucketLayout())
-            .build();
+        .setVolumeName(VOL)
+        .setBucketName(BUCKET_ONE)
+        .setObjectID(BUCKET_ONE_OBJECT_ID)
+        .setQuotaInBytes(BUCKET_ONE_QUOTA)
+        .setBucketLayout(getBucketLayout())
+        .build();
 
     OmBucketInfo bucketInfo2 = OmBucketInfo.newBuilder()
-            .setVolumeName(VOL)
-            .setBucketName(BUCKET_TWO)
-            .setObjectID(BUCKET_TWO_OBJECT_ID)
-            .setQuotaInBytes(BUCKET_TWO_QUOTA)
-            .setBucketLayout(getBucketLayout())
-            .build();
+        .setVolumeName(VOL)
+        .setBucketName(BUCKET_TWO)
+        .setObjectID(BUCKET_TWO_OBJECT_ID)
+        .setQuotaInBytes(BUCKET_TWO_QUOTA)
+        .setBucketLayout(getBucketLayout())
+        .build();
 
     String bucketKey = omMetadataManager.getBucketKey(
-            bucketInfo.getVolumeName(), bucketInfo.getBucketName());
+        bucketInfo.getVolumeName(), bucketInfo.getBucketName());
     String bucketKey2 = omMetadataManager.getBucketKey(
-            bucketInfo2.getVolumeName(), bucketInfo2.getBucketName());
+        bucketInfo2.getVolumeName(), bucketInfo2.getBucketName());
 
     omMetadataManager.getBucketTable().put(bucketKey, bucketInfo);
     omMetadataManager.getBucketTable().put(bucketKey2, bucketInfo2);
@@ -734,33 +734,33 @@ public class TestFSONSSummaryEndpoint {
     BlockID block3 = new BlockID(CONTAINER_THREE_ID, 0L);
 
     OmKeyLocationInfo location1 = new OmKeyLocationInfo.Builder()
-            .setBlockID(block1)
-            .setLength(BLOCK_ONE_LENGTH)
-            .build();
+        .setBlockID(block1)
+        .setLength(BLOCK_ONE_LENGTH)
+        .build();
     OmKeyLocationInfo location2 = new OmKeyLocationInfo.Builder()
-            .setBlockID(block2)
-            .setLength(BLOCK_TWO_LENGTH)
-            .build();
+        .setBlockID(block2)
+        .setLength(BLOCK_TWO_LENGTH)
+        .build();
     OmKeyLocationInfo location3 = new OmKeyLocationInfo.Builder()
-            .setBlockID(block3)
-            .setLength(BLOCK_THREE_LENGTH)
-            .build();
+        .setBlockID(block3)
+        .setLength(BLOCK_THREE_LENGTH)
+        .build();
     locationInfoList.add(location1);
     locationInfoList.add(location2);
     locationInfoList.add(location3);
 
     OmKeyLocationInfoGroup locationInfoGroup =
-            new OmKeyLocationInfoGroup(0L, locationInfoList);
+        new OmKeyLocationInfoGroup(0L, locationInfoList);
 
     // add the multi-block key to Recon's OM
     writeKeyToOm(reconOMMetadataManager,
-            DIR_ONE_OBJECT_ID,
-            MULTI_BLOCK_KEY_OBJECT_ID,
-            VOL, BUCKET_ONE,
-            MULTI_BLOCK_KEY,
-            MULTI_BLOCK_FILE,
-            Collections.singletonList(locationInfoGroup),
-            getBucketLayout());
+        DIR_ONE_OBJECT_ID,
+        MULTI_BLOCK_KEY_OBJECT_ID,
+        VOL, BUCKET_ONE,
+        MULTI_BLOCK_KEY,
+        MULTI_BLOCK_FILE,
+        Collections.singletonList(locationInfoGroup),
+        getBucketLayout());
   }
 
   /**
@@ -890,46 +890,46 @@ public class TestFSONSSummaryEndpoint {
    * @return a set of container replica for testing
    */
   private static Set<ContainerReplica> generateMockContainerReplicas(
-          int replicationFactor, ContainerID containerID) {
+      int replicationFactor, ContainerID containerID) {
     Set<ContainerReplica> result = new HashSet<>();
     for (int i = 0; i < replicationFactor; ++i) {
       DatanodeDetails randomDatanode = randomDatanodeDetails();
       ContainerReplica replica = new ContainerReplica.ContainerReplicaBuilder()
-              .setContainerID(containerID)
-              .setContainerState(State.OPEN)
-              .setDatanodeDetails(randomDatanode)
-              .build();
+          .setContainerID(containerID)
+          .setContainerState(State.OPEN)
+          .setDatanodeDetails(randomDatanode)
+          .build();
       result.add(replica);
     }
     return result;
   }
 
   private static ReconStorageContainerManagerFacade getMockReconSCM()
-          throws ContainerNotFoundException {
+      throws ContainerNotFoundException {
     ReconStorageContainerManagerFacade reconSCM =
-            mock(ReconStorageContainerManagerFacade.class);
+        mock(ReconStorageContainerManagerFacade.class);
     ContainerManager containerManager = mock(ContainerManager.class);
 
     // Container 1 is 3-way replicated
     ContainerID containerID1 = new ContainerID(CONTAINER_ONE_ID);
     Set<ContainerReplica> containerReplicas1 = generateMockContainerReplicas(
-            THREE, containerID1);
+        THREE, containerID1);
     when(containerManager.getContainerReplicas(containerID1))
-            .thenReturn(containerReplicas1);
+        .thenReturn(containerReplicas1);
 
     // Container 2 is under replicated with 2 replica
     ContainerID containerID2 = new ContainerID(CONTAINER_TWO_ID);
     Set<ContainerReplica> containerReplicas2 = generateMockContainerReplicas(
-            TWO, containerID2);
+        TWO, containerID2);
     when(containerManager.getContainerReplicas(containerID2))
-            .thenReturn(containerReplicas2);
+        .thenReturn(containerReplicas2);
 
     // Container 3 is over replicated with 4 replica
     ContainerID containerID3 = new ContainerID(CONTAINER_THREE_ID);
     Set<ContainerReplica> containerReplicas3 = generateMockContainerReplicas(
-            FOUR, containerID3);
+        FOUR, containerID3);
     when(containerManager.getContainerReplicas(containerID3))
-            .thenReturn(containerReplicas3);
+        .thenReturn(containerReplicas3);
 
     // Container 4 is replicated with 5 replica
     ContainerID containerID4 = new ContainerID(CONTAINER_FOUR_ID);

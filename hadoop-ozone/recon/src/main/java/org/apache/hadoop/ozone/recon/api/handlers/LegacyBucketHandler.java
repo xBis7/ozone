@@ -112,14 +112,15 @@ public class LegacyBucketHandler extends BucketHandler {
       OmKeyInfo keyInfo = kv.getValue();
 
       if (keyInfo != null) {
-        if (volumeName.equals(keyInfo.getVolumeName())) {
-          result += getKeySizeWithReplication(keyInfo);
+        if (!keyInfo.getKeyName().endsWith(OM_KEY_PREFIX)) {
+          if (volumeName.equals(keyInfo.getVolumeName())) {
+            result += getKeySizeWithReplication(keyInfo);
+          }
         }
       }
     }
     return result;
   }
-
 
   // KeyTable's key is in the format of "vol/bucket/keyName"
   // Make use of RocksDB's order to seek to the prefix and avoid full iteration
