@@ -297,6 +297,14 @@ public class DatanodeConfiguration {
   )
   private String containerSchemaV3KeySeparator = "|";
 
+  @Config(key = "disk.tmp.directory.path",
+      defaultValue = "/tmpDir",
+      type = ConfigType.STRING,
+      tags = { DATANODE },
+      description = "Path on the disk for the tmp directory"
+  )
+  private String diskTmpDirectoryPath = "/tmpDir";
+
   @PostConstruct
   public void validate() {
     if (containerDeleteThreads < 1) {
@@ -454,5 +462,13 @@ public class DatanodeConfiguration {
 
   public void setContainerSchemaV3KeySeparator(String separator) {
     this.containerSchemaV3KeySeparator = separator;
+  }
+
+  public String getDiskTmpDirectoryPath() {
+    return diskTmpDirectoryPath;
+  }
+
+  public void setDiskTmpDirectoryPath(String diskTmpDirectoryPath) {
+    this.diskTmpDirectoryPath = diskTmpDirectoryPath;
   }
 }
