@@ -298,12 +298,12 @@ public class DatanodeConfiguration {
   private String containerSchemaV3KeySeparator = "|";
 
   @Config(key = "disk.tmp.directory.path",
-      defaultValue = "./tmpDir",
+      defaultValue = "./tmp",
       type = ConfigType.STRING,
       tags = { DATANODE },
       description = "Path on the disk for the tmp directory"
   )
-  private String diskTmpDirectoryPath = "./tmpDir";
+  private String diskTmpDirectoryPath = "./tmp";
 
   @PostConstruct
   public void validate() {
