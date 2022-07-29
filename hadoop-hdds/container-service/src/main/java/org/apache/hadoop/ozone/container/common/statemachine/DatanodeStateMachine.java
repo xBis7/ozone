@@ -40,7 +40,6 @@ import org.apache.hadoop.hdds.security.x509.certificate.client.CertificateClient
 import org.apache.hadoop.hdds.upgrade.HDDSLayoutVersionManager;
 import org.apache.hadoop.hdds.utils.LegacyHadoopConfigurationSource;
 import org.apache.hadoop.ozone.HddsDatanodeStopService;
-import org.apache.hadoop.ozone.container.common.CleanUpManager;
 import org.apache.hadoop.ozone.container.common.DatanodeLayoutStorage;
 import org.apache.hadoop.ozone.container.common.report.ReportManager;
 import org.apache.hadoop.ozone.container.common.statemachine.commandhandler.CloseContainerCommandHandler;
@@ -110,8 +109,6 @@ public class DatanodeStateMachine implements Closeable {
   private DatanodeLayoutStorage layoutStorage;
   private DataNodeUpgradeFinalizer upgradeFinalizer;
 
-  private final CleanUpManager cleanUpManager;
-
   /**
    * Used to synchronize to the OzoneContainer object created in the
    * constructor in a non-thread-safe way - see HDDS-3116.
@@ -138,12 +135,6 @@ public class DatanodeStateMachine implements Closeable {
     this.hddsDatanodeStopService = hddsDatanodeStopService;
     this.conf = conf;
     this.datanodeDetails = datanodeDetails;
-    this.cleanUpManager = new CleanUpManager(conf);
-
-    if (VersionedDatanodeFeatures.SchemaV3
-        .isFinalizedAndEnabled(conf)) {
-      cleanUpManager.cleanTmpDir();
-    }
 
     // Expected to be initialized already.
     layoutStorage = new DatanodeLayoutStorage(conf,
@@ -376,10 +367,6 @@ public class DatanodeStateMachine implements Closeable {
    */
   @Override
   public void close() throws IOException {
-    if (VersionedDatanodeFeatures.SchemaV3
-        .isFinalizedAndEnabled(conf)) {
-      cleanUpManager.cleanTmpDir();
-    }
     if (stateMachineThread != null) {
       stateMachineThread.interrupt();
     }
