@@ -24,12 +24,7 @@ import java.util.concurrent.Callable;
 
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 
-import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import static com.amazonaws.services.s3.internal.SkipMd5CheckStrategy.DISABLE_PUT_OBJECT_MD5_VALIDATION_PROPERTY;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
@@ -55,7 +50,7 @@ import picocli.CommandLine.Option;
     mixinStandardHelpOptions = true,
     showDefaultValues = true)
 @SuppressWarnings("java:S2245") // no need for secure random
-public class S3KeyGenerator extends BaseFreonGenerator
+public class S3KeyGenerator extends S3Generator
     implements Callable<Void> {
 
   private static final Logger LOG =
@@ -72,11 +67,6 @@ public class S3KeyGenerator extends BaseFreonGenerator
           + "multipart upload part (in case of multipart upload)",
       defaultValue = "10240")
   private int fileSize;
-
-  @Option(names = {"-e", "--endpoint"},
-      description = "S3 HTTP endpoint",
-      defaultValue = "http://localhost:9878")
-  private String endpoint;
 
   @Option(names = {"--multi-part-upload"},
       description = "User multi part upload",
@@ -102,29 +92,12 @@ public class S3KeyGenerator extends BaseFreonGenerator
       throw new IllegalArgumentException(
           "Size of multipart upload parts should be at least 5MB (5242880)");
     }
-    init();
-
-    AmazonS3ClientBuilder amazonS3ClientBuilder =
-        AmazonS3ClientBuilder.standard()
-            .withCredentials(new EnvironmentVariableCredentialsProvider());
-
-    if (endpoint.length() > 0) {
-      amazonS3ClientBuilder
-          .withPathStyleAccessEnabled(true)
-          .withEndpointConfiguration(
-              new EndpointConfiguration(endpoint, "us-east-1"));
-
-    } else {
-      amazonS3ClientBuilder.withRegion(Regions.DEFAULT_REGION);
-    }
-
-    s3 = amazonS3ClientBuilder.build();
+    S3GeneratorSetupObjects s3GeneratorSetupObjects = commonSetup();
+    timer = s3GeneratorSetupObjects.getTimer();
+    s3 = s3GeneratorSetupObjects.getS3();
 
     content = RandomStringUtils.randomAscii(fileSize);
 
-    timer = getMetrics().timer("key-create");
-
-    System.setProperty(DISABLE_PUT_OBJECT_MD5_VALIDATION_PROPERTY, "true");
     runTests(this::createKey);
 
     return null;
