@@ -26,10 +26,11 @@ import picocli.CommandLine;
 
 public class S3EntityGenerator extends BaseFreonGenerator {
 
-
-  private Timer timer;
-
   private AmazonS3 s3;
+
+  public AmazonS3 getS3() {
+    return s3;
+  }
 
   @CommandLine.Option(names = {"-e", "--endpoint"},
       description = "S3 HTTP endpoint",

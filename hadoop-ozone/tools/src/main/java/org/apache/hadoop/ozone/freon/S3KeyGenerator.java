@@ -24,7 +24,6 @@ import java.util.concurrent.Callable;
 
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 
-import com.amazonaws.services.s3.AmazonS3;
 import static com.amazonaws.services.s3.internal.SkipMd5CheckStrategy.DISABLE_PUT_OBJECT_MD5_VALIDATION_PROPERTY;
 import com.amazonaws.services.s3.model.CompleteMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
@@ -84,8 +83,6 @@ public class S3KeyGenerator extends S3EntityGenerator
 
   private String content;
 
-  private AmazonS3 s3;
-
   @Override
   public Void call() throws Exception {
 
@@ -115,7 +112,7 @@ public class S3KeyGenerator extends S3EntityGenerator
             new InitiateMultipartUploadRequest(bucketName, keyName);
 
         final InitiateMultipartUploadResult initiateMultipartUploadResult =
-            s3.initiateMultipartUpload(initiateRequest);
+            getS3().initiateMultipartUpload(initiateRequest);
         final String uploadId = initiateMultipartUploadResult.getUploadId();
 
         List<PartETag> parts = new ArrayList<>();
@@ -132,16 +129,16 @@ public class S3KeyGenerator extends S3EntityGenerator
                   StandardCharsets.UTF_8)));
 
           final UploadPartResult uploadPartResult =
-              s3.uploadPart(uploadPartRequest);
+              getS3().uploadPart(uploadPartRequest);
           parts.add(uploadPartResult.getPartETag());
         }
 
-        s3.completeMultipartUpload(
+        getS3().completeMultipartUpload(
             new CompleteMultipartUploadRequest(bucketName, keyName, uploadId,
                 parts));
 
       } else {
-        s3.putObject(bucketName, generateObjectName(counter),
+        getS3().putObject(bucketName, generateObjectName(counter),
             content);
       }
 

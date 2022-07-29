@@ -43,8 +43,6 @@ public class S3BucketGenerator extends S3EntityGenerator
 
   private Timer timer;
 
-  private AmazonS3 s3;
-
   @Override
   public Void call() throws Exception {
     s3ClientInit();
@@ -60,7 +58,7 @@ public class S3BucketGenerator extends S3EntityGenerator
   private void createBucket(long bucketNum) throws Exception {
     String bName = getPrefix() + bucketNum;
     timer.time(() -> {
-      s3.createBucket(bName);
+      getS3().createBucket(bName);
       return null;
     });
   }
