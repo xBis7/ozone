@@ -22,7 +22,7 @@ import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
+
 import java.util.concurrent.Callable;
 
 /**
@@ -34,22 +34,15 @@ import java.util.concurrent.Callable;
     versionProvider = HddsVersionProvider.class,
     mixinStandardHelpOptions = true,
     showDefaultValues = true)
-public class S3BucketGenerator extends S3Generator
+public class S3BucketGenerator extends S3EntityGenerator
     implements Callable<Void> {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(S3BucketGenerator.class);
 
-  @Option(names = {"-b", "--bucket"},
-      description =
-          "Prefix name to use for bucket creation.",
-      defaultValue = "bucket")
-  private String bucketName;
-
   private Timer timer;
 
   private AmazonS3 s3;
-
   @Override
   public Void call() throws Exception {
 
@@ -63,7 +56,7 @@ public class S3BucketGenerator extends S3Generator
   }
 
   private void createBucket(long bucketNum) throws Exception {
-    String bName = getPrefix() + bucketName + bucketNum;
+    String bName = getPrefix() + bucketNum;
     timer.time(() -> {
       s3.createBucket(bName);
       return null;

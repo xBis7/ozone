@@ -14,7 +14,7 @@ import static com.amazonaws.services.s3.internal.SkipMd5CheckStrategy.DISABLE_PU
  * Class for setting up common setup aspects of S3BucketGenerator and
  * S3KeyGenerator
  * */
-public class S3Generator extends BaseFreonGenerator {
+public class S3EntityGenerator extends BaseFreonGenerator {
     @CommandLine.Option(names = {"-e", "--endpoint"},
         description = "S3 HTTP endpoint",
         defaultValue = "http://localhost:9878")

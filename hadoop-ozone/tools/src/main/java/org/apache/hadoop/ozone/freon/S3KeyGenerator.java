@@ -50,7 +50,7 @@ import picocli.CommandLine.Option;
     mixinStandardHelpOptions = true,
     showDefaultValues = true)
 @SuppressWarnings("java:S2245") // no need for secure random
-public class S3KeyGenerator extends S3Generator
+public class S3KeyGenerator extends S3EntityGenerator
     implements Callable<Void> {
 
   private static final Logger LOG =
