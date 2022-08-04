@@ -304,7 +304,7 @@ public class DatanodeConfiguration {
       description = "Path for the tmp" +
           " container delete service directory"
   )
-  private String diskTmpDirectoryPath = "./tmp/container_delete_service";
+  private String tmpDeleteDirectoryPath = "./tmp/container_delete_service";
 
   @PostConstruct
   public void validate() {
@@ -465,11 +465,11 @@ public class DatanodeConfiguration {
     this.containerSchemaV3KeySeparator = separator;
   }
 
-  public String getDiskTmpDirectoryPath() {
-    return diskTmpDirectoryPath;
+  public String getTmpDeleteDirectoryPath() {
+    return tmpDeleteDirectoryPath;
   }
 
-  public void setDiskTmpDirectoryPath(String diskTmpDirectoryPath) {
-    this.diskTmpDirectoryPath = diskTmpDirectoryPath;
+  public void setTmpDeleteDirectoryPath(String tmpDeleteDirectoryPath) {
+    this.tmpDeleteDirectoryPath = tmpDeleteDirectoryPath;
   }
 }

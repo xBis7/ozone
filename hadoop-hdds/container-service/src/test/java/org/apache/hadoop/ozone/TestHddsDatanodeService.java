@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.DFSConfigKeysLegacy;
 import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.ozone.container.common.CleanUpManager;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.hadoop.util.ServicePlugin;
 
@@ -35,6 +36,8 @@ import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SECURITY_ENABLED_KEY
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.*;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -67,25 +70,27 @@ public class TestHddsDatanodeService {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     FileUtil.fullyDelete(testDir);
   }
 
   @Test
   public void testStartup() throws IOException {
     service = HddsDatanodeService.createHddsDatanodeService(args);
-    service.start(conf);
+    HddsDatanodeService datanodeService = spy(service);
+    datanodeService.start(conf);
 
-    assertNotNull(service.getDatanodeDetails());
-    assertNotNull(service.getDatanodeDetails().getHostName());
-    assertFalse(service.getDatanodeStateMachine().isDaemonStopped());
-    assertNotNull(service.getCRLStore());
+    assertNotNull(datanodeService.getDatanodeDetails());
+    assertNotNull(datanodeService.getDatanodeDetails().getHostName());
+    assertFalse(datanodeService.getDatanodeStateMachine().isDaemonStopped());
+    assertNotNull(datanodeService.getCRLStore());
 
-    service.stop();
+    datanodeService.stop();
+    verify(datanodeService, times(2)).cleanTmpDir();
     // CRL store must be stopped when the service stops
-    assertNull(service.getCRLStore().getStore());
-    service.join();
-    service.close();
+    assertNull(datanodeService.getCRLStore().getStore());
+    datanodeService.join();
+    datanodeService.close();
   }
 
   static class MockService implements ServicePlugin {
