@@ -1117,8 +1117,9 @@ public class KeyValueHandler extends Handler {
       throws StorageContainerException {
     KeyValueContainerData keyValueContainerData =
         (KeyValueContainerData) container.getContainerData();
+    HddsVolume hddsVolume = keyValueContainerData.getVolume();
     CleanUpManager cleanUpManager =
-        new CleanUpManager(configurationSource);
+        new CleanUpManager(configurationSource, hddsVolume);
     container.writeLock();
     try {
     // If force is false, we check container state.
