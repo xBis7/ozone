@@ -18,17 +18,14 @@ Library             OperatingSystem
 Library             String
 Library             BuiltIn
 Resource            ../commonlib.robot
+Resource            ./commonawslib.robot
 Test Timeout        5 minutes
 
 *** Variables ***
-${SECURITY_ENABLED}  true
 
 *** Keywords ***
-Kinit as ozone admin
-    Run Keyword if      '${SECURITY_ENABLED}' == 'true'     Kinit test user     testuser     testuser.keytab
-
-Get and export cred
-    ${result} =         Execute         eval $(ozone s3 getsecret -e)
+Setup
+    Setup v4 headers
 
 Freon S3BG
     [arguments]     ${prefix}=s3bg      ${threads}=100      ${n}=5000       ${args}=${EMPTY}
@@ -36,12 +33,8 @@ Freon S3BG
                        Should contain   ${result}   Successful executions: ${n}
 
 *** Test Cases ***
-
-Kinit user
-    Kinit as ozone admin
-
-Check credentials
-    Get and export cred
+Check setup
+    Setup
 
 Run Freon s3bg test
     Freon S3BG
