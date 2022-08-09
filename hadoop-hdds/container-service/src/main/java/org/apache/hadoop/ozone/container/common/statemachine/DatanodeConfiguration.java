@@ -297,15 +297,6 @@ public class DatanodeConfiguration {
   )
   private String containerSchemaV3KeySeparator = "|";
 
-  @Config(key = "disk.tmp.container.delete.service.dir.path",
-      defaultValue = "/tmp/container_delete_service",
-      type = ConfigType.STRING,
-      tags = { DATANODE },
-      description = "Path on the disk for the tmp" +
-          " container delete service directory"
-  )
-  private String tmpDeleteDirectoryPath = "/tmp/container_delete_service";
-
   @PostConstruct
   public void validate() {
     if (containerDeleteThreads < 1) {
@@ -463,13 +454,5 @@ public class DatanodeConfiguration {
 
   public void setContainerSchemaV3KeySeparator(String separator) {
     this.containerSchemaV3KeySeparator = separator;
-  }
-
-  public String getTmpDeleteDirectoryPath() {
-    return tmpDeleteDirectoryPath;
-  }
-
-  public void setTmpDeleteDirectoryPath(String tmpDeleteDirectoryPath) {
-    this.tmpDeleteDirectoryPath = tmpDeleteDirectoryPath;
   }
 }
