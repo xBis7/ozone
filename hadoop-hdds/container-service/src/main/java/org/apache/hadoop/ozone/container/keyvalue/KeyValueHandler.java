@@ -121,7 +121,6 @@ public class KeyValueHandler extends Handler {
   private static final Logger LOG = LoggerFactory.getLogger(
       KeyValueHandler.class);
 
-  private final ConfigurationSource configurationSource;
   private final ContainerType containerType;
   private final BlockManager blockManager;
   private final ChunkManager chunkManager;
@@ -140,7 +139,6 @@ public class KeyValueHandler extends Handler {
                          ContainerMetrics metrics,
                          IncrementalReportSender<Container> icrSender) {
     super(config, datanodeId, contSet, volSet, metrics, icrSender);
-    this.configurationSource = config;
     containerType = ContainerType.KeyValueContainer;
     blockManager = new BlockManagerImpl(config);
     validateChunkChecksumData = conf.getObject(
@@ -1119,7 +1117,7 @@ public class KeyValueHandler extends Handler {
         (KeyValueContainerData) container.getContainerData();
     HddsVolume hddsVolume = keyValueContainerData.getVolume();
     CleanUpManager cleanUpManager =
-        new CleanUpManager(configurationSource, hddsVolume);
+        new CleanUpManager(hddsVolume);
     container.writeLock();
     try {
     // If force is false, we check container state.
@@ -1143,13 +1141,7 @@ public class KeyValueHandler extends Handler {
               DELETE_ON_NON_EMPTY_CONTAINER);
         }
       }
-      if (cleanUpManager.checkContainerSchemaV3Enabled(keyValueContainerData)) {
-        try {
-          cleanUpManager.renameDir(keyValueContainerData);
-        } catch (IOException ex) {
-          LOG.error("Error while moving metadata and chunks under /tmp", ex);
-        }
-      }
+      cleanUpManager.renameDir(keyValueContainerData);
       long containerId = container.getContainerData().getContainerID();
       containerSet.removeContainer(containerId);
     } finally {
