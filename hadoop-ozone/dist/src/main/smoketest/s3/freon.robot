@@ -19,15 +19,14 @@ Library             OperatingSystem
 Library             String
 Library             BuiltIn
 Resource            ./commonawslib.robot
+Suite Setup         Setup v4 headers
+
 
 *** Variables ***
 ${ENDPOINT_URL}         http://s3g:9878
 ${SECURITY_ENABLED}     true
 
 *** Keywords ***
-Default setup
-    Setup v4 headers
-
 #   Export access key and secret to the environment
 Setup aws credentials
     ${accessKey} =      Execute     aws configure get aws_access_key_id
@@ -45,9 +44,6 @@ Freon S3BG
                        Should contain   ${result}       Successful executions: ${n}
 
 *** Test Cases ***
-Check setup
-    Default Setup
-
 Export AWS credentials
     Setup aws credentials
 
