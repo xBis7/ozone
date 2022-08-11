@@ -14,27 +14,45 @@
 # limitations under the License.
 
 *** Settings ***
+Documentation       S3 gateway test with aws cli
 Library             OperatingSystem
 Library             String
 Library             BuiltIn
-Resource            ../commonlib.robot
 Resource            ./commonawslib.robot
-Test Timeout        5 minutes
 
 *** Variables ***
+${ENDPOINT_URL}         http://s3g:9878
+${SECURITY_ENABLED}     true
 
 *** Keywords ***
-Setup
+Default setup
     Setup v4 headers
 
+#   Export access key and secret to the environment
+Setup aws credentials
+    ${accessKey} =      Execute     aws configure get aws_access_key_id
+    ${secret} =         Execute     aws configure get aws_secret_access_key
+    Set Environment Variable        AWS_SECRET_ACCESS_KEY  ${secret}
+    Set Environment Variable        AWS_ACCESS_KEY_ID  ${accessKey}
+
+Access key id
+    ${env_var}=         Get Environment Variable    AWS_ACCESS_KEY_ID
+    Log to Console      ${env_var}
+
 Freon S3BG
-    [arguments]     ${prefix}=s3bg      ${threads}=100      ${n}=5000       ${args}=${EMPTY}
-    ${result} =        Execute          ozone freon s3bg -t ${threads} -n ${n} -p ${prefix} ${args}
-                       Should contain   ${result}   Successful executions: ${n}
+    [arguments]    ${prefix}=s3bg    ${n}=100    ${threads}=10   ${args}=${EMPTY}
+    ${result} =        Execute          ozone freon s3bg -e ${ENDPOINT_URL} -t ${threads} -n ${n} -p ${prefix} ${args}
+                       Should contain   ${result}       Successful executions: ${n}
 
 *** Test Cases ***
 Check setup
-    Setup
+    Default Setup
 
-Run Freon s3bg test
+Export AWS credentials
+    Setup aws credentials
+
+Check access key id
+    Access key id
+
+Run Freon S3BG
     Freon S3BG
