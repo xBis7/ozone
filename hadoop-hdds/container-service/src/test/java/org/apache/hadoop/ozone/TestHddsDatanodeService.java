@@ -19,38 +19,84 @@ package org.apache.hadoop.ozone;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.UUID;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.DFSConfigKeysLegacy;
 import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.scm.ScmConfigKeys;
+import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
+import org.apache.hadoop.hdfs.server.datanode.StorageLocation;
+import org.apache.hadoop.ozone.container.ContainerTestHelper;
+import org.apache.hadoop.ozone.container.common.CleanUpManager;
+import org.apache.hadoop.ozone.container.common.impl.ContainerLayoutVersion;
+import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
+import org.apache.hadoop.ozone.container.common.interfaces.VolumeChoosingPolicy;
+import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
+import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
+import org.apache.hadoop.ozone.container.common.volume.RoundRobinVolumeChoosingPolicy;
+import org.apache.hadoop.ozone.container.common.volume.StorageVolume;
+import org.apache.hadoop.ozone.container.keyvalue.ContainerTestVersionInfo;
+import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainer;
+import org.apache.hadoop.ozone.container.keyvalue.KeyValueContainerData;
+import org.apache.hadoop.ozone.container.keyvalue.helpers.BlockUtils;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.hadoop.util.ServicePlugin;
 
-import org.junit.After;
+import org.junit.*;
 
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_BLOCK_TOKEN_ENABLED;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_TOKEN_ENABLED;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SECURITY_ENABLED_KEY;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.*;
+
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 /**
  * Test class for {@link HddsDatanodeService}.
  */
+@RunWith(Parameterized.class)
 public class TestHddsDatanodeService {
   private File testDir;
-  private OzoneConfiguration conf;
+  private static OzoneConfiguration conf;
   private HddsDatanodeService service;
   private String[] args = new String[] {};
+  private final ContainerLayoutVersion layout;
+  private final String schemaVersion;
+  private static String hddsPath;
+  private static VolumeChoosingPolicy volumeChoosingPolicy;
+  private MutableVolumeSet volumeSet;
+  private static final String SCM_ID = UUID.randomUUID().toString();
+  private ContainerSet containerSet;
+  private static final String DATANODE_UUID = UUID.randomUUID().toString();
+  private CleanUpManager cleanUpManager;
+
+  public TestHddsDatanodeService(ContainerTestVersionInfo info) {
+    this.layout = info.getLayout();
+    this.schemaVersion = info.getSchemaVersion();
+    ContainerTestVersionInfo.setTestSchemaVersion(schemaVersion, conf);
+  }
+
+  @Parameterized.Parameters
+  public static Iterable<Object[]> parameters() {
+    return ContainerTestVersionInfo.versionParameters();
+  }
+
+  @BeforeClass
+  public static void init() {
+    conf = new OzoneConfiguration();
+    hddsPath = GenericTestUtils
+        .getTempPath(TestHddsDatanodeService.class.getSimpleName());
+    conf.set(ScmConfigKeys.HDDS_DATANODE_DIR_KEY, hddsPath);
+    volumeChoosingPolicy = new RoundRobinVolumeChoosingPolicy();
+  }
 
   @Before
-  public void setUp() {
+  public void setUp() throws IOException {
     testDir = GenericTestUtils.getRandomizedTestDir();
-    conf = new OzoneConfiguration();
     conf.set(HddsConfigKeys.OZONE_METADATA_DIRS, testDir.getPath());
     conf.setClass(OzoneConfigKeys.HDDS_DATANODE_PLUGINS_KEY, MockService.class,
         ServicePlugin.class);
@@ -64,18 +110,79 @@ public class TestHddsDatanodeService {
 
     String volumeDir = testDir + "/disk1";
     conf.set(DFSConfigKeysLegacy.DFS_DATANODE_DATA_DIR_KEY, volumeDir);
+
+    if (CleanUpManager.checkContainerSchemaV3Enabled(conf)) {
+      containerSet = new ContainerSet(1000);
+      volumeSet = new MutableVolumeSet(DATANODE_UUID, conf, null,
+          StorageVolume.VolumeType.DATA_VOLUME, null);
+
+      for (String dir : conf.getStrings(ScmConfigKeys.HDDS_DATANODE_DIR_KEY)) {
+        StorageLocation location = StorageLocation.parse(dir);
+        FileUtils.forceMkdir(new File(location.getNormalizedUri()));
+      }
+    }
+  }
+
+  @AfterClass
+  public static void shutdown() throws IOException {
+    FileUtils.deleteDirectory(new File(hddsPath));
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     FileUtil.fullyDelete(testDir);
+    FileUtils.deleteDirectory(new File(hddsPath));
+
+    // Clean up SCM datanode container metadata/data
+    for (String dir : conf.getStrings(ScmConfigKeys.HDDS_DATANODE_DIR_KEY)) {
+      StorageLocation location = StorageLocation.parse(dir);
+      FileUtils.deleteDirectory(new File(location.getNormalizedUri()));
+    }
+  }
+
+  private long getTestContainerID() {
+    return ContainerTestHelper.getTestContainerID();
+  }
+
+  private KeyValueContainer addContainer(ContainerSet set, long cID) throws StorageContainerException {
+    KeyValueContainerData data = new KeyValueContainerData(
+        cID,
+        layout,
+        ContainerTestHelper.CONTAINER_MAX_SIZE,
+        UUID.randomUUID().toString(),
+        UUID.randomUUID().toString()
+    );
+    data.addMetadata("VOLUME", "shire");
+    data.addMetadata("owner)", "bilbo");
+
+    KeyValueContainer container = new KeyValueContainer(data, conf);
+    container.create(volumeSet, volumeChoosingPolicy, SCM_ID);
+    long commitsBytesBefore = container.getContainerData()
+        .getVolume().getCommittedBytes();
+    set.addContainer(container);
+
+    long commitsBytesAfter = container.getContainerData()
+        .getVolume().getCommittedBytes();
+    long commitIncrement = commitsBytesAfter - commitsBytesBefore;
+    Assert.assertTrue(
+        commitIncrement == ContainerTestHelper.CONTAINER_MAX_SIZE
+    );
+    return container;
   }
 
   @Test
   public void testStartup() throws IOException {
     service = HddsDatanodeService.createHddsDatanodeService(args);
     service.start(conf);
+    if (CleanUpManager.checkContainerSchemaV3Enabled(conf)) {
+      long testContainerID = getTestContainerID();
+      KeyValueContainer container = addContainer(containerSet, testContainerID);
+      HddsVolume hddsVolume = container.getContainerData().getVolume();
+      cleanUpManager = new CleanUpManager(hddsVolume);
 
+      //  Rename container dir
+      Assert.assertTrue(cleanUpManager.renameDir(container.getContainerData()));
+    }
     assertNotNull(service.getDatanodeDetails());
     assertNotNull(service.getDatanodeDetails().getHostName());
     assertFalse(service.getDatanodeStateMachine().isDaemonStopped());
@@ -86,6 +193,9 @@ public class TestHddsDatanodeService {
     assertNull(service.getCRLStore().getStore());
     service.join();
     service.close();
+    if (CleanUpManager.checkContainerSchemaV3Enabled(conf)) {
+      assertTrue(cleanUpManager.tmpDirIsEmpty());
+    }
   }
 
   static class MockService implements ServicePlugin {
