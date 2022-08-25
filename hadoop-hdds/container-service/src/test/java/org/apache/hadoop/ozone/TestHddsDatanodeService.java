@@ -19,6 +19,7 @@ package org.apache.hadoop.ozone;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
@@ -50,29 +51,36 @@ import org.junit.*;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_BLOCK_TOKEN_ENABLED;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_TOKEN_ENABLED;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SECURITY_ENABLED_KEY;
+import static org.apache.hadoop.ozone.container.common.ContainerTestUtils.createDbInstancesForTestIfNeeded;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.mockito.Mockito;
 
 /**
  * Test class for {@link HddsDatanodeService}.
  */
 @RunWith(Parameterized.class)
 public class TestHddsDatanodeService {
-  private File testDir;
+  private static File testDir;
   private static OzoneConfiguration conf;
   private HddsDatanodeService service;
   private String[] args = new String[] {};
   private final ContainerLayoutVersion layout;
   private final String schemaVersion;
-  private static String hddsPath;
   private static VolumeChoosingPolicy volumeChoosingPolicy;
   private MutableVolumeSet volumeSet;
   private static final String SCM_ID = UUID.randomUUID().toString();
   private ContainerSet containerSet;
   private static final String DATANODE_UUID = UUID.randomUUID().toString();
   private CleanUpManager cleanUpManager;
+  private String clusterID;
+  private HddsVolume hddsVolume;
+  private KeyValueContainer container;
 
   public TestHddsDatanodeService(ContainerTestVersionInfo info) {
     this.layout = info.getLayout();
@@ -88,16 +96,24 @@ public class TestHddsDatanodeService {
   @BeforeClass
   public static void init() {
     conf = new OzoneConfiguration();
-    hddsPath = GenericTestUtils
-        .getTempPath(TestHddsDatanodeService.class.getSimpleName());
-    conf.set(ScmConfigKeys.HDDS_DATANODE_DIR_KEY, hddsPath);
-    volumeChoosingPolicy = new RoundRobinVolumeChoosingPolicy();
+    testDir = new File(
+        GenericTestUtils.
+            getTempPath(TestHddsDatanodeService.class.getSimpleName())
+    );
+
+    conf.set(HddsConfigKeys.OZONE_METADATA_DIRS, testDir.getPath());
+    conf.set(ScmConfigKeys.HDDS_DATANODE_DIR_KEY, testDir.getPath());
+  }
+
+  @AfterClass
+  public static void shutdown() throws IOException {
+    FileUtils.deleteDirectory(testDir);
   }
 
   @Before
   public void setUp() throws IOException {
-    testDir = GenericTestUtils.getRandomizedTestDir();
-    conf.set(HddsConfigKeys.OZONE_METADATA_DIRS, testDir.getPath());
+    containerSet = new ContainerSet(1000);
+
     conf.setClass(OzoneConfigKeys.HDDS_DATANODE_PLUGINS_KEY, MockService.class,
         ServicePlugin.class);
 
@@ -112,9 +128,11 @@ public class TestHddsDatanodeService {
     conf.set(DFSConfigKeysLegacy.DFS_DATANODE_DATA_DIR_KEY, volumeDir);
 
     if (CleanUpManager.checkContainerSchemaV3Enabled(conf)) {
-      containerSet = new ContainerSet(1000);
+      clusterID = UUID.randomUUID().toString();
       volumeSet = new MutableVolumeSet(DATANODE_UUID, conf, null,
           StorageVolume.VolumeType.DATA_VOLUME, null);
+      hddsVolume = (HddsVolume) volumeSet.getVolumesList().get(0);
+      volumeChoosingPolicy = new RoundRobinVolumeChoosingPolicy();
 
       for (String dir : conf.getStrings(ScmConfigKeys.HDDS_DATANODE_DIR_KEY)) {
         StorageLocation location = StorageLocation.parse(dir);
@@ -123,15 +141,12 @@ public class TestHddsDatanodeService {
     }
   }
 
-  @AfterClass
-  public static void shutdown() throws IOException {
-    FileUtils.deleteDirectory(new File(hddsPath));
-  }
+
 
   @After
   public void tearDown() throws IOException {
     FileUtil.fullyDelete(testDir);
-    FileUtils.deleteDirectory(new File(hddsPath));
+    FileUtils.deleteDirectory(testDir);
 
     // Clean up SCM datanode container metadata/data
     for (String dir : conf.getStrings(ScmConfigKeys.HDDS_DATANODE_DIR_KEY)) {
@@ -144,7 +159,7 @@ public class TestHddsDatanodeService {
     return ContainerTestHelper.getTestContainerID();
   }
 
-  private KeyValueContainer addContainer(ContainerSet set, long cID) throws StorageContainerException {
+  private KeyValueContainer addContainer(ContainerSet set, long cID) throws IOException {
     KeyValueContainerData data = new KeyValueContainerData(
         cID,
         layout,
@@ -174,14 +189,12 @@ public class TestHddsDatanodeService {
   public void testStartup() throws IOException {
     service = HddsDatanodeService.createHddsDatanodeService(args);
     service.start(conf);
-    if (CleanUpManager.checkContainerSchemaV3Enabled(conf)) {
-      long testContainerID = getTestContainerID();
-      KeyValueContainer container = addContainer(containerSet, testContainerID);
-      HddsVolume hddsVolume = container.getContainerData().getVolume();
+    if (schemaVersion.equals(OzoneConsts.SCHEMA_V3)) {
       cleanUpManager = new CleanUpManager(hddsVolume);
 
-      //  Rename container dir
-      Assert.assertTrue(cleanUpManager.renameDir(container.getContainerData()));
+      container = addContainer(containerSet, getTestContainerID());
+      cleanUpManager.renameDir(container.getContainerData());
+      assertFalse(cleanUpManager.tmpDirIsEmpty());
     }
     assertNotNull(service.getDatanodeDetails());
     assertNotNull(service.getDatanodeDetails().getHostName());
