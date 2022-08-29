@@ -30,6 +30,7 @@ import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.hdfs.server.datanode.StorageLocation;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.ozone.container.ContainerTestHelper;
 import org.apache.hadoop.ozone.container.common.CleanUpManager;
 import org.apache.hadoop.ozone.container.common.impl.ContainerLayoutVersion;
@@ -73,14 +74,14 @@ public class TestHddsDatanodeService {
   private final ContainerLayoutVersion layout;
   private final String schemaVersion;
   private static VolumeChoosingPolicy volumeChoosingPolicy;
-  private MutableVolumeSet volumeSet;
   private static final String SCM_ID = UUID.randomUUID().toString();
   private ContainerSet containerSet;
   private static final String DATANODE_UUID = UUID.randomUUID().toString();
   private CleanUpManager cleanUpManager;
   private String clusterID;
-  private HddsVolume hddsVolume;
   private KeyValueContainer container;
+  private HddsVolume volume;
+  private MutableVolumeSet volumeSet;
 
   public TestHddsDatanodeService(ContainerTestVersionInfo info) {
     this.layout = info.getLayout();
@@ -129,9 +130,6 @@ public class TestHddsDatanodeService {
 
     if (CleanUpManager.checkContainerSchemaV3Enabled(conf)) {
       clusterID = UUID.randomUUID().toString();
-      volumeSet = new MutableVolumeSet(DATANODE_UUID, conf, null,
-          StorageVolume.VolumeType.DATA_VOLUME, null);
-      hddsVolume = (HddsVolume) volumeSet.getVolumesList().get(0);
       volumeChoosingPolicy = new RoundRobinVolumeChoosingPolicy();
 
       for (String dir : conf.getStrings(ScmConfigKeys.HDDS_DATANODE_DIR_KEY)) {
@@ -171,7 +169,8 @@ public class TestHddsDatanodeService {
     data.addMetadata("owner)", "bilbo");
 
     KeyValueContainer container = new KeyValueContainer(data, conf);
-    container.create(volumeSet, volumeChoosingPolicy, SCM_ID);
+    container.create(
+        volumeSet, volumeChoosingPolicy, SCM_ID);
     long commitsBytesBefore = container.getContainerData()
         .getVolume().getCommittedBytes();
     set.addContainer(container);
@@ -187,14 +186,15 @@ public class TestHddsDatanodeService {
 
   @Test
   public void testStartup() throws IOException {
+    DefaultMetricsSystem.setMiniClusterMode(true);
     service = HddsDatanodeService.createHddsDatanodeService(args);
     service.start(conf);
-    if (schemaVersion.equals(OzoneConsts.SCHEMA_V3)) {
-      cleanUpManager = new CleanUpManager(hddsVolume);
-
+    if (CleanUpManager.checkContainerSchemaV3Enabled(conf)) {
+      volumeSet = new MutableVolumeSet(DATANODE_UUID, conf, null,
+          StorageVolume.VolumeType.DATA_VOLUME, null);
       container = addContainer(containerSet, getTestContainerID());
+      cleanUpManager = new CleanUpManager(container.getContainerData().getVolume());
       cleanUpManager.renameDir(container.getContainerData());
-      assertFalse(cleanUpManager.tmpDirIsEmpty());
     }
     assertNotNull(service.getDatanodeDetails());
     assertNotNull(service.getDatanodeDetails().getHostName());

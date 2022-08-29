@@ -116,11 +116,31 @@ public class TestKeyValueHandler {
 
   }
 
+  public void commandHandlingInit() {
+    Mockito.reset(handler);
+    KeyValueContainer container = Mockito.mock(KeyValueContainer.class);
+
+    DispatcherContext context = new DispatcherContext.Builder().build();
+  }
+
+  public void commandHandlingInit(
+      ContainerProtos.Type protoType
+  ) {
+    Mockito.reset(handler);
+    KeyValueContainer container = Mockito.mock(KeyValueContainer.class);
+
+    DispatcherContext context = new DispatcherContext.Builder().build();
+    ContainerCommandRequestProto request = getDummyCommandRequestProto(
+        protoType
+    );
+    KeyValueHandler
+        .dispatchRequest(handler, request, container, context);
+  }
   /**
    * Test that Handler handles different command types correctly.
    */
   @Test
-  public void testHandlerCommandHandling() throws Exception {
+  public void testCreateCommandHandling() throws Exception {
     Mockito.reset(handler);
     // Test Create Container Request handling
     ContainerCommandRequestProto createContainerRequest =
@@ -139,116 +159,111 @@ public class TestKeyValueHandler {
         .dispatchRequest(handler, createContainerRequest, container, context);
     Mockito.verify(handler, times(0)).handleListBlock(
         any(ContainerCommandRequestProto.class), any());
+  }
 
+  @Test
+  public void testReadContainerRequest() {
     // Test Read Container Request handling
-    ContainerCommandRequestProto readContainerRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.ReadContainer);
-    KeyValueHandler
-        .dispatchRequest(handler, readContainerRequest, container, context);
+    commandHandlingInit(ContainerProtos.Type.ReadContainer);
     Mockito.verify(handler, times(1)).handleReadContainer(
         any(ContainerCommandRequestProto.class), any());
+  }
 
+  @Test
+  public void testUpdateContainerRequest() {
     // Test Update Container Request handling
-    ContainerCommandRequestProto updateContainerRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.UpdateContainer);
-    KeyValueHandler
-        .dispatchRequest(handler, updateContainerRequest, container, context);
+    commandHandlingInit(ContainerProtos.Type.UpdateContainer);
     Mockito.verify(handler, times(1)).handleUpdateContainer(
         any(ContainerCommandRequestProto.class), any());
+  }
 
+  @Test
+  public void testDeleteContainerRequest() {
     // Test Delete Container Request handling
-    ContainerCommandRequestProto deleteContainerRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.DeleteContainer);
-    KeyValueHandler
-        .dispatchRequest(handler, deleteContainerRequest, container, context);
+    commandHandlingInit(ContainerProtos.Type.DeleteContainer);
     Mockito.verify(handler, times(1)).handleDeleteContainer(
         any(ContainerCommandRequestProto.class), any());
+  }
+
+  @Test
+  public void testListContainerRequestHandling() {
 
     // Test List Container Request handling
-    ContainerCommandRequestProto listContainerRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.ListContainer);
-    KeyValueHandler
-        .dispatchRequest(handler, listContainerRequest, container, context);
+    commandHandlingInit(ContainerProtos.Type.ListContainer);
     Mockito.verify(handler, times(1)).handleUnsupportedOp(
         any(ContainerCommandRequestProto.class));
+  }
 
+  @Test
+  public void testCloseContainerRequestHandling() {
     // Test Close Container Request handling
-    ContainerCommandRequestProto closeContainerRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.CloseContainer);
-    KeyValueHandler
-        .dispatchRequest(handler, closeContainerRequest, container, context);
+    commandHandlingInit(ContainerProtos.Type.CloseContainer);
     Mockito.verify(handler, times(1)).handleCloseContainer(
         any(ContainerCommandRequestProto.class), any());
+  }
 
-    // Test Put Block Request handling
-    ContainerCommandRequestProto putBlockRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.PutBlock);
-    KeyValueHandler
-        .dispatchRequest(handler, putBlockRequest, container, context);
+  @Test
+  public void testPutBlockRequestHandling() {
+    commandHandlingInit(ContainerProtos.Type.PutBlock);
+
     Mockito.verify(handler, times(1)).handlePutBlock(
         any(ContainerCommandRequestProto.class), any(), any());
+  }
 
-    // Test Get Block Request handling
-    ContainerCommandRequestProto getBlockRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.GetBlock);
-    KeyValueHandler
-        .dispatchRequest(handler, getBlockRequest, container, context);
+  @Test
+  public void testGetBlockRequestHandling() {
+    commandHandlingInit(ContainerProtos.Type.GetBlock);
     Mockito.verify(handler, times(1)).handleGetBlock(
         any(ContainerCommandRequestProto.class), any());
-
+    }
     // Block Deletion is handled by BlockDeletingService and need not be
     // tested here.
 
-    ContainerCommandRequestProto listBlockRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.ListBlock);
-    KeyValueHandler
-        .dispatchRequest(handler, listBlockRequest, container, context);
-    Mockito.verify(handler, times(1)).handleUnsupportedOp(
-        any(ContainerCommandRequestProto.class));
+    @Test
+    public void testListBlockRequest() {
+      commandHandlingInit(ContainerProtos.Type.ListBlock);
+      Mockito.verify(handler, times(1)).handleUnsupportedOp(
+          any(ContainerCommandRequestProto.class));
+    }
 
-    // Test Read Chunk Request handling
-    ContainerCommandRequestProto readChunkRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.ReadChunk);
-    KeyValueHandler
-        .dispatchRequest(handler, readChunkRequest, container, context);
-    Mockito.verify(handler, times(1)).handleReadChunk(
-        any(ContainerCommandRequestProto.class), any(), any());
+    @Test
+    public void testReadChunkRequest() {
+      commandHandlingInit(ContainerProtos.Type.ReadChunk);
+      Mockito.verify(handler, times(1)).handleReadChunk(
+          any(ContainerCommandRequestProto.class), any(), any());
+    }
 
     // Chunk Deletion is handled by BlockDeletingService and need not be
     // tested here.
 
-    // Test Write Chunk Request handling
-    ContainerCommandRequestProto writeChunkRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.WriteChunk);
-    KeyValueHandler
-        .dispatchRequest(handler, writeChunkRequest, container, context);
-    Mockito.verify(handler, times(1)).handleWriteChunk(
-        any(ContainerCommandRequestProto.class), any(), any());
+    @Test
+    public void testWriteChunkRequest() {
+      commandHandlingInit(ContainerProtos.Type.WriteChunk);
+      Mockito.verify(handler, times(1)).handleWriteChunk(
+          any(ContainerCommandRequestProto.class), any(), any());
+    }
 
-    // Test List Chunk Request handling
-    ContainerCommandRequestProto listChunkRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.ListChunk);
-    KeyValueHandler
-        .dispatchRequest(handler, listChunkRequest, container, context);
-    Mockito.verify(handler, times(2)).handleUnsupportedOp(
-        any(ContainerCommandRequestProto.class));
+    @Test
+    public void testListChunkRequestHandling() {
+      commandHandlingInit(ContainerProtos.Type.ListChunk);
+      Mockito.verify(handler, times(2)).handleUnsupportedOp(
+          any(ContainerCommandRequestProto.class));
+    }
 
-    // Test Put Small File Request handling
-    ContainerCommandRequestProto putSmallFileRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.PutSmallFile);
-    KeyValueHandler
-        .dispatchRequest(handler, putSmallFileRequest, container, context);
-    Mockito.verify(handler, times(1)).handlePutSmallFile(
-        any(ContainerCommandRequestProto.class), any(), any());
+    @Test
+    public void testPutSmallFileRequestHandling() {
+      commandHandlingInit(ContainerProtos.Type.PutSmallFile);
+      Mockito.verify(handler, times(1)).handlePutSmallFile(
+          any(ContainerCommandRequestProto.class), any(), any());
+    }
 
     // Test Get Small File Request handling
-    ContainerCommandRequestProto getSmallFileRequest =
-        getDummyCommandRequestProto(ContainerProtos.Type.GetSmallFile);
-    KeyValueHandler
-        .dispatchRequest(handler, getSmallFileRequest, container, context);
-    Mockito.verify(handler, times(1)).handleGetSmallFile(
-        any(ContainerCommandRequestProto.class), any());
-  }
+    @Test
+    public void testGetSmallFileRequestHandling() {
+      commandHandlingInit(ContainerProtos.Type.GetSmallFile);
+      Mockito.verify(handler, times(1)).handleGetSmallFile(
+          any(ContainerCommandRequestProto.class), any());
+    }
 
   @Test
   public void testVolumeSetInKeyValueHandler() throws Exception {
