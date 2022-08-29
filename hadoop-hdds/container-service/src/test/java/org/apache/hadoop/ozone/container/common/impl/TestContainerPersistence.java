@@ -258,39 +258,42 @@ public class TestContainerPersistence {
   }
 
   @Test
-  public void testDeleteContainer() throws Exception {
-    long testContainerID1 = getTestContainerID();
-    Thread.sleep(100);
-    long testContainerID2 = getTestContainerID();
+  public void testDeleteClosedContainer() throws Exception {
 
+    long testContainerID1 = getTestContainerID();
     Container container1 = addContainer(containerSet, testContainerID1);
     container1.close();
-
-    Container container2 = addContainer(containerSet, testContainerID2);
-
     Assert.assertTrue(containerSet.getContainerMapCopy()
         .containsKey(testContainerID1));
-    Assert.assertTrue(containerSet.getContainerMapCopy()
-        .containsKey(testContainerID2));
-
     container1.delete();
     containerSet.removeContainer(testContainerID1);
-    Assert.assertFalse(containerSet.getContainerMapCopy()
-        .containsKey(testContainerID1));
 
-    // With schema v3, we don't have a container dedicated db,
-    // so skip check the behaviors related to it.
-    if (schemaVersion.equals(OzoneConsts.SCHEMA_V3)) {
-      return;
-    }
+    assumeTrue(
+        schemaVersion.contains(OzoneConsts.SCHEMA_V3)
+    );
 
-    // Adding block to a deleted container should fail.
-    exception.expect(StorageContainerException.class);
-    exception.expectMessage("Error opening DB.");
     BlockID blockID1 = ContainerTestHelper.getTestBlockID(testContainerID1);
     BlockData someKey1 = new BlockData(blockID1);
     someKey1.setChunks(new LinkedList<ContainerProtos.ChunkInfo>());
     blockManager.putBlock(container1, someKey1);
+    // Adding block to a deleted container should fail.
+
+  }
+
+  @Test
+  public void testDeleteUnclosedContainer() throws Exception {
+    long testContainerID2 = getTestContainerID();
+
+    Container container2 = addContainer(containerSet, testContainerID2);
+
+    Assert.assertTrue(containerSet.getContainerMapCopy()
+        .containsKey(testContainerID2));
+
+    // With schema v3, we don't have a container dedicated db,
+    // so skip check the behaviors related to it.
+    assumeTrue(
+        schemaVersion.contains(OzoneConsts.SCHEMA_V3)
+    );
 
     // TODO: Refactor the code, that block never gets executed.
     // Deleting a non-empty container should fail.
@@ -336,10 +339,27 @@ public class TestContainerPersistence {
     CleanUpManager cleanUpManager = new CleanUpManager(hddsVolume);
 
     // Rename container1 dir
+    String container1name = new File(
+        container1Data.getContainerPath()
+    ).getName();
     Assert.assertTrue(cleanUpManager.renameDir(container1Data));
 
     // Rename container2 dir
+    String container2name = new File(
+        container2Data.getContainerPath()
+    ).getName();
     Assert.assertTrue(cleanUpManager.renameDir(container2Data));
+
+    ListIterator<File> files = cleanUpManager.getDeleteLeftovers();
+    Assert.assertEquals(
+        container1name,
+        files.next().getName()
+    );
+
+    Assert.assertEquals(
+        container2name,
+        files.next().getName()
+    );
 
     // Delete container1
     container1.delete();

@@ -34,8 +34,11 @@ import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerCommandRequestProto;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerType;
+import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.hdds.security.token.TokenVerifier;
+import org.apache.hadoop.ozone.OzoneConfigKeys;
+import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerMetrics;
 import org.apache.hadoop.ozone.container.common.impl.ContainerLayoutVersion;
 import org.apache.hadoop.ozone.container.common.impl.ContainerSet;
@@ -63,6 +66,8 @@ import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import org.mockito.Mockito;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -321,6 +326,57 @@ public class TestKeyValueHandler {
         .setContainerID(DUMMY_CONTAINER_ID)
         .setDatanodeUuid(DATANODE_UUID)
         .build();
+  }
+
+  @Test
+  public void testDeleteInternal() throws IOException {
+    //  Init KeyValueHandler
+    final String testDir = GenericTestUtils.getTempPath(
+        TestKeyValueHandler.class.getSimpleName() +
+            "-" + UUID.randomUUID().toString());
+    final long containerID = 1L;
+    OzoneConfiguration conf = new OzoneConfiguration();
+
+    final ContainerSet containerSet = new ContainerSet(1000);
+    MutableVolumeSet volumeSet = new MutableVolumeSet(
+        DATANODE_UUID, conf, null,
+        StorageVolume.VolumeType.DATA_VOLUME, null
+    );
+
+    final int[] interval = new int[1];
+    interval[0] = 2;
+    final ContainerMetrics metrics = new ContainerMetrics(interval);
+
+    final AtomicInteger icrReceived = new AtomicInteger(0);
+
+    final KeyValueHandler kvHandler = new KeyValueHandler(conf,
+        UUID.randomUUID().toString(), containerSet, volumeSet, metrics,
+        c -> icrReceived.incrementAndGet());
+    kvHandler.setClusterID(UUID.randomUUID().toString());
+
+    //  Create Container
+    KeyValueContainerData kvData = new KeyValueContainerData(containerID,
+        layout,
+        (long) StorageUnit.GB.toBytes(1), UUID.randomUUID().toString(),
+        UUID.randomUUID().toString());
+    KeyValueContainer container = new KeyValueContainer(kvData, conf);
+    int prevCount = containerSet.containerCount();
+
+    kvHandler.deleteContainer(container, true);
+
+    assertTrue(
+        prevCount > containerSet.containerCount()
+    );
+    assertEquals(
+        container.getContainerState(),
+        ContainerProtos.ContainerDataProto.State.DELETED
+    );
+    Assert.assertNull(
+        new File(kvData.getChunksPath())
+    );
+    Assert.assertNull(
+        new File(kvData.getMetadataPath())
+    );
   }
 
 
