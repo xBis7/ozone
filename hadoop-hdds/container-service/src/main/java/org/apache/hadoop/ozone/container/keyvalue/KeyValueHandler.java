@@ -403,7 +403,7 @@ public class KeyValueHandler extends Handler {
    */
   ContainerCommandResponseProto handleDeleteContainer(
       ContainerCommandRequestProto request, KeyValueContainer kvContainer) {
-    LOG.info("pre - hello");
+
     if (!request.hasDeleteContainer()) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Malformed Delete container request. trace ID: {}",
@@ -411,11 +411,9 @@ public class KeyValueHandler extends Handler {
       }
       return malformedRequest(request);
     }
-    LOG.info("hello1");
+
     boolean forceDelete = request.getDeleteContainer().getForceDelete();
-    LOG.info("hello2");
     try {
-      LOG.info("hello3");
       deleteInternal(kvContainer, forceDelete);
     } catch (StorageContainerException ex) {
       return ContainerUtils.logAndReturnError(LOG, ex, request);
