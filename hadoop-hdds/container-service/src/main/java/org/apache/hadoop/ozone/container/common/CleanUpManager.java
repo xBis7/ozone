@@ -51,8 +51,10 @@ public class CleanUpManager {
 
   private String tmpPath;
 
+  private Path tmpDirPath;
+
   public CleanUpManager(HddsVolume hddsVolume) {
-    Path tmpDirPath = getTmpDirPath(hddsVolume);
+    setTmpDirPath(hddsVolume);
 
     if (Files.notExists(tmpDirPath)) {
       try {
@@ -61,6 +63,10 @@ public class CleanUpManager {
         LOG.error("Error creating /tmp/container_delete_service", ex);
       }
     }
+  }
+
+  public Path getTmpDirPath() {
+    return tmpDirPath;
   }
 
   public static boolean checkContainerSchemaV3Enabled(
@@ -75,7 +81,7 @@ public class CleanUpManager {
         .isFinalizedAndEnabled(config);
   }
 
-  private Path getTmpDirPath(HddsVolume hddsVolume) {
+  private void setTmpDirPath(HddsVolume hddsVolume) {
     StringBuilder stringBuilder = new StringBuilder();
 
     // HddsVolume root directory path
@@ -105,9 +111,7 @@ public class CleanUpManager {
     stringBuilder.append(TMP_DELETE_SERVICE_DIR);
 
     this.tmpPath = stringBuilder.toString();
-    Path tmpDirPath = Paths.get(tmpPath);
-
-    return tmpDirPath;
+    this.tmpDirPath = Paths.get(tmpPath);
   }
 
   public boolean renameDir(KeyValueContainerData keyValueContainerData) {

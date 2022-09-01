@@ -81,6 +81,7 @@ import org.junit.Assert;
 import static org.apache.hadoop.ozone.container.common.ContainerTestUtils.createDbInstancesForTestIfNeeded;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
+import static org.junit.Assume.assumeFalse;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -258,8 +259,7 @@ public class TestContainerPersistence {
   }
 
   @Test
-  public void testDeleteClosedContainer() throws Exception {
-
+  public void testAddingBlockToDeletedContainer() throws Exception {
     long testContainerID1 = getTestContainerID();
     Container container1 = addContainer(containerSet, testContainerID1);
     container1.close();
@@ -268,22 +268,22 @@ public class TestContainerPersistence {
     container1.delete();
     containerSet.removeContainer(testContainerID1);
 
-    assumeTrue(
-        schemaVersion.contains(OzoneConsts.SCHEMA_V3)
-    );
+    // With schema v3, we don't have a container dedicated db,
+    // so skip check the behaviors related to it.
+    assumeFalse(schemaVersion.contains(OzoneConsts.SCHEMA_V3));
 
+    // Adding block to a deleted container should fail.
+    exception.expect(StorageContainerException.class);
+    exception.expectMessage("Error opening DB.");
     BlockID blockID1 = ContainerTestHelper.getTestBlockID(testContainerID1);
     BlockData someKey1 = new BlockData(blockID1);
     someKey1.setChunks(new LinkedList<ContainerProtos.ChunkInfo>());
     blockManager.putBlock(container1, someKey1);
-    // Adding block to a deleted container should fail.
-
   }
 
   @Test
-  public void testDeleteUnclosedContainer() throws Exception {
+  public void testDeleteNonEmptyContainer() throws Exception {
     long testContainerID2 = getTestContainerID();
-
     Container container2 = addContainer(containerSet, testContainerID2);
 
     Assert.assertTrue(containerSet.getContainerMapCopy()
@@ -291,20 +291,17 @@ public class TestContainerPersistence {
 
     // With schema v3, we don't have a container dedicated db,
     // so skip check the behaviors related to it.
-    assumeTrue(
-        schemaVersion.contains(OzoneConsts.SCHEMA_V3)
-    );
+    assumeFalse(schemaVersion.contains(OzoneConsts.SCHEMA_V3));
 
-    // TODO: Refactor the code, that block never gets executed.
     // Deleting a non-empty container should fail.
     BlockID blockID2 = ContainerTestHelper.getTestBlockID(testContainerID2);
     BlockData someKey2 = new BlockData(blockID2);
     someKey2.setChunks(new LinkedList<ContainerProtos.ChunkInfo>());
     blockManager.putBlock(container2, someKey2);
 
-    exception.expect(StorageContainerException.class);
-    exception.expectMessage(
-        "Container cannot be deleted because it is not empty.");
+//    exception.expect(StorageContainerException.class);
+//    exception.expectMessage(
+//        "Container cannot be deleted because it is not empty.");
     container2.delete();
     Assert.assertTrue(containerSet.getContainerMapCopy()
         .containsKey(testContainerID2));
