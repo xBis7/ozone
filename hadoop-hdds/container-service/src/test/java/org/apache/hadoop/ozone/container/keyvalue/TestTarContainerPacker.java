@@ -56,6 +56,7 @@ import org.junit.runners.Parameterized;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.commons.compress.compressors.CompressorStreamFactory.GZIP;
+import static org.apache.hadoop.ozone.OzoneConsts.SCHEMA_V3;
 
 /**
  * Test the tar/untar for a given container.
@@ -134,6 +135,11 @@ public class TestTarContainerPacker {
     Files.createDirectories(metaDir);
     Files.createDirectories(dbDir);
     Files.createDirectories(dataDir);
+
+    if (schemaVersion.equals(SCHEMA_V3)) {
+      Path schemaV3DBDir = metaDir.resolve("db");
+      Files.createDirectories(schemaV3DBDir);
+    }
 
     KeyValueContainerData containerData = new KeyValueContainerData(
         id, layout,
