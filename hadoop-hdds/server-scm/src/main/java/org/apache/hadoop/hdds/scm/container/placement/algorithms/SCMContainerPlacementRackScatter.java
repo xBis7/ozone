@@ -97,7 +97,7 @@ public final class SCMContainerPlacementRackScatter
       int chosenListSize = chosenNodes.size();
 
       // Refill toChooseRacks, we put skippedRacks in front of toChooseRacks
-      // for a even distribution
+      // for an even distribution
       toChooseRacks.addAll(racks);
       if (!skippedRacks.isEmpty()) {
         toChooseRacks.removeAll(skippedRacks);
