@@ -46,7 +46,6 @@ import org.apache.hadoop.ozone.common.Checksum;
 import org.apache.hadoop.ozone.common.ChecksumData;
 import org.apache.hadoop.ozone.common.ChunkBuffer;
 import org.apache.hadoop.ozone.container.ContainerTestHelper;
-import org.apache.hadoop.ozone.container.common.helpers.CleanUpManager;
 import org.apache.hadoop.ozone.container.common.helpers.BlockData;
 import org.apache.hadoop.ozone.container.common.helpers.ChunkInfo;
 import org.apache.hadoop.ozone.container.common.helpers.ContainerMetrics;
@@ -83,8 +82,8 @@ import org.junit.Assert;
 
 import static org.apache.hadoop.ozone.container.common.ContainerTestUtils.createDbInstancesForTestIfNeeded;
 import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
 import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -331,10 +330,10 @@ public class TestContainerPersistence {
   }
 
   @Test
-  public void testDeleteContainerWithSchemaV3Enabled()
+  public void testDeleteContainerWithRenaming()
       throws Exception {
-    // Ignore the test if SchemaV3 disabled
-    assumeTrue(schemaVersion.equals(OzoneConsts.SCHEMA_V3));
+
+    //assumeTrue(schemaVersion.contains(OzoneConsts.SCHEMA_V3));
 
     long testContainerID1 = getTestContainerID();
     Thread.sleep(100);
@@ -358,13 +357,14 @@ public class TestContainerPersistence {
         (KeyValueContainerData) container2.getContainerData();
 
     HddsVolume hddsVolume = container1Data.getVolume();
-    CleanUpManager cleanUpManager = new CleanUpManager(hddsVolume);
 
-    // Rename container1 dir
-    Assert.assertTrue(cleanUpManager.renameDir(container1Data));
+    if (hddsVolume.getStorageState().equals(StorageVolume.VolumeState.NORMAL)) {
+      // Rename container1 dir
+      Assert.assertTrue(hddsVolume.moveToTmpDeleteDirectory(container1Data));
 
-    // Rename container2 dir
-    Assert.assertTrue(cleanUpManager.renameDir(container2Data));
+      // Rename container2 dir
+      Assert.assertTrue(hddsVolume.moveToTmpDeleteDirectory(container2Data));
+    }
 
     File container1File =
         new File(container1Data.getContainerPath());
@@ -372,7 +372,7 @@ public class TestContainerPersistence {
     File container2File =
         new File(container2Data.getContainerPath());
 
-    ListIterator<File> tmpDirIter = cleanUpManager.getDeleteLeftovers();
+    ListIterator<File> tmpDirIter = hddsVolume.getDeleteLeftovers();
     List<File> tmpDirFileList = new LinkedList<>();
     boolean container1ExistsUnderTmpDir = false;
     boolean container2ExistsUnderTmpDir = false;
@@ -395,9 +395,9 @@ public class TestContainerPersistence {
     // Delete container1
     container1.delete();
 
-    Assert.assertFalse(cleanUpManager.tmpDirIsEmpty());
+    Assert.assertTrue(hddsVolume.getDeleteLeftovers().hasNext());
 
-    ListIterator<File> iterator = cleanUpManager.getDeleteLeftovers();
+    ListIterator<File> iterator = hddsVolume.getDeleteLeftovers();
 
     File metadata2Dir = container2.getContainerFile().getParentFile();
     File container2Dir = metadata2Dir.getParentFile();
@@ -413,10 +413,7 @@ public class TestContainerPersistence {
         .containsKey(testContainerID1));
 
     // '/tmp/delete_container_service' is empty
-    Assert.assertTrue(cleanUpManager.tmpDirIsEmpty());
-
-    // Delete /delete_container_service from system
-    cleanUpManager.deleteTmpDir();
+    Assert.assertNull(iterator.next());
   }
 
   @Test
