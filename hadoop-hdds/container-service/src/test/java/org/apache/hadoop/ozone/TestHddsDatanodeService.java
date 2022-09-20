@@ -140,6 +140,7 @@ public class TestHddsDatanodeService {
     for (int i = 0; i < volumeSetSize; i++) {
       HddsVolume volume = volumes.get(i);
       volume.format(clusterId);
+      volume.createWorkingDir(clusterId, null);
 
       tempHddsVolumes[i] = tempDir.newFolder();
       hddsDirs.append(tempHddsVolumes[i]).append(",");

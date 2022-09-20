@@ -148,19 +148,14 @@ public class HddsVolume extends StorageVolume {
       MutableVolumeSet dbVolumeSet) throws IOException {
     super.createWorkingDir(workingDirName, dbVolumeSet);
 
+    createTmpDir(workingDirName);
+    createDeleteServiceDir();
+
     // Create DB store for a newly formatted volume
     if (VersionedDatanodeFeatures.isFinalized(
         HDDSLayoutFeature.DATANODE_SCHEMA_V3)) {
       createDbStore(dbVolumeSet);
     }
-  }
-
-  @Override
-  public void format(String cid) throws IOException {
-    super.format(cid);
-
-    createTmpDir(cid);
-    createDeleteServiceDir();
   }
 
   public File getHddsRootDir() {
@@ -429,7 +424,7 @@ public class HddsVolume extends StorageVolume {
         }
       } catch (IOException ex) {
         LOG.error("Failed to delete directory or file inside " +
-            "{}",deleteServiceDirPath.toString(), ex);
+            "{}", deleteServiceDirPath.toString(), ex);
       }
     }
   }
@@ -463,7 +458,8 @@ public class HddsVolume extends StorageVolume {
    * @param keyValueContainerData
    * @return true if renaming was successful
    */
-  public boolean moveToTmpDeleteDirectory(KeyValueContainerData keyValueContainerData) {
+  public boolean moveToTmpDeleteDirectory(
+      KeyValueContainerData keyValueContainerData) {
     String containerPath = keyValueContainerData.getContainerPath();
     File container = new File(containerPath);
     String containerDirName = container.getName();

@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.fs.MockSpaceUsageCheckFactory;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ChecksumType;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos;
@@ -83,7 +84,6 @@ import org.junit.Assert;
 import static org.apache.hadoop.ozone.container.common.ContainerTestUtils.createDbInstancesForTestIfNeeded;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeFalse;
-import static org.junit.Assume.assumeTrue;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -329,11 +329,30 @@ public class TestContainerPersistence {
         .containsKey(testContainerID2));
   }
 
+  /**
+   * If SchemaV3 is enabled, HddsVolume has already been
+   * formatted and initialized in
+   * setupPaths#createDbInstancesForTestIfNeeded.
+   * @throws Exception
+   */
   @Test
   public void testDeleteContainerWithRenaming()
       throws Exception {
+    HddsVolume hddsVolume = null;
+    if (!schemaVersion.contains(OzoneConsts.SCHEMA_V3)) {
+      Files.createDirectories(Paths.get(hddsPath));
 
-    //assumeTrue(schemaVersion.contains(OzoneConsts.SCHEMA_V3));
+      HddsVolume.Builder volumeBuilder =
+          new HddsVolume.Builder(hddsPath)
+          .datanodeUuid(DATANODE_UUID)
+          .conf(conf)
+          .usageCheckFactory(MockSpaceUsageCheckFactory.NONE);
+
+      hddsVolume = volumeBuilder.build();
+
+      hddsVolume.format(SCM_ID);
+      hddsVolume.createWorkingDir(SCM_ID, null);
+    }
 
     long testContainerID1 = getTestContainerID();
     Thread.sleep(100);
@@ -356,15 +375,15 @@ public class TestContainerPersistence {
     KeyValueContainerData container2Data =
         (KeyValueContainerData) container2.getContainerData();
 
-    HddsVolume hddsVolume = container1Data.getVolume();
-
-    if (hddsVolume.getStorageState().equals(StorageVolume.VolumeState.NORMAL)) {
-      // Rename container1 dir
-      Assert.assertTrue(hddsVolume.moveToTmpDeleteDirectory(container1Data));
-
-      // Rename container2 dir
-      Assert.assertTrue(hddsVolume.moveToTmpDeleteDirectory(container2Data));
+    if (schemaVersion.contains(OzoneConsts.SCHEMA_V3)) {
+      hddsVolume = container1Data.getVolume();
     }
+
+    // Rename container1 dir
+    Assert.assertTrue(hddsVolume.moveToTmpDeleteDirectory(container1Data));
+
+    // Rename container2 dir
+    Assert.assertTrue(hddsVolume.moveToTmpDeleteDirectory(container2Data));
 
     File container1File =
         new File(container1Data.getContainerPath());
@@ -412,8 +431,8 @@ public class TestContainerPersistence {
     Assert.assertFalse(containerSet.getContainerMapCopy()
         .containsKey(testContainerID1));
 
-    // '/tmp/delete_container_service' is empty
-    Assert.assertNull(iterator.next());
+    // 'tmp/delete_container_service' is empty
+    Assert.assertFalse(hddsVolume.getDeleteLeftovers().hasNext());
   }
 
   @Test

@@ -202,12 +202,7 @@ public final class StorageVolumeUtil {
     File clusterDir = new File(volumeRoot, clusterId);
 
     try {
-      if (volume instanceof HddsVolume) {
-        HddsVolume hddsVolume = (HddsVolume) volume;
-        hddsVolume.format(clusterId);
-      } else {
-        volume.format(clusterId);
-      }
+      volume.format(clusterId);
     } catch (IOException ex) {
       logger.error("Error during formatting volume {}.",
           volumeRootPath, ex);

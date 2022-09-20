@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -52,7 +51,6 @@ import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
-import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.common.Checksum;
 import org.apache.hadoop.ozone.common.ChunkBuffer;
 import org.apache.hadoop.ozone.common.OzoneChecksumException;
@@ -122,8 +120,6 @@ public class KeyValueHandler extends Handler {
 
   private static final Logger LOG = LoggerFactory.getLogger(
       KeyValueHandler.class);
-
-  private static final String FILE_SEPARATOR = File.separator;
 
   private final ContainerType containerType;
   private final BlockManager blockManager;
@@ -1146,10 +1142,12 @@ public class KeyValueHandler extends Handler {
         HddsVolume hddsVolume = keyValueContainerData.getVolume();
 
         // Rename container location
-        boolean success = hddsVolume.moveToTmpDeleteDirectory(keyValueContainerData);
+        boolean success = hddsVolume
+            .moveToTmpDeleteDirectory(keyValueContainerData);
 
         if (success) {
-          String containerPath = keyValueContainerData.getContainerPath().toString();
+          String containerPath = keyValueContainerData
+              .getContainerPath().toString();
           File containerDir = new File(containerPath);
 
           LOG.info("Container {} has been successfuly moved under {}",

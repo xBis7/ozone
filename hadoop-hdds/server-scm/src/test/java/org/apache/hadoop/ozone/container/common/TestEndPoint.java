@@ -161,6 +161,7 @@ public class TestEndPoint {
       for (HddsVolume hddsVolume : StorageVolumeUtil.getHddsVolumesList(
           volumeSet.getVolumesList())) {
         hddsVolume.format(clusterId);
+        hddsVolume.createWorkingDir(clusterId, null);
 
         // Write to tmp/container_delete_service dir under volume
         File testFile = new File(hddsVolume

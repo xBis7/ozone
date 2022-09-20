@@ -374,6 +374,7 @@ public class TestKeyValueHandler {
       HddsVolume hddsVolume = hddsVolumeList.get(0);
 
       hddsVolume.format(clusterId);
+      hddsVolume.createWorkingDir(clusterId, null);
 
       final int[] interval = new int[1];
       interval[0] = 2;
@@ -384,7 +385,7 @@ public class TestKeyValueHandler {
       final KeyValueHandler kvHandler = new KeyValueHandler(conf,
           UUID.randomUUID().toString(), containerSet, volumeSet, metrics,
           c -> icrReceived.incrementAndGet());
-      kvHandler.setClusterID(UUID.randomUUID().toString());
+      kvHandler.setClusterID(clusterId);
 
       final ContainerCommandRequestProto createContainer =
           ContainerCommandRequestProto.newBuilder()
