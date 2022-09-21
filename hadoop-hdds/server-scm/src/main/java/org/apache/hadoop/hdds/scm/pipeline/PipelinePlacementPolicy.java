@@ -316,9 +316,12 @@ public final class PipelinePlacementPolicy extends SCMCommonPlacementPolicy {
       // Pick remaining nodes based on the existence of rack awareness.
       DatanodeDetails pick = null;
       if (rackAwareness) {
-        pick = chooseNodeBasedOnSameRack(
+        pick = chooseNodeBasedOnRackAwareness(
+                healthyNodes, exclude,
+                nodeManager.getClusterNetworkTopologyMap(), anchor);
+        /*pick = chooseNodeBasedOnSameRack(
             healthyNodes, exclude,
-            nodeManager.getClusterNetworkTopologyMap(), anchor);
+            nodeManager.getClusterNetworkTopologyMap(), anchor); */
       }
       // fall back protection
       if (pick == null) {
