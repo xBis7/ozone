@@ -143,20 +143,13 @@ public class HddsVolume extends StorageVolume {
 
   }
 
-  public boolean deleteServiceDirPathExists() {
-    if (deleteServiceDirPath == null) {
-      return false;
-    }
-    return Files.exists(deleteServiceDirPath);
-  }
-
   @Override
   public void createWorkingDir(String workingDirName,
       MutableVolumeSet dbVolumeSet) throws IOException {
     super.createWorkingDir(workingDirName, dbVolumeSet);
 
-//    createTmpDir(workingDirName);
-//    createDeleteServiceDir();
+    createTmpDir(workingDirName);
+    createDeleteServiceDir();
 
     // Create DB store for a newly formatted volume
     if (VersionedDatanodeFeatures.isFinalized(
@@ -361,7 +354,6 @@ public class HddsVolume extends StorageVolume {
     }
   }
 
-
   // Ensure that volume is initialized properly with
   // cleanup path.  Should disk be re-inserted into
   // cluster, cleanup path should already be on
@@ -371,10 +363,6 @@ public class HddsVolume extends StorageVolume {
     String tmpPath = createTmpPath(id);
     String deleteServicePath = tmpPath + TMP_DELETE_SERVICE_DIR;
     deleteServiceDirPath = Paths.get(deleteServicePath);
-    if (Files.notExists(deleteServiceDirPath)) {
-      createTmpDir(id);
-      createDeleteServiceDir();
-    }
   }
 
   private String createTmpPath(String id) {
@@ -438,7 +426,7 @@ public class HddsVolume extends StorageVolume {
   /**
    * Delete all files under tmp/container_delete_service.
    */
-  public synchronized void cleanTmpDir() {
+  public synchronized void cleanTmpDir() throws IOException {
     if (getStorageState() != VolumeState.NORMAL) {
       LOG.debug("Call to clean tmp dir container_delete_service directory "
               + "for {} while VolumeState {}",
@@ -449,8 +437,7 @@ public class HddsVolume extends StorageVolume {
     if (!getClusterID().isEmpty()) {
       checkCleanupDirs(getClusterID());
     } else {
-      LOG.error("Volume has no ClusterId");
-      return;
+      throw new IOException("Volume has no ClusterId");
     }
 
     ListIterator<File> leftoversListIt = getDeleteLeftovers();

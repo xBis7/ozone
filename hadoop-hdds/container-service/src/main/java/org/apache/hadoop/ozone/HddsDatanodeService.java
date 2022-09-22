@@ -130,7 +130,12 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
           datanodeStateMachine.getContainer().getVolumeSet();
       for (HddsVolume hddsVolume : StorageVolumeUtil.getHddsVolumesList(
           volumeSet.getVolumesList())) {
-        hddsVolume.cleanTmpDir();
+        try {
+          hddsVolume.cleanTmpDir();
+        } catch (IOException ex) {
+          LOG.error("Error while cleaning tmp delete directory " +
+              "under {}", hddsVolume.getWorkingDir(), ex);
+        }
       }
     }
   }
@@ -570,10 +575,7 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
   public void stop() {
     if (!isStopped.getAndSet(true)) {
       // Clean <HddsVolume>/tmp/container_delete_service dir.
-      if (VersionedDatanodeFeatures.SchemaV3
-          .isFinalizedAndEnabled(conf)) {
-        cleanTmpDir();
-      }
+      cleanTmpDir();
       if (plugins != null) {
         for (ServicePlugin plugin : plugins) {
           try {
