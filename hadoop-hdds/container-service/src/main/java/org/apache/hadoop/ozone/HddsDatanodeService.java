@@ -61,6 +61,7 @@ import org.apache.hadoop.ozone.container.common.utils.StorageVolumeUtil;
 import org.apache.hadoop.ozone.container.common.volume.HddsVolume;
 import org.apache.hadoop.ozone.container.common.volume.MutableVolumeSet;
 import org.apache.hadoop.ozone.container.common.volume.StorageVolume;
+import org.apache.hadoop.ozone.container.upgrade.VersionedDatanodeFeatures;
 import org.apache.hadoop.ozone.util.OzoneNetUtils;
 import org.apache.hadoop.ozone.util.ShutdownHookManager;
 import org.apache.hadoop.security.SecurityUtil;
@@ -124,11 +125,13 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
   }
 
   private void cleanTmpDir() {
-    MutableVolumeSet volumeSet =
-        getDatanodeStateMachine().getContainer().getVolumeSet();
-    for (HddsVolume hddsVolume : StorageVolumeUtil.getHddsVolumesList(
-        volumeSet.getVolumesList())) {
-      hddsVolume.cleanTmpDir();
+    if (datanodeStateMachine != null) {
+      MutableVolumeSet volumeSet =
+          datanodeStateMachine.getContainer().getVolumeSet();
+      for (HddsVolume hddsVolume : StorageVolumeUtil.getHddsVolumesList(
+          volumeSet.getVolumesList())) {
+        hddsVolume.cleanTmpDir();
+      }
     }
   }
 
@@ -567,7 +570,10 @@ public class HddsDatanodeService extends GenericCli implements ServicePlugin {
   public void stop() {
     if (!isStopped.getAndSet(true)) {
       // Clean <HddsVolume>/tmp/container_delete_service dir.
-      cleanTmpDir();
+      if (VersionedDatanodeFeatures.SchemaV3
+          .isFinalizedAndEnabled(conf)) {
+        cleanTmpDir();
+      }
       if (plugins != null) {
         for (ServicePlugin plugin : plugins) {
           try {

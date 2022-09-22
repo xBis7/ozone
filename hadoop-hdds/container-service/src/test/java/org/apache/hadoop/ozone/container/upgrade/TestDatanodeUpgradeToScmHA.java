@@ -479,6 +479,12 @@ public class TestDatanodeUpgradeToScmHA {
 
     // Volume should only have the specified ID directory.
     Assert.assertEquals(1, subdirs.size());
+    // with tmp cleanup dir now have 2 subdirectories
+//    if (scmHAAlreadyEnabled) {
+//      Assert.assertEquals(1, subdirs.size());
+//    } else {
+//      Assert.assertEquals(1, subdirs.size());
+//    }
     File idDir = new File(hddsRoot, expectedID);
     Assert.assertTrue(subdirs.contains(idDir));
   }

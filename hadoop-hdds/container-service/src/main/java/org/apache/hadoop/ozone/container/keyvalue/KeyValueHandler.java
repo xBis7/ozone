@@ -51,6 +51,7 @@ import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.common.helpers.StorageContainerException;
 import org.apache.hadoop.hdds.utils.HddsServerUtil;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
+import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.common.Checksum;
 import org.apache.hadoop.ozone.common.ChunkBuffer;
 import org.apache.hadoop.ozone.common.OzoneChecksumException;
@@ -1139,19 +1140,30 @@ public class KeyValueHandler extends Handler {
       if (container.getContainerData() instanceof KeyValueContainerData) {
         KeyValueContainerData keyValueContainerData =
             (KeyValueContainerData) container.getContainerData();
-        HddsVolume hddsVolume = keyValueContainerData.getVolume();
 
-        // Rename container location
-        boolean success = hddsVolume
-            .moveToTmpDeleteDirectory(keyValueContainerData);
+        if (keyValueContainerData.getSchemaVersion().equals(OzoneConsts.SCHEMA_V3)) {
 
-        if (success) {
-          String containerPath = keyValueContainerData
-              .getContainerPath().toString();
-          File containerDir = new File(containerPath);
+          HddsVolume hddsVolume = keyValueContainerData.getVolume();
 
-          LOG.info("Container {} has been successfuly moved under {}",
-              containerDir.getName(), hddsVolume.getDeleteServiceDirPath());
+          if (hddsVolume.getClusterID() != null) {
+            try {
+              // Rename container location
+              boolean success = hddsVolume
+                  .moveToTmpDeleteDirectory(keyValueContainerData);
+
+              if (success) {
+                String containerPath = keyValueContainerData
+                    .getContainerPath().toString();
+                File containerDir = new File(containerPath);
+
+                LOG.info("Container {} has been successfuly moved under {}",
+                    containerDir.getName(), hddsVolume.getDeleteServiceDirPath());
+              }
+            } catch (IOException ex) {
+              LOG.error("Moving a container under tmp delete directory " +
+                  "while volume has not been initialized", ex);
+            }
+          }
         }
       }
       long containerId = container.getContainerData().getContainerID();
