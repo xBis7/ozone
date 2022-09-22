@@ -128,10 +128,10 @@ public class VersionEndpointTask implements
         // Clean <HddsVolume>/tmp/container_delete_service dir.
         if (volume instanceof HddsVolume) {
           HddsVolume hddsVolume = (HddsVolume) volume;
-          if (VersionedDatanodeFeatures.SchemaV3
-              .isFinalizedAndEnabled(configuration)) {
+//          if (VersionedDatanodeFeatures.SchemaV3
+//              .isFinalizedAndEnabled(configuration)) {
             hddsVolume.cleanTmpDir();
-          }
+         // }
         }
 
         if (!result) {
