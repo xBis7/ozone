@@ -58,6 +58,7 @@ public class OzoneFsShell extends FsShell {
     // commands, and then this method can be abstract
     if (this.getClass().equals(OzoneFsShell.class)) {
       factory.registerCommands(FsCommand.class);
+      factory.registerCommands(OzoneFsUsage.class);
     }
   }
 
