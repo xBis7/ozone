@@ -236,15 +236,15 @@ public class OzoneFsUsage extends FsCommand {
         bucketName = "";
       }
 
-      item.fs
-
       OzoneConfiguration conf = (OzoneConfiguration) getConfSource();
 
       BasicOzoneClientAdapterImpl clientAdapter =
           new BasicOzoneClientAdapterImpl(conf, volName, bucketName);
 
+      OzoneClient ozoneClient = OzoneClientFactory.getRpcClient(conf);
+
       RpcClient rpcClient = new RpcClient(conf, null);
-      rpcClient.getKeysEveryReplicas(volName, bucketName, );
+//      rpcClient.getKeysEveryReplicas(volName, bucketName, );
 
       return 0L;
     }
