@@ -69,6 +69,10 @@ public class UsageInfoSubcommand extends ScmSubcommand {
         "Show info by datanode UUID.", defaultValue = "")
     private String uuid;
 
+    @CommandLine.Option(names = {"--hostname"}, paramLabel = "HOSTNAME", description =
+        "Show info by datanode hostname.", defaultValue = "")
+    private String hostname;
+
     @CommandLine.Option(names = {"-m", "--most-used"},
         description = "Show the most used datanodes.",
         defaultValue = "false")
