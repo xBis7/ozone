@@ -124,6 +124,8 @@ public class SCMNodeManager implements NodeManager {
   private final boolean useHostname;
   private final ConcurrentHashMap<String, Set<String>> dnsToUuidMap =
       new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Set<String>> hostNmToUuidMap =
+      new ConcurrentHashMap<>();
   private final int numPipelinesPerMetadataVolume;
   private final int heavyNodeCriteria;
   private final HDDSLayoutVersionManager scmLayoutVersionManager;
@@ -372,6 +374,7 @@ public class SCMNodeManager implements NodeManager {
     }
 
     String dnsName;
+    String hostName = datanodeDetails.getHostName();
     String networkLocation;
     datanodeDetails.setNetworkName(datanodeDetails.getUuidString());
     if (useHostname) {
@@ -392,6 +395,7 @@ public class SCMNodeManager implements NodeManager {
         DatanodeDetails dn = nodeStateManager.getNode(datanodeDetails);
         Preconditions.checkState(dn.getParent() != null);
         addEntryToDnsToUuidMap(dnsName, datanodeDetails.getUuidString());
+        addEntryToHostNmToUuidMap(hostName, datanodeDetails.getUuidString());
         // Updating Node Report, as registration is successful
         processNodeReport(datanodeDetails, nodeReport);
         LOG.info("Registered Data node : {}", datanodeDetails);
@@ -420,6 +424,7 @@ public class SCMNodeManager implements NodeManager {
           clusterMap.update(datanodeInfo, datanodeDetails);
 
           String oldDnsName;
+          String oldHostName = datanodeInfo.getHostName();
           if (useHostname) {
             oldDnsName = datanodeInfo.getHostName();
           } else {
@@ -428,7 +433,9 @@ public class SCMNodeManager implements NodeManager {
           updateEntryFromDnsToUuidMap(oldDnsName,
                   dnsName,
                   datanodeDetails.getUuidString());
-
+          updateEntryFromHostNmToUuidMap(oldHostName,
+              hostName,
+              datanodeDetails.getUuidString());
           nodeStateManager.updateNode(datanodeDetails, layoutInfo);
           DatanodeDetails dn = nodeStateManager.getNode(datanodeDetails);
           Preconditions.checkState(dn.getParent() != null);
@@ -468,6 +475,17 @@ public class SCMNodeManager implements NodeManager {
     dnList.add(uuid);
   }
 
+  @SuppressFBWarnings(value = "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION")
+  private synchronized void addEntryToHostNmToUuidMap(
+      String hostName, String uuid) {
+    Set<String> dnList = hostNmToUuidMap.get(hostName);
+    if (dnList == null) {
+      dnList = ConcurrentHashMap.newKeySet();
+      hostNmToUuidMap.put(hostName, dnList);
+    }
+    dnList.add(uuid);
+  }
+
   private synchronized void removeEntryFromDnsToUuidMap(String dnsName) {
     if (!dnsToUuidMap.containsKey(dnsName)) {
       return;
@@ -481,11 +499,31 @@ public class SCMNodeManager implements NodeManager {
     }
   }
 
+  private synchronized void removeEntryFromHostNmToUuidMap(String hostName) {
+    if (!hostNmToUuidMap.containsKey(hostName)) {
+      return;
+    }
+    Set<String> dnSet = hostNmToUuidMap.get(hostName);
+    if (dnSet.contains(hostName)) {
+      dnSet.remove(hostName);
+    }
+    if (dnSet.isEmpty()) {
+      hostNmToUuidMap.remove(hostName);
+    }
+  }
+
   private synchronized void updateEntryFromDnsToUuidMap(String oldDnsName,
                                                         String newDnsName,
                                                         String uuid) {
     removeEntryFromDnsToUuidMap(oldDnsName);
     addEntryToDnsToUuidMap(newDnsName, uuid);
+  }
+
+  private synchronized void updateEntryFromHostNmToUuidMap(String oldHostName,
+                                                           String newHostName,
+                                                           String uuid) {
+    removeEntryFromHostNmToUuidMap(oldHostName);
+    addEntryToHostNmToUuidMap(newHostName, uuid);
   }
 
   /**
@@ -1210,6 +1248,31 @@ public class SCMNodeManager implements NodeManager {
     Set<String> uuids = dnsToUuidMap.get(address);
     if (uuids == null) {
       LOG.warn("Cannot find node for address {}", address);
+      return results;
+    }
+
+    for (String uuid : uuids) {
+      DatanodeDetails temp = DatanodeDetails.newBuilder()
+          .setUuid(UUID.fromString(uuid)).build();
+      try {
+        results.add(nodeStateManager.getNode(temp));
+      } catch (NodeNotFoundException e) {
+        LOG.warn("Cannot find node for uuid {}", uuid);
+      }
+    }
+    return results;
+  }
+
+  @Override
+  public List<DatanodeDetails> getNodesByHostName(String hostName) {
+    List<DatanodeDetails> results = new LinkedList<>();
+    if (Strings.isNullOrEmpty(hostName)) {
+      LOG.warn("address is null");
+      return results;
+    }
+    Set<String> uuids = hostNmToUuidMap.get(hostName);
+    if (uuids == null) {
+      LOG.warn("Cannot find node for address {}", hostName);
       return results;
     }
 

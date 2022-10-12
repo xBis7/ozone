@@ -857,6 +857,11 @@ public class MockNodeManager implements NodeManager {
   }
 
   @Override
+  public List<DatanodeDetails> getNodesByHostName(String hostName) {
+    return getNodesByAddress(hostName);
+  }
+
+  @Override
   public NetworkTopology getClusterNetworkTopologyMap() {
     return clusterMap;
   }

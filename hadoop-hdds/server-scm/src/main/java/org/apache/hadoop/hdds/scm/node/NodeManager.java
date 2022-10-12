@@ -342,6 +342,8 @@ public interface NodeManager extends StorageContainerNodeProtocol,
    */
   List<DatanodeDetails> getNodesByAddress(String address);
 
+  List<DatanodeDetails> getNodesByHostName(String hostName);
+
   /**
    * Get cluster map as in network topology for this node manager.
    * @return cluster map

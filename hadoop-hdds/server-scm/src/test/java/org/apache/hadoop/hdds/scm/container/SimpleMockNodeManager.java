@@ -325,6 +325,11 @@ public class SimpleMockNodeManager implements NodeManager {
   }
 
   @Override
+  public List<DatanodeDetails> getNodesByHostName(String hostName) {
+    return null;
+  }
+
+  @Override
   public NetworkTopology getClusterNetworkTopologyMap() {
     return null;
   }
