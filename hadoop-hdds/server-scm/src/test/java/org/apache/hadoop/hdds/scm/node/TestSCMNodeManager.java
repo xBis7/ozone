@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.hadoop.fs.FileUtil;
-import org.apache.hadoop.hdds.DFSConfigKeysLegacy;
 import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.client.ReplicationConfig;
@@ -1694,7 +1693,7 @@ public class TestSCMNodeManager {
   @Test
   public void testScmRegisterNodeWithIpAddress()
       throws IOException, InterruptedException, AuthenticationException {
-    testScmRegisterNodeWithNetworkTopology(false);
+    testScmRegisterNodeWithNetworkTopology();
   }
 
   /**
@@ -1704,7 +1703,7 @@ public class TestSCMNodeManager {
   @Test
   public void testScmRegisterNodeWithHostname()
       throws IOException, InterruptedException, AuthenticationException {
-    testScmRegisterNodeWithNetworkTopology(true);
+    testScmRegisterNodeWithNetworkTopology();
   }
 
   /**
@@ -1714,7 +1713,7 @@ public class TestSCMNodeManager {
   @Test
   public void testgetNodesByAddressWithIpAddress()
       throws IOException, InterruptedException, AuthenticationException {
-    testGetNodesByAddress(false);
+    testGetNodesByAddress();
   }
 
   /**
@@ -1723,7 +1722,7 @@ public class TestSCMNodeManager {
   @Test
   public void testgetNodesByAddressWithHostname()
       throws IOException, InterruptedException, AuthenticationException {
-    testGetNodesByAddress(true);
+    testGetNodesByAddress();
   }
 
   /**
@@ -1771,7 +1770,7 @@ public class TestSCMNodeManager {
     }
   }
 
-  private void testScmRegisterNodeWithNetworkTopology(boolean useHostname)
+  private void testScmRegisterNodeWithNetworkTopology()
       throws IOException, InterruptedException, AuthenticationException {
     OzoneConfiguration conf = getConf();
     conf.setTimeDuration(OZONE_SCM_HEARTBEAT_PROCESS_INTERVAL, 1000,
@@ -1787,9 +1786,6 @@ public class TestSCMNodeManager {
     conf.set(NET_TOPOLOGY_NODE_SWITCH_MAPPING_IMPL_KEY,
         "org.apache.hadoop.net.TableMapping");
     conf.set(NET_TOPOLOGY_TABLE_MAPPING_FILE_KEY, mapFile);
-    if (useHostname) {
-      conf.set(DFSConfigKeysLegacy.DFS_DATANODE_USE_DN_HOSTNAME, "true");
-    }
     final int nodeCount = hostNames.length;
     // use default IP address to resolve node
     try (SCMNodeManager nodeManager = createNodeManager(conf)) {
@@ -1811,13 +1807,10 @@ public class TestSCMNodeManager {
           assertEquals("/rack1", node.getNetworkLocation()));
 
       // test get node
-      if (useHostname) {
-        Arrays.stream(hostNames).forEach(hostname -> assertNotEquals(0,
-            nodeManager.getNodesByAddress(hostname, false).size()));
-      } else {
-        Arrays.stream(ipAddress).forEach(ip -> assertNotEquals(0,
-            nodeManager.getNodesByAddress(ip, false).size()));
-      }
+      Arrays.stream(hostNames).forEach(hostname -> assertNotEquals(0,
+          nodeManager.getNodesByHostName(hostname).size()));
+      Arrays.stream(ipAddress).forEach(ip -> assertNotEquals(0,
+          nodeManager.getNodesByIpAddress(ip).size()));
     }
   }
 
@@ -1886,7 +1879,7 @@ public class TestSCMNodeManager {
   /**
    * Test add node into a 4-layer network topology during node register.
    */
-  private void testGetNodesByAddress(boolean useHostname)
+  private void testGetNodesByAddress()
       throws IOException, InterruptedException, AuthenticationException {
     OzoneConfiguration conf = getConf();
     conf.setTimeDuration(OZONE_SCM_HEARTBEAT_PROCESS_INTERVAL, 1000,
@@ -1896,10 +1889,6 @@ public class TestSCMNodeManager {
     String[] hostNames = {"host1", "host1", "host2", "host3", "host4"};
     String[] ipAddress =
         {"1.2.3.4", "1.2.3.4", "2.3.4.5", "3.4.5.6", "4.5.6.7"};
-
-    if (useHostname) {
-      conf.set(DFSConfigKeysLegacy.DFS_DATANODE_USE_DN_HOSTNAME, "true");
-    }
     final int nodeCount = hostNames.length;
     try (SCMNodeManager nodeManager = createNodeManager(conf)) {
       for (int i = 0; i < nodeCount; i++) {
@@ -1908,16 +1897,15 @@ public class TestSCMNodeManager {
         nodeManager.register(node, null, null);
       }
       // test get node
-      assertEquals(0, nodeManager.getNodesByAddress(null, false).size());
-      if (useHostname) {
-        assertEquals(2, nodeManager.getNodesByAddress("host1", false).size());
-        assertEquals(1, nodeManager.getNodesByAddress("host2", false).size());
-        assertEquals(0, nodeManager.getNodesByAddress("unknown", false).size());
-      } else {
-        assertEquals(2, nodeManager.getNodesByAddress("1.2.3.4", false).size());
-        assertEquals(1, nodeManager.getNodesByAddress("2.3.4.5", false).size());
-        assertEquals(0, nodeManager.getNodesByAddress("1.9.8.7", false).size());
-      }
+      assertEquals(0, nodeManager.getNodesByIpAddress(null).size());
+
+      assertEquals(2, nodeManager.getNodesByHostName("host1").size());
+      assertEquals(1, nodeManager.getNodesByHostName("host2").size());
+      assertEquals(0, nodeManager.getNodesByHostName("unknown").size());
+
+      assertEquals(2, nodeManager.getNodesByIpAddress("1.2.3.4").size());
+      assertEquals(1, nodeManager.getNodesByIpAddress("2.3.4.5").size());
+      assertEquals(0, nodeManager.getNodesByIpAddress("1.9.8.7").size());
     }
   }
 

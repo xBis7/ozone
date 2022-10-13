@@ -121,7 +121,6 @@ public class SCMNodeManager implements NodeManager {
   private final SCMStorageConfig scmStorageConfig;
   private final NetworkTopology clusterMap;
   private final DNSToSwitchMapping dnsToSwitchMapping;
-  private final boolean useHostname;
   private final ConcurrentHashMap<String, Set<String>> dnsToUuidMap =
       new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, Set<String>> hostNmToUuidMap =
@@ -161,9 +160,6 @@ public class SCMNodeManager implements NodeManager {
     this.dnsToSwitchMapping =
         ((newInstance instanceof CachedDNSToSwitchMapping) ? newInstance
             : new CachedDNSToSwitchMapping(newInstance));
-    this.useHostname = conf.getBoolean(
-        DFSConfigKeysLegacy.DFS_DATANODE_USE_DN_HOSTNAME,
-        DFSConfigKeysLegacy.DFS_DATANODE_USE_DN_HOSTNAME_DEFAULT);
     this.numPipelinesPerMetadataVolume =
         conf.getInt(ScmConfigKeys.OZONE_SCM_PIPELINE_PER_METADATA_VOLUME,
             ScmConfigKeys.OZONE_SCM_PIPELINE_PER_METADATA_VOLUME_DEFAULT);
@@ -367,22 +363,14 @@ public class SCMNodeManager implements NodeManager {
     InetAddress dnAddress = Server.getRemoteIp();
     if (dnAddress != null) {
       // Mostly called inside an RPC, update ip
-      if (!useHostname) {
-        datanodeDetails.setHostName(dnAddress.getHostName());
-      }
+      datanodeDetails.setHostName(dnAddress.getHostName());
       datanodeDetails.setIpAddress(dnAddress.getHostAddress());
     }
 
-    String dnsName;
+    String dnsName = datanodeDetails.getIpAddress();
     String hostName = datanodeDetails.getHostName();
-    String networkLocation;
     datanodeDetails.setNetworkName(datanodeDetails.getUuidString());
-    if (useHostname) {
-      dnsName = datanodeDetails.getHostName();
-    } else {
-      dnsName = datanodeDetails.getIpAddress();
-    }
-    networkLocation = nodeResolve(dnsName);
+    String networkLocation = nodeResolve(dnsName);
     if (networkLocation != null) {
       datanodeDetails.setNetworkLocation(networkLocation);
     }
@@ -423,16 +411,11 @@ public class SCMNodeManager implements NodeManager {
                   datanodeDetails);
           clusterMap.update(datanodeInfo, datanodeDetails);
 
-          String oldDnsName;
-          if (useHostname) {
-            oldDnsName = datanodeInfo.getHostName();
-          } else {
-            oldDnsName = datanodeInfo.getIpAddress();
-          }
+          String oldDnsName = datanodeInfo.getIpAddress();
+          String oldHostName = datanodeInfo.getHostName();
           updateEntryFromDnsToUuidMap(oldDnsName,
                   dnsName,
                   datanodeDetails.getUuidString());
-          String oldHostName = datanodeInfo.getHostName();
           updateEntryFromHostNmToUuidMap(oldHostName,
               hostName,
               datanodeDetails.getUuidString());
@@ -1239,19 +1222,23 @@ public class SCMNodeManager implements NodeManager {
    * @return the given datanode, or empty list if none found
    */
   @Override
-  public List<DatanodeDetails> getNodesByAddress(String address,
-                                                 boolean byHostname) {
+  public List<DatanodeDetails> getNodesByIpAddress(String address) {
+    return getNodesByAddress(address, dnsToUuidMap);
+  }
+
+  @Override
+  public List<DatanodeDetails> getNodesByHostName(String hostname) {
+    return getNodesByAddress(hostname, hostNmToUuidMap);
+  }
+
+  private List<DatanodeDetails> getNodesByAddress(
+      String address, ConcurrentHashMap<String, Set<String>> addressToUuidMap) {
     List<DatanodeDetails> results = new LinkedList<>();
     if (Strings.isNullOrEmpty(address)) {
       LOG.warn("address is null");
       return results;
     }
-    Set<String> uuids;
-    if (byHostname) {
-      uuids = hostNmToUuidMap.get(address);
-    } else {
-      uuids = dnsToUuidMap.get(address);
-    }
+    Set<String> uuids = addressToUuidMap.get(address);
     if (uuids == null) {
       LOG.warn("Cannot find node for address {}", address);
       return results;
@@ -1267,11 +1254,6 @@ public class SCMNodeManager implements NodeManager {
       }
     }
     return results;
-  }
-
-  @Override
-  public List<DatanodeDetails> getNodesByHostName(String hostname) {
-    return getNodesByAddress(hostname, true);
   }
 
   /**

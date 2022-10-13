@@ -855,15 +855,19 @@ public class MockNodeManager implements NodeManager {
   }
 
   @Override
-  public List<DatanodeDetails> getNodesByAddress(String address,
-                                                 boolean byHostName) {
+  public List<DatanodeDetails> getNodesByIpAddress(String address) {
+    return getNodesByAddress(address, dnsToUuidMap);
+  }
+
+  @Override
+  public List<DatanodeDetails> getNodesByHostName(String hostName) {
+    return getNodesByAddress(hostName, hostNmToUuidMap);
+  }
+
+  private List<DatanodeDetails> getNodesByAddress(
+      String address, ConcurrentMap<String, Set<String>> addressToUuidMap) {
     List<DatanodeDetails> results = new LinkedList<>();
-    Set<String> uuids;
-    if (byHostName) {
-      uuids = hostNmToUuidMap.get(address);
-    } else {
-      uuids = dnsToUuidMap.get(address);
-    }
+    Set<String> uuids = addressToUuidMap.get(address);
 
     if (uuids == null) {
       return results;
@@ -875,11 +879,6 @@ public class MockNodeManager implements NodeManager {
       }
     }
     return results;
-  }
-
-  @Override
-  public List<DatanodeDetails> getNodesByHostName(String hostName) {
-    return getNodesByAddress(hostName, true);
   }
 
   @Override

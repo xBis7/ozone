@@ -340,8 +340,7 @@ public interface NodeManager extends StorageContainerNodeProtocol,
    * @param address datanode address
    * @return the given datanode, or empty list if none found
    */
-  List<DatanodeDetails> getNodesByAddress(String address,
-                                          boolean byHostname);
+  List<DatanodeDetails> getNodesByIpAddress(String address);
 
   List<DatanodeDetails> getNodesByHostName(String hostname);
 
