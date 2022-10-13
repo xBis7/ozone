@@ -111,6 +111,7 @@ public class MockNodeManager implements NodeManager {
   private final Node2ContainerMap node2ContainerMap;
   private NetworkTopology clusterMap;
   private ConcurrentMap<String, Set<String>> dnsToUuidMap;
+  private ConcurrentMap<String, Set<String>> hostNmToUuidMap;
   private int numHealthyDisksPerDatanode;
   private int numRaftLogDisksPerDatanode;
   private int numPipelinePerDatanode;
@@ -123,6 +124,7 @@ public class MockNodeManager implements NodeManager {
     this.node2PipelineMap = new Node2PipelineMap();
     this.node2ContainerMap = new Node2ContainerMap();
     this.dnsToUuidMap = new ConcurrentHashMap<>();
+    this.hostNmToUuidMap = new ConcurrentHashMap<>();
     this.aggregateStat = new SCMNodeStat();
     this.clusterMap = new NetworkTopologyImpl(new OzoneConfiguration());
   }
@@ -713,6 +715,8 @@ public class MockNodeManager implements NodeManager {
           Collections.emptySet());
       addEntryTodnsToUuidMap(datanodeDetails.getIpAddress(),
           datanodeDetails.getUuidString());
+      addEntryToHostNmToUuidMap(datanodeDetails.getHostName(),
+          datanodeDetails.getUuidString());
       if (clusterMap != null) {
         datanodeDetails.setNetworkName(datanodeDetails.getUuidString());
         clusterMap.add(datanodeDetails);
@@ -736,6 +740,16 @@ public class MockNodeManager implements NodeManager {
     if (dnList == null) {
       dnList = ConcurrentHashMap.newKeySet();
       dnsToUuidMap.put(dnsName, dnList);
+    }
+    dnList.add(uuid);
+  }
+
+  private synchronized void addEntryToHostNmToUuidMap(
+      String dnsName, String uuid) {
+    Set<String> dnList = hostNmToUuidMap.get(dnsName);
+    if (dnList == null) {
+      dnList = ConcurrentHashMap.newKeySet();
+      hostNmToUuidMap.put(dnsName, dnList);
     }
     dnList.add(uuid);
   }
@@ -841,9 +855,16 @@ public class MockNodeManager implements NodeManager {
   }
 
   @Override
-  public List<DatanodeDetails> getNodesByAddress(String address) {
+  public List<DatanodeDetails> getNodesByAddress(String address,
+                                                 boolean byHostName) {
     List<DatanodeDetails> results = new LinkedList<>();
-    Set<String> uuids = dnsToUuidMap.get(address);
+    Set<String> uuids;
+    if (byHostName) {
+      uuids = hostNmToUuidMap.get(address);
+    } else {
+      uuids = dnsToUuidMap.get(address);
+    }
+
     if (uuids == null) {
       return results;
     }
@@ -858,7 +879,7 @@ public class MockNodeManager implements NodeManager {
 
   @Override
   public List<DatanodeDetails> getNodesByHostName(String hostName) {
-    return getNodesByAddress(hostName);
+    return getNodesByAddress(hostName, true);
   }
 
   @Override

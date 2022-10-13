@@ -121,7 +121,7 @@ public class NodeDecommissionManager {
       } else {
         dnsName = addr.getHostAddress();
       }
-      List<DatanodeDetails> found = nodeManager.getNodesByAddress(dnsName);
+      List<DatanodeDetails> found = nodeManager.getNodesByAddress(dnsName, false);
       if (found.size() == 0) {
         throw new InvalidHostStringException("Host " + host.getRawHostname()
             + " (" + dnsName + ") is not running any datanodes registered"

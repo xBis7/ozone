@@ -320,7 +320,8 @@ public class SimpleMockNodeManager implements NodeManager {
   }
 
   @Override
-  public List<DatanodeDetails> getNodesByAddress(String address) {
+  public List<DatanodeDetails> getNodesByAddress(String address,
+                                                 boolean byHostName) {
     return null;
   }
 

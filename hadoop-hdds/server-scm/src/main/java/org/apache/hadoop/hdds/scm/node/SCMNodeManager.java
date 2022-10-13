@@ -424,7 +424,6 @@ public class SCMNodeManager implements NodeManager {
           clusterMap.update(datanodeInfo, datanodeDetails);
 
           String oldDnsName;
-          String oldHostName = datanodeInfo.getHostName();
           if (useHostname) {
             oldDnsName = datanodeInfo.getHostName();
           } else {
@@ -433,6 +432,7 @@ public class SCMNodeManager implements NodeManager {
           updateEntryFromDnsToUuidMap(oldDnsName,
                   dnsName,
                   datanodeDetails.getUuidString());
+          String oldHostName = datanodeInfo.getHostName();
           updateEntryFromHostNmToUuidMap(oldHostName,
               hostName,
               datanodeDetails.getUuidString());
@@ -1239,13 +1239,19 @@ public class SCMNodeManager implements NodeManager {
    * @return the given datanode, or empty list if none found
    */
   @Override
-  public List<DatanodeDetails> getNodesByAddress(String address) {
+  public List<DatanodeDetails> getNodesByAddress(String address,
+                                                 boolean byHostname) {
     List<DatanodeDetails> results = new LinkedList<>();
     if (Strings.isNullOrEmpty(address)) {
       LOG.warn("address is null");
       return results;
     }
-    Set<String> uuids = dnsToUuidMap.get(address);
+    Set<String> uuids;
+    if (byHostname) {
+      uuids = hostNmToUuidMap.get(address);
+    } else {
+      uuids = dnsToUuidMap.get(address);
+    }
     if (uuids == null) {
       LOG.warn("Cannot find node for address {}", address);
       return results;
@@ -1264,28 +1270,8 @@ public class SCMNodeManager implements NodeManager {
   }
 
   @Override
-  public List<DatanodeDetails> getNodesByHostName(String hostName) {
-    List<DatanodeDetails> results = new LinkedList<>();
-    if (Strings.isNullOrEmpty(hostName)) {
-      LOG.warn("address is null");
-      return results;
-    }
-    Set<String> uuids = hostNmToUuidMap.get(hostName);
-    if (uuids == null) {
-      LOG.warn("Cannot find node for address {}", hostName);
-      return results;
-    }
-
-    for (String uuid : uuids) {
-      DatanodeDetails temp = DatanodeDetails.newBuilder()
-          .setUuid(UUID.fromString(uuid)).build();
-      try {
-        results.add(nodeStateManager.getNode(temp));
-      } catch (NodeNotFoundException e) {
-        LOG.warn("Cannot find node for uuid {}", uuid);
-      }
-    }
-    return results;
+  public List<DatanodeDetails> getNodesByHostName(String hostname) {
+    return getNodesByAddress(hostname, true);
   }
 
   /**

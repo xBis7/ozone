@@ -1813,10 +1813,10 @@ public class TestSCMNodeManager {
       // test get node
       if (useHostname) {
         Arrays.stream(hostNames).forEach(hostname -> assertNotEquals(0,
-            nodeManager.getNodesByAddress(hostname).size()));
+            nodeManager.getNodesByAddress(hostname, false).size()));
       } else {
         Arrays.stream(ipAddress).forEach(ip -> assertNotEquals(0,
-            nodeManager.getNodesByAddress(ip).size()));
+            nodeManager.getNodesByAddress(ip, false).size()));
       }
     }
   }
@@ -1908,15 +1908,15 @@ public class TestSCMNodeManager {
         nodeManager.register(node, null, null);
       }
       // test get node
-      assertEquals(0, nodeManager.getNodesByAddress(null).size());
+      assertEquals(0, nodeManager.getNodesByAddress(null, false).size());
       if (useHostname) {
-        assertEquals(2, nodeManager.getNodesByAddress("host1").size());
-        assertEquals(1, nodeManager.getNodesByAddress("host2").size());
-        assertEquals(0, nodeManager.getNodesByAddress("unknown").size());
+        assertEquals(2, nodeManager.getNodesByAddress("host1", false).size());
+        assertEquals(1, nodeManager.getNodesByAddress("host2", false).size());
+        assertEquals(0, nodeManager.getNodesByAddress("unknown", false).size());
       } else {
-        assertEquals(2, nodeManager.getNodesByAddress("1.2.3.4").size());
-        assertEquals(1, nodeManager.getNodesByAddress("2.3.4.5").size());
-        assertEquals(0, nodeManager.getNodesByAddress("1.9.8.7").size());
+        assertEquals(2, nodeManager.getNodesByAddress("1.2.3.4", false).size());
+        assertEquals(1, nodeManager.getNodesByAddress("2.3.4.5", false).size());
+        assertEquals(0, nodeManager.getNodesByAddress("1.9.8.7", false).size());
       }
     }
   }

@@ -1026,7 +1026,7 @@ public class SCMClientProtocolServer implements
     if (!Strings.isNullOrEmpty(uuid)) {
       nodes.add(scm.getScmNodeManager().getNodeByUuid(uuid));
     } else if (!Strings.isNullOrEmpty(ipaddress)) {
-      nodes = scm.getScmNodeManager().getNodesByAddress(ipaddress);
+      nodes = scm.getScmNodeManager().getNodesByAddress(ipaddress, false);
     } else if (!Strings.isNullOrEmpty(hostname)) {
       nodes = scm.getScmNodeManager().getNodesByHostName(hostname);
     } else {
