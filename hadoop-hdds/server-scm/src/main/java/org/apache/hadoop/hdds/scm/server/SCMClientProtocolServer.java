@@ -1021,8 +1021,6 @@ public class SCMClientProtocolServer implements
       throw e;
     }
 
-    LOG.info("before");
-
     // get datanodes by ip or uuid or hostname
     List<DatanodeDetails> nodes = new ArrayList<>();
     if (!Strings.isNullOrEmpty(uuid)) {
@@ -1036,8 +1034,6 @@ public class SCMClientProtocolServer implements
           "Could not get datanode with the specified parameters."
       );
     }
-
-    LOG.info("after");
 
     // get datanode usage info
     List<HddsProtos.DatanodeUsageInfoProto> infoList = new ArrayList<>();
