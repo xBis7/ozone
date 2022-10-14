@@ -334,7 +334,7 @@ public interface NodeManager extends StorageContainerNodeProtocol,
   DatanodeDetails getNodeByUuid(String uuid);
 
   /**
-   * Given datanode address(Ipaddress or hostname), returns a list of
+   * Given datanode address(Ipaddress), returns a list of
    * DatanodeDetails for the datanodes running at that address.
    *
    * @param address datanode address
@@ -342,6 +342,13 @@ public interface NodeManager extends StorageContainerNodeProtocol,
    */
   List<DatanodeDetails> getNodesByIpAddress(String address);
 
+  /**
+   * Given datanode hostname, returns a list of
+   * DatanodeDetails for the datanodes running at that hostname.
+   *
+   * @param hostname datanode hostname address
+   * @return the given datanode, or empty list if none found
+   */
   List<DatanodeDetails> getNodesByHostName(String hostname);
 
   /**
