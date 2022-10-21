@@ -72,8 +72,8 @@ public class PrometheusMetricsSink implements MetricsSink {
         String prometheusMetricKeyAsString =
             getPrometheusMetricKeyAsString(metricsRecord, key);
 
-        if (DecayRpcSchedulerUtil.usernameList.size() > 0) {
-          DecayRpcSchedulerUtil.usernameList.clear();
+        if (DecayRpcSchedulerUtil.USERNAME_LIST.size() > 0) {
+          DecayRpcSchedulerUtil.USERNAME_LIST.clear();
         }
 
         String metricKey = "# TYPE "
@@ -95,11 +95,11 @@ public class PrometheusMetricsSink implements MetricsSink {
         .append("{");
     String sep = "";
 
-    List<MetricsTag> list = DecayRpcSchedulerUtil
+    List<MetricsTag> metricTagList = DecayRpcSchedulerUtil
         .tagListWithUsernameIfNeeded(metricsRecord);
 
     //add tags
-    for (MetricsTag tag : list) {
+    for (MetricsTag tag : metricTagList) {
       String tagName = tag.name().toLowerCase();
 
       //ignore specific tag which includes sub-hierarchy
