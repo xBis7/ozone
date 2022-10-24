@@ -61,8 +61,9 @@ public class UsageInfoSubcommand extends ScmSubcommand {
   private ExclusiveArguments exclusiveArguments;
 
   private static class ExclusiveArguments {
-    @CommandLine.Option(names = {"--address"}, paramLabel = "ADDRESS", description =
-        "Show info by datanode ip or hostname address.", defaultValue = "")
+    @CommandLine.Option(names = {"--address"}, paramLabel = "ADDRESS",
+        description = "Show info by datanode ip or hostname address.",
+        defaultValue = "")
     private String address;
 
     @CommandLine.Option(names = {"--uuid"}, paramLabel = "UUID", description =
