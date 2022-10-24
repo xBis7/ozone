@@ -617,9 +617,9 @@ public class ContainerOperationClient implements ScmClient {
   }
 
   /**
-   * Get Datanode Usage information by ipaddress or uuid.
+   * Get Datanode Usage information by address or uuid.
    *
-   * @param ipaddress datanode ipaddress String
+   * @param address datanode address String
    * @param uuid datanode uuid String
    * @return List of DatanodeUsageInfoProto. Each element contains info such as
    * capacity, SCMused, and remaining space.
@@ -627,8 +627,8 @@ public class ContainerOperationClient implements ScmClient {
    */
   @Override
   public List<HddsProtos.DatanodeUsageInfoProto> getDatanodeUsageInfo(
-      String ipaddress, String uuid) throws IOException {
-    return storageContainerLocationClient.getDatanodeUsageInfo(ipaddress,
+      String address, String uuid) throws IOException {
+    return storageContainerLocationClient.getDatanodeUsageInfo(address,
         uuid, ClientVersion.CURRENT_VERSION);
   }
 
