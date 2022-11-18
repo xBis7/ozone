@@ -17,6 +17,9 @@
 CORE-SITE.XML_fs.defaultFS=ofs://om
 CORE-SITE.XML_fs.trash.interval=1
 
+OZONE-SITE.XML_ozone.om.s3.grpc.server_enabled=true
+OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransportFactory
+
 OZONE-SITE.XML_ozone.om.address=om
 OZONE-SITE.XML_ozone.om.http-address=om:9874
 OZONE-SITE.XML_ozone.scm.http-address=scm:9876

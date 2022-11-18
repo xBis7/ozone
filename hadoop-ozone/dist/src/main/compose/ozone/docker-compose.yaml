@@ -68,6 +68,30 @@ services:
     ports:
       - 9878:9878
     command: ["ozone","s3g"]
+  s3g2:
+    <<: *common-config
+    environment:
+      OZONE_OPTS:
+      <<: *replication
+    ports:
+      - 5005:5005
+    command: [ "ozone","s3g" ]
+  s3g3:
+    <<: *common-config
+    environment:
+      OZONE_OPTS:
+      <<: *replication
+    ports:
+      - 6006:6006
+    command: [ "ozone","s3g" ]
+  s3g4:
+    <<: *common-config
+    environment:
+      OZONE_OPTS:
+      <<: *replication
+    ports:
+      - 7007:7007
+    command: [ "ozone","s3g" ]
   recon:
     <<: *common-config
     ports:

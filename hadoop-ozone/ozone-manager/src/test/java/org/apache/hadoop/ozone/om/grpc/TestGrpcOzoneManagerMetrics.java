@@ -16,33 +16,39 @@
  *
  */
 
-package org.apache.hadoop.ozone.om;
+package org.apache.hadoop.ozone.om.grpc;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.ozone.client.OzoneClient;
+import org.apache.hadoop.ozone.om.OzoneManager;
+import org.apache.hadoop.ozone.om.grpc.metrics.GrpcOzoneManagerMetrics;
+import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.mockito.Mockito;
-import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
+import java.io.IOException;
 
 /**
- * Tests for GrpcOzoneManagerServer.
+ * Tests for GrpcOzoneManagerMetrics.
  */
-public class TestGrpcOzoneManagerServer {
+public class TestGrpcOzoneManagerMetrics {
+
   private static final Logger LOG =
-      LoggerFactory.getLogger(TestGrpcOzoneManagerServer.class);
+      LoggerFactory.getLogger(TestGrpcOzoneManagerMetrics.class);
   private OzoneManager ozoneManager;
   private OzoneManagerProtocolServerSideTranslatorPB omServerProtocol;
   private GrpcOzoneManagerServer server;
+  private GrpcOzoneManagerMetrics metrics;
+  private OzoneClient s3gClient1;
+  private OzoneClient s3gClient2;
+  private OzoneClient s3gClient3;
+  private OzoneClient s3gClient4;
 
-  @Rule
-  public Timeout timeout = Timeout.seconds(30);
-
-  @Test
-  public void testStartStop() throws Exception {
+  @BeforeAll
+  public void setUp() {
     OzoneConfiguration conf = new OzoneConfiguration();
     ozoneManager = Mockito.mock(OzoneManager.class);
     omServerProtocol = ozoneManager.getOmServerProtocol();
@@ -52,11 +58,26 @@ public class TestGrpcOzoneManagerServer {
         ozoneManager.getDelegationTokenMgr(),
         ozoneManager.getCertificateClient());
 
+    // Metrics get created inside the server constructor
+    metrics = server.getOmS3gGrpcMetrics();
+
     try {
       server.start();
-    } finally {
-      server.stop();
+    } catch (IOException ex) {
+      LOG.error("Grpc Ozone Manager server failed to start", ex);
     }
+
+    // Create s3g client stubs
+//    s3gClient1 = new OzoneClient();
   }
 
+
+
+  /**
+   * Server.stop() will unregister the metrics.
+   */
+  @AfterAll
+  public void stopServer() {
+    server.stop();
+  }
 }
