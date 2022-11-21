@@ -88,7 +88,7 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
         request.getCmdType().name());
     AtomicInteger callCount = new AtomicInteger(0);
 
-    updateActiveClientNum(request);
+    updateActiveClientNum(request, true);
 
     org.apache.hadoop.ipc.Server.getCurCall().set(new Server.Call(1,
         callCount.incrementAndGet(),
@@ -103,12 +103,11 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
     // Look to remove Server class requirement for issuing ratis transactions
     // for OMRequests.  Test through successful ratis-enabled OMRequest
     // handling without dependency on hadoop IPC based Server.
-    long startTime = 0;
-    try {
-      startTime = System.nanoTime();
-      queueList.remove(request);
-      omGrpcMetrics.setGrpcOmQueueLength(queueList.size());
+    long startTime = System.nanoTime();
 
+    queueList.remove(request);
+    omGrpcMetrics.setGrpcOmQueueLength(queueList.size());
+    try {
       OMResponse omResponse = this.omTranslator.
           submitRequest(NULL_RPC_CONTROLLER, request);
       responseObserver.onNext(omResponse);
@@ -124,8 +123,8 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
     responseObserver.onCompleted();
 
     long endTime = System.nanoTime();
-    long queueTime = startTime - submitTime;
-    long processingTime = endTime - startTime;
+    int queueTime = (int) (startTime - submitTime);
+    int processingTime = (int) (endTime - startTime);
 
     // set metrics queue time
     omGrpcMetrics.addGrpcOmQueueTime(queueTime);
@@ -133,16 +132,22 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
     // set metrics processing time
     omGrpcMetrics.addGrpcOmProcessingTime(processingTime);
 
-    calculateProcessingTimeForDebugging(processingTime);
+    updateActiveClientNum(request, false);
   }
 
-  private void updateActiveClientNum(OMRequest omRequest) {
+  private void updateActiveClientNum(OMRequest omRequest,
+                                     boolean clientIsActive) {
     String clientId = omRequest.getClientId();
-    if (!clientList.contains(clientId)) {
-      clientList.add(clientId);
 
-      // This will get updated once we receive a request from the client.
-      omGrpcMetrics.setNumActiveS3GClientConnections(clientList.size());
+    if (clientIsActive) {
+      if (!clientList.contains(clientId)) {
+        clientList.add(clientId);
+
+        // This will get updated once we receive a request from the client.
+        omGrpcMetrics.setNumActiveClientConnections(clientList.size());
+      }
+    } else {
+      clientList.remove(clientId);
     }
   }
 

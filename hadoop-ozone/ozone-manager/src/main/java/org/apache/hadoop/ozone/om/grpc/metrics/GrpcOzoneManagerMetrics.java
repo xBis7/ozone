@@ -49,7 +49,7 @@ public class GrpcOzoneManagerMetrics {
   public GrpcOzoneManagerMetrics(GrpcOzoneManagerServer grpcOmServer,
                                  Configuration conf) {
     String port = String.valueOf(grpcOmServer.getPort());
-    registry = new MetricsRegistry("grpc").tag("port", "GRPC port", port);
+    registry = new MetricsRegistry("grpc").tag("port", "gRPC port", port);
     int[] intervals = conf.getInts(
         OMConfigKeys.OZONE_OM_S3_GPRC_METRICS_PERCENTILES_INTERVALS_KEY);
     grpcOmQuantileEnable = (intervals.length > 0) && conf.getBoolean(
@@ -86,7 +86,7 @@ public class GrpcOzoneManagerMetrics {
     GrpcOzoneManagerMetrics metrics =
         new GrpcOzoneManagerMetrics(grpcOmServer, conf);
     return DefaultMetricsSystem.instance().register(SOURCE_NAME,
-        "Metrics for using GRPC with OzoneManager", metrics);
+        "Metrics for using gRPC with OzoneManager", metrics);
   }
 
   /**
@@ -112,8 +112,8 @@ public class GrpcOzoneManagerMetrics {
 
   private MutableQuantiles[] grpcOmProcessingTimeMillisQuantiles;
 
-  @Metric("Number of active s3g clients connected")
-  private MutableGaugeLong numActiveS3GClientConnections;
+  @Metric("Number of active clients connected")
+  private MutableGaugeLong numActiveClientConnections;
 
   @Metric("Length of the call queue")
   private MutableGaugeLong grpcOmQueueLength;
@@ -126,7 +126,7 @@ public class GrpcOzoneManagerMetrics {
     receivedBytes.set(byteCount);
   }
 
-  public void addGrpcOmQueueTime(long queueTime) {
+  public void addGrpcOmQueueTime(int queueTime) {
     grpcOmQueueTime.add(queueTime);
     if (grpcOmQuantileEnable) {
       for (MutableQuantiles q : grpcOmQueueTimeMillisQuantiles) {
@@ -135,7 +135,7 @@ public class GrpcOzoneManagerMetrics {
     }
   }
 
-  public void addGrpcOmProcessingTime(long processingTime) {
+  public void addGrpcOmProcessingTime(int processingTime) {
     grpcOmProcessingTime.add(processingTime);
     if (grpcOmQuantileEnable) {
       for (MutableQuantiles q : grpcOmProcessingTimeMillisQuantiles) {
@@ -144,11 +144,43 @@ public class GrpcOzoneManagerMetrics {
     }
   }
 
-  public void setNumActiveS3GClientConnections(long activeClients) {
-    numActiveS3GClientConnections.set(activeClients);
+  public void setNumActiveClientConnections(long activeClients) {
+    numActiveClientConnections.set(activeClients);
   }
 
   public void setGrpcOmQueueLength(long length) {
     grpcOmQueueLength.set(length);
+  }
+
+  public MutableGaugeLong getSentBytes() {
+    return sentBytes;
+  }
+
+  public MutableGaugeLong getReceivedBytes() {
+    return receivedBytes;
+  }
+
+  public MutableRate getGrpcOmQueueTime() {
+    return grpcOmQueueTime;
+  }
+
+  public MutableQuantiles[] getGrpcOmQueueTimeMillisQuantiles() {
+    return grpcOmQueueTimeMillisQuantiles;
+  }
+
+  public MutableRate getGrpcOmProcessingTime() {
+    return grpcOmProcessingTime;
+  }
+
+  public MutableQuantiles[] getGrpcOmProcessingTimeMillisQuantiles() {
+    return grpcOmProcessingTimeMillisQuantiles;
+  }
+
+  public MutableGaugeLong getNumActiveClientConnections() {
+    return numActiveClientConnections;
+  }
+
+  public MutableGaugeLong getGrpcOmQueueLength() {
+    return grpcOmQueueLength;
   }
 }

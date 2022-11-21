@@ -314,7 +314,7 @@ public class OzoneBucket extends WithMetadata {
 
   @VisibleForTesting
   @SuppressWarnings("parameternumber")
-  OzoneBucket(String volumeName, String name,
+  public OzoneBucket(String volumeName, String name,
       ReplicationConfig defaultReplication,
       StorageType storageType,
       Boolean versioning, long creationTime) {
