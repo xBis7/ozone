@@ -20,11 +20,13 @@ package org.apache.hadoop.ozone.om.grpc;
 
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.client.OzoneClient;
+import org.apache.hadoop.ozone.om.OMConfigKeys;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.grpc.metrics.GrpcOzoneManagerMetrics;
 import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +52,10 @@ public class TestGrpcOzoneManagerMetrics {
   @BeforeAll
   public void setUp() {
     OzoneConfiguration conf = new OzoneConfiguration();
+    conf.set(OMConfigKeys.OZONE_OM_S3_GPRC_SERVER_ENABLED, "true");
+    conf.set(OMConfigKeys.OZONE_OM_TRANSPORT_CLASS,
+        "org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransportFactory");
+
     ozoneManager = Mockito.mock(OzoneManager.class);
     omServerProtocol = ozoneManager.getOmServerProtocol();
 
@@ -71,10 +77,14 @@ public class TestGrpcOzoneManagerMetrics {
 //    s3gClient1 = new OzoneClient();
   }
 
+  @Test
+  public void testBytesSent() {
+
+  }
 
 
   /**
-   * Server.stop() will unregister the metrics.
+   * Server.stop() will also unregister the metrics.
    */
   @AfterAll
   public void stopServer() {
