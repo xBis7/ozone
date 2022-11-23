@@ -18,114 +18,103 @@
 
 package org.apache.hadoop.ozone.om.grpc;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.hdds.HddsConfigKeys;
+import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.client.ContainerBlockID;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.ozone.client.OzoneClient;
-import org.apache.hadoop.ozone.client.io.OzoneInputStream;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.hdds.scm.pipeline.MockPipeline;
+import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
+import org.apache.hadoop.ozone.om.OmTestManagers;
 import org.apache.hadoop.ozone.om.OzoneManager;
-import org.apache.hadoop.ozone.om.grpc.client.OzoneClientStub;
 import org.apache.hadoop.ozone.om.grpc.metrics.GrpcOzoneManagerMetrics;
-import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
-import org.apache.hadoop.ozone.s3.endpoint.ObjectEndpoint;
-import org.apache.hadoop.ozone.s3.exception.OS3Exception;
-import org.junit.Assert;
+import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
+import org.apache.hadoop.ozone.om.helpers.OmKeyArgs;
+import org.apache.hadoop.ozone.om.helpers.OpenKeySession;
+import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
+import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
+import org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransportFactory;
+import org.apache.hadoop.ozone.om.protocolPB.OmTransportFactory;
+import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
+import org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransport;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.security.authentication.client.AuthenticationException;
+import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
-import org.mockito.Mockito;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.io.TempDir;
 
-import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.Response;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.UUID;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for GrpcOzoneManagerMetrics.
  */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TestGrpcOzoneManagerMetrics {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(TestGrpcOzoneManagerMetrics.class);
   private OzoneManager ozoneManager;
-  private OzoneManagerProtocolServerSideTranslatorPB omServerProtocol;
-  private GrpcOzoneManagerServer server;
+  private OzoneManagerProtocol grpcClient;
   private GrpcOzoneManagerMetrics metrics;
 
-  private ObjectEndpoint objectEndpoint;
+  private static final String S3_VOL_DEFAULT =
+      OzoneConfigKeys.OZONE_S3_VOLUME_NAME_DEFAULT;
+  private static final String BUCKET_ONE = "bucket1";
+  private static final String TRANSPORT_CLASS =
+      GrpcOmTransportFactory.class.getName();
 
-  private OzoneClient s3gClient1Stub;
-  private OzoneClient s3gClient2;
-  private OzoneClient s3gClient3;
-  private OzoneClient s3gClient4;
-
-  public static final String CONTENT = "0123456789";
-  private String bucketName = "bucket1";
-  private String keyName = "key=value/1";
-
-  @BeforeEach
-  public void setUp() throws IOException {
+  @BeforeAll
+  public void setUp(@TempDir Path tempDir)
+      throws IOException, AuthenticationException {
     OzoneConfiguration conf = new OzoneConfiguration();
+
+    conf.set(HddsConfigKeys.OZONE_METADATA_DIRS, tempDir.toString());
     conf.set(OMConfigKeys.OZONE_OM_S3_GPRC_SERVER_ENABLED, "true");
-    conf.set(OMConfigKeys.OZONE_OM_TRANSPORT_CLASS,
-        "org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransportFactory");
+    conf.set(OMConfigKeys.OZONE_OM_TRANSPORT_CLASS, TRANSPORT_CLASS);
 
-    ozoneManager = Mockito.mock(OzoneManager.class);
-    omServerProtocol = ozoneManager.getOmServerProtocol();
+    OmTestManagers omTestManagers = new OmTestManagers(conf);
+    ozoneManager = omTestManagers.getOzoneManager();
+    grpcClient = omTestManagers.getWriteClient();
 
-    server = new GrpcOzoneManagerServer(conf,
-        omServerProtocol,
-        ozoneManager.getDelegationTokenMgr(),
-        ozoneManager.getCertificateClient());
+//    String omServiceId = "";
+//    UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
+//
+//    OmTransport omTransport = OmTransportFactory.create(conf, ugi, omServiceId);
+//    assertEquals(GrpcOmTransport.class.getSimpleName(),
+//        omTransport.getClass().getSimpleName());
 
-    try {
-      server.start();
-    } catch (IOException ex) {
-      LOG.error("Grpc Ozone Manager server failed to start", ex);
-    }
-
+    GrpcOzoneManagerServer server = ozoneManager.getOmS3gGrpcServer(conf);
     // Metrics get created inside the server constructor
     metrics = server.getOmS3gGrpcMetrics();
 
-    //Create client stub and object store stub.
-    s3gClient1Stub = new OzoneClientStub();
+    // Create bucket1 under s3v volume
+    OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
+        .setVolumeName(S3_VOL_DEFAULT)
+        .setBucketName(BUCKET_ONE)
+        .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
+        .build();
 
-    // Create bucket
-    s3gClient1Stub.getObjectStore().createS3Bucket(bucketName);
-
-    // Create PutObject and setClient to OzoneClientStub
-    objectEndpoint = new ObjectEndpoint();
-    objectEndpoint.setClient(s3gClient1Stub);
-    objectEndpoint.setOzoneConfiguration(conf);
+    grpcClient.createBucket(bucketInfo);
   }
 
   @Test
-  public void testBytesSent() throws IOException, OS3Exception {
-    HttpHeaders headers = Mockito.mock(HttpHeaders.class);
-    ByteArrayInputStream body =
-        new ByteArrayInputStream(CONTENT.getBytes(UTF_8));
-    objectEndpoint.setHeaders(headers);
+  public void testBytesSent() throws IOException {
 
-    Response response = objectEndpoint.put(bucketName, keyName, CONTENT
-        .length(), 1, null, body);
+    OmKeyArgs keyArgs = createKeyArgs();
 
-    OzoneInputStream ozoneInputStream =
-        s3gClient1Stub.getObjectStore().getS3Bucket(bucketName)
-            .readKey(keyName);
-    String keyContent =
-        IOUtils.toString(ozoneInputStream, UTF_8);
-
-    assertEquals(200, response.getStatus());
-    assertEquals(CONTENT, keyContent);
+    OpenKeySession keySession = grpcClient.openKey(keyArgs);
+    grpcClient.commitKey(keyArgs, keySession.getId());
 
     // metrics.getSentBytes() should have a value greater than 0
     assertTrue(metrics.getSentBytes().value() > 0);
@@ -133,10 +122,31 @@ public class TestGrpcOzoneManagerMetrics {
 
 
   /**
-   * Server.stop() will also unregister the metrics.
+   * ozoneManager.stop() will also unregister the metrics.
    */
-  @AfterEach
+  @AfterAll
   public void stopServer() {
-    server.stop();
+    ozoneManager.stop();
+  }
+
+  private OmKeyArgs createKeyArgs() throws IOException {
+    ReplicationConfig repConfig = RatisReplicationConfig
+        .getInstance(HddsProtos.ReplicationFactor.THREE);
+
+    OmKeyLocationInfo keyLocationInfo = new OmKeyLocationInfo.Builder()
+        .setBlockID(new BlockID(new ContainerBlockID(1, 1)))
+        .setPipeline(MockPipeline.createSingleNodePipeline())
+        .build();
+    keyLocationInfo.setCreateVersion(0);
+
+    String keyName = UUID.randomUUID().toString();
+    return new OmKeyArgs.Builder()
+        .setLocationInfoList(Collections.singletonList(keyLocationInfo))
+        .setVolumeName(S3_VOL_DEFAULT)
+        .setBucketName(BUCKET_ONE)
+        .setKeyName(keyName)
+        .setAcls(Lists.emptyList())
+        .setReplicationConfig(repConfig)
+        .build();
   }
 }

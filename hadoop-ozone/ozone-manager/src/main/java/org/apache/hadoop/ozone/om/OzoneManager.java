@@ -1946,7 +1946,8 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
    * for serving s3g OmRequests.  If an earlier instance is already running
    * then returns the same.
    */
-  private GrpcOzoneManagerServer getOmS3gGrpcServer(OzoneConfiguration conf)
+  @VisibleForTesting
+  public GrpcOzoneManagerServer getOmS3gGrpcServer(OzoneConfiguration conf)
       throws IOException {
     if (isOmGrpcServerRunning) {
       return omS3gGrpcServer;

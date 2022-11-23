@@ -132,12 +132,6 @@ https://maven.apache.org/xsd/maven-4.0.0.xsd">
       <artifactId>jmockit</artifactId>
       <scope>test</scope>
     </dependency>
-
-    <dependency>
-      <groupId>org.glassfish.jersey.media</groupId>
-      <artifactId>jersey-media-jaxb</artifactId>
-    </dependency>
-    
     <dependency>
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-all</artifactId>
@@ -214,11 +208,6 @@ https://maven.apache.org/xsd/maven-4.0.0.xsd">
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter-params</artifactId>
     </dependency>
-      <dependency>
-          <groupId>org.apache.ozone</groupId>
-          <artifactId>ozone-s3gateway</artifactId>
-          <scope>test</scope>
-      </dependency>
   </dependencies>
   <build>
     <plugins>
