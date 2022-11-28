@@ -22,6 +22,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.MutableGaugeLong;
+import org.apache.hadoop.metrics2.lib.MutableGaugeInt;
 import org.apache.hadoop.metrics2.lib.MetricsRegistry;
 import org.apache.hadoop.metrics2.lib.MutableQuantiles;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
@@ -43,11 +44,13 @@ public class GrpcOzoneManagerMetrics {
   private static final String SOURCE_NAME =
       GrpcOzoneManagerMetrics.class.getSimpleName();
 
+  private final GrpcOzoneManagerServer grpcOmServer;
   private final MetricsRegistry registry;
   private final boolean grpcOmQuantileEnable;
 
   public GrpcOzoneManagerMetrics(GrpcOzoneManagerServer grpcOmServer,
                                  Configuration conf) {
+    this.grpcOmServer = grpcOmServer;
     String port = String.valueOf(grpcOmServer.getPort());
     registry = new MetricsRegistry("grpc").tag("port", "gRPC port", port);
     int[] intervals = conf.getInts(
@@ -113,10 +116,7 @@ public class GrpcOzoneManagerMetrics {
   private MutableQuantiles[] grpcOmProcessingTimeMillisQuantiles;
 
   @Metric("Number of active clients connected")
-  private MutableGaugeLong numActiveClientConnections;
-
-  @Metric("Length of the call queue")
-  private MutableGaugeLong grpcOmQueueLength;
+  private MutableGaugeInt numActiveClientConnections;
 
   public void setSentBytes(long byteCount) {
     sentBytes.set(byteCount);
@@ -130,7 +130,9 @@ public class GrpcOzoneManagerMetrics {
     grpcOmQueueTime.add(queueTime);
     if (grpcOmQuantileEnable) {
       for (MutableQuantiles q : grpcOmQueueTimeMillisQuantiles) {
-        q.add(queueTime);
+        if (q != null) {
+          q.add(queueTime);
+        }
       }
     }
   }
@@ -139,17 +141,15 @@ public class GrpcOzoneManagerMetrics {
     grpcOmProcessingTime.add(processingTime);
     if (grpcOmQuantileEnable) {
       for (MutableQuantiles q : grpcOmProcessingTimeMillisQuantiles) {
-        q.add(processingTime);
+        if (q != null) {
+          q.add(processingTime);
+        }
       }
     }
   }
 
-  public void setNumActiveClientConnections(long activeClients) {
+  public void setNumActiveClientConnections(int activeClients) {
     numActiveClientConnections.set(activeClients);
-  }
-
-  public void setGrpcOmQueueLength(long length) {
-    grpcOmQueueLength.set(length);
   }
 
   public MutableGaugeLong getSentBytes() {
@@ -176,11 +176,11 @@ public class GrpcOzoneManagerMetrics {
     return grpcOmProcessingTimeMillisQuantiles;
   }
 
-  public MutableGaugeLong getNumActiveClientConnections() {
+  public MutableGaugeInt getNumActiveClientConnections() {
     return numActiveClientConnections;
   }
 
-  public MutableGaugeLong getGrpcOmQueueLength() {
-    return grpcOmQueueLength;
+  public GrpcOzoneManagerServer getGrpcOmServer() {
+    return grpcOmServer;
   }
 }

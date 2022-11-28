@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.ozone.om.grpc;
 
+import com.google.common.base.Strings;
 import io.grpc.Status;
 import com.google.protobuf.RpcController;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
@@ -34,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,9 +60,8 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
 
   private final List<String> clientList;
   private final List<Long> avgProcessingTimeList;
-  private final List<OMRequest> queueList;
 
-  OzoneManagerServiceGrpc(
+  public OzoneManagerServiceGrpc(
       OzoneManagerProtocolServerSideTranslatorPB omTranslator,
       OzoneDelegationTokenSecretManager delegationTokenMgr,
       OzoneConfiguration configuration,
@@ -73,22 +74,16 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
     this.receiveCount = 0;
     this.clientList = new LinkedList<>();
     this.avgProcessingTimeList = new LinkedList<>();
-    this.queueList = new LinkedList<>();
   }
 
   @Override
   public void submitRequest(OMRequest request,
                             io.grpc.stub.StreamObserver<OMResponse>
                                 responseObserver) {
-    long submitTime = System.nanoTime();
-    queueList.add(request);
-    omGrpcMetrics.setGrpcOmQueueLength(queueList.size());
     LOG.debug("OzoneManagerServiceGrpc: OzoneManagerServiceImplBase " +
         "processing s3g client submit request - for command {}",
         request.getCmdType().name());
     AtomicInteger callCount = new AtomicInteger(0);
-
-    updateActiveClientNum(request, true);
 
     org.apache.hadoop.ipc.Server.getCurCall().set(new Server.Call(1,
         callCount.incrementAndGet(),
@@ -103,16 +98,12 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
     // Look to remove Server class requirement for issuing ratis transactions
     // for OMRequests.  Test through successful ratis-enabled OMRequest
     // handling without dependency on hadoop IPC based Server.
-    long startTime = System.nanoTime();
 
-    queueList.remove(request);
-    omGrpcMetrics.setGrpcOmQueueLength(queueList.size());
     try {
       OMResponse omResponse = this.omTranslator.
           submitRequest(NULL_RPC_CONTROLLER, request);
-      responseObserver.onNext(omResponse);
 
-      updateBytesTransferred(omResponse);
+      responseObserver.onNext(omResponse);
     } catch (Throwable e) {
       IOException ex = new IOException(e.getCause());
       responseObserver.onError(Status
@@ -121,72 +112,26 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
           .asRuntimeException());
     }
     responseObserver.onCompleted();
-
-    long endTime = System.nanoTime();
-    int queueTime = (int) (startTime - submitTime);
-    int processingTime = (int) (endTime - startTime);
-
-    // set metrics queue time
-    omGrpcMetrics.addGrpcOmQueueTime(queueTime);
-
-    // set metrics processing time
-    omGrpcMetrics.addGrpcOmProcessingTime(processingTime);
-
-    updateActiveClientNum(request, false);
   }
 
   private void updateActiveClientNum(OMRequest omRequest,
                                      boolean clientIsActive) {
     String clientId = omRequest.getClientId();
 
-    if (clientIsActive) {
-      if (!clientList.contains(clientId)) {
-        clientList.add(clientId);
-
-        // This will get updated once we receive a request from the client.
-        omGrpcMetrics.setNumActiveClientConnections(clientList.size());
+    if (!Strings.isNullOrEmpty(clientId)) {
+      if (clientIsActive) {
+        // If the list doesn't already contain clientId, add it.
+        if (!clientList.contains(clientId)) {
+          clientList.add(clientId);
+        }
+      } else {
+        // If the list contains clientId, remove it.
+        if (clientList.contains(clientId)) {
+          clientList.remove(clientId);
+        }
       }
-    } else {
-      clientList.remove(clientId);
-    }
-  }
-
-  private void updateBytesTransferred(OMResponse omResponse) {
-    // bytes sent
-    long createKeySize = omResponse
-        .getCreateKeyResponse()
-        .getKeyInfo()
-        .getDataSize();
-    sendCount += createKeySize;
-
-    if (sendCount > 0) {
-      omGrpcMetrics.setSentBytes(sendCount);
     }
 
-    // bytes received
-    long readKeySize = omResponse
-        .getGetKeyInfoResponse()
-        .getKeyInfo()
-        .getDataSize();
-    receiveCount += readKeySize;
-
-    if (receiveCount > 0) {
-      omGrpcMetrics.setReceivedBytes(receiveCount);
-    }
-  }
-
-  private void calculateProcessingTimeForDebugging(long time) {
-    avgProcessingTimeList.add(time);
-    LOG.debug("Processing time in nanoseconds is {}", time);
-
-    // calculate avg time for debugging
-    // move it under a test method
-    double avgTime = 0;
-    for (long val : avgProcessingTimeList) {
-      avgTime += val;
-    }
-    avgTime = avgTime / avgProcessingTimeList.size();
-
-    LOG.debug("Avg proc time is {}", avgTime);
+    omGrpcMetrics.setNumActiveClientConnections(clientList.size());
   }
 }

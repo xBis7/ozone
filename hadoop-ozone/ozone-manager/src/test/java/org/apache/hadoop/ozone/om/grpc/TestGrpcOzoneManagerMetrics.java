@@ -88,11 +88,12 @@ public class TestGrpcOzoneManagerMetrics {
     grpcClient = omTestManagers.getWriteClient();
 
 //    String omServiceId = "";
+//    String clientId = UUID.randomUUID().toString();
 //    UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-//
 //    OmTransport omTransport = OmTransportFactory.create(conf, ugi, omServiceId);
-//    assertEquals(GrpcOmTransport.class.getSimpleName(),
-//        omTransport.getClass().getSimpleName());
+//
+//    clientSideTranslatorPB =
+//        new OzoneManagerProtocolClientSideTranslatorPB(omTransport, clientId);
 
     GrpcOzoneManagerServer server = ozoneManager.getOmS3gGrpcServer(conf);
     // Metrics get created inside the server constructor

@@ -31,12 +31,13 @@ import org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransport;
 import org.apache.hadoop.ozone.security.OzoneDelegationTokenSecretManager;
 import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.hdds.security.x509.certificate.client.CertificateClient;
+
+import io.grpc.Server;
+import io.grpc.ServerInterceptors;
 import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NettyServerBuilder;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.SslProvider;
-import io.grpc.Server;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +55,9 @@ public class GrpcOzoneManagerServer {
 
   private final GrpcOzoneManagerMetrics omS3gGrpcMetrics;
   private Server server;
-  private int port = 8981;
+  private int port;
   private final int maxSize;
+  private final OzoneConfiguration config;
 
   public GrpcOzoneManagerServer(OzoneConfiguration config,
                                 OzoneManagerProtocolServerSideTranslatorPB
@@ -63,6 +65,7 @@ public class GrpcOzoneManagerServer {
                                 OzoneDelegationTokenSecretManager
                                     delegationTokenMgr,
                                 CertificateClient caClient) {
+    this.config = config;
     maxSize = config.getInt(OZONE_OM_GRPC_MAXIMUM_RESPONSE_LENGTH,
         OZONE_OM_GRPC_MAXIMUM_RESPONSE_LENGTH_DEFAULT);
     OptionalInt haPort = HddsUtils.getNumberFromConfigKeys(config,
@@ -94,10 +97,13 @@ public class GrpcOzoneManagerServer {
                    CertificateClient caClient) {
     NettyServerBuilder nettyServerBuilder = NettyServerBuilder.forPort(port)
         .maxInboundMessageSize(maxSize)
-        .addService(new OzoneManagerServiceGrpc(omTranslator,
-            delegationTokenMgr,
-            omServerConfig,
-            omS3gGrpcMetrics));
+        .addService(ServerInterceptors.intercept(
+            new OzoneManagerServiceGrpc(omTranslator,
+                delegationTokenMgr,
+                omServerConfig,
+                omS3gGrpcMetrics),
+            new GrpcOmServerResponseInterceptor(omS3gGrpcMetrics),
+            new GrpcOmServerRequestInterceptor(omS3gGrpcMetrics)));
 
     SecurityConfig secConf = new SecurityConfig(omServerConfig);
     if (secConf.isGrpcTlsEnabled()) {
@@ -148,4 +154,5 @@ public class GrpcOzoneManagerServer {
   public GrpcOzoneManagerMetrics getOmS3gGrpcMetrics() {
     return omS3gGrpcMetrics;
   }
+
 }
