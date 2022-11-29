@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.ozone.om.grpc;
 
-import com.google.common.base.Strings;
 import io.grpc.Status;
 import com.google.protobuf.RpcController;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
@@ -25,7 +24,6 @@ import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.ipc.ClientId;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
-import org.apache.hadoop.ozone.om.grpc.metrics.GrpcOzoneManagerMetrics;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerServiceGrpc.OzoneManagerServiceImplBase;
 import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
@@ -35,9 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -54,26 +49,13 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
   private final OzoneDelegationTokenSecretManager delegationTokenMgr;
   private final SecurityConfig secConfig;
 
-  private final GrpcOzoneManagerMetrics omGrpcMetrics;
-  private long sendCount;
-  private long receiveCount;
-
-  private final List<String> clientList;
-  private final List<Long> avgProcessingTimeList;
-
   public OzoneManagerServiceGrpc(
       OzoneManagerProtocolServerSideTranslatorPB omTranslator,
       OzoneDelegationTokenSecretManager delegationTokenMgr,
-      OzoneConfiguration configuration,
-      GrpcOzoneManagerMetrics omGrpcMetrics) {
+      OzoneConfiguration configuration) {
     this.omTranslator = omTranslator;
     this.delegationTokenMgr = delegationTokenMgr;
     this.secConfig = new SecurityConfig(configuration);
-    this.omGrpcMetrics = omGrpcMetrics;
-    this.sendCount = 0;
-    this.receiveCount = 0;
-    this.clientList = new LinkedList<>();
-    this.avgProcessingTimeList = new LinkedList<>();
   }
 
   @Override
@@ -112,26 +94,5 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
           .asRuntimeException());
     }
     responseObserver.onCompleted();
-  }
-
-  private void updateActiveClientNum(OMRequest omRequest,
-                                     boolean clientIsActive) {
-    String clientId = omRequest.getClientId();
-
-    if (!Strings.isNullOrEmpty(clientId)) {
-      if (clientIsActive) {
-        // If the list doesn't already contain clientId, add it.
-        if (!clientList.contains(clientId)) {
-          clientList.add(clientId);
-        }
-      } else {
-        // If the list contains clientId, remove it.
-        if (clientList.contains(clientId)) {
-          clientList.remove(clientId);
-        }
-      }
-    }
-
-    omGrpcMetrics.setNumActiveClientConnections(clientList.size());
   }
 }

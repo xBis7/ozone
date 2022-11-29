@@ -38,10 +38,6 @@ import org.apache.hadoop.ozone.om.helpers.OpenKeySession;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
 import org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransportFactory;
-import org.apache.hadoop.ozone.om.protocolPB.OmTransportFactory;
-import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
-import org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransport;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.Test;
@@ -55,7 +51,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -86,14 +81,6 @@ public class TestGrpcOzoneManagerMetrics {
     OmTestManagers omTestManagers = new OmTestManagers(conf);
     ozoneManager = omTestManagers.getOzoneManager();
     grpcClient = omTestManagers.getWriteClient();
-
-//    String omServiceId = "";
-//    String clientId = UUID.randomUUID().toString();
-//    UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-//    OmTransport omTransport = OmTransportFactory.create(conf, ugi, omServiceId);
-//
-//    clientSideTranslatorPB =
-//        new OzoneManagerProtocolClientSideTranslatorPB(omTransport, clientId);
 
     GrpcOzoneManagerServer server = ozoneManager.getOmS3gGrpcServer(conf);
     // Metrics get created inside the server constructor

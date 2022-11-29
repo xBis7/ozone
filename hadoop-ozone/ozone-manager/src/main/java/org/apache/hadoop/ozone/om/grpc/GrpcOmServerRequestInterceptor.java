@@ -24,8 +24,6 @@ import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
@@ -33,35 +31,23 @@ import java.io.InputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Interceptor to gather metrics based on server request.
  */
 public class GrpcOmServerRequestInterceptor implements ServerInterceptor {
 
-  public static final Logger
-      LOG = LoggerFactory.getLogger(GrpcOmServerRequestInterceptor.class);
   private final GrpcOzoneManagerMetrics grpcMetrics;
   private long bytesReceived;
   private long receivedTime;
   private long startTime;
   private long endTime;
-  private Map<String, Boolean> activeClientMap;
 
   public GrpcOmServerRequestInterceptor(
       GrpcOzoneManagerMetrics grpcMetrics) {
     super();
     this.grpcMetrics = grpcMetrics;
     this.bytesReceived = 0;
-    this.activeClientMap = new HashMap<>();
-  }
-
-  @Override
-  public int hashCode() {
-    return super.hashCode();
   }
 
   @Override
@@ -71,13 +57,6 @@ public class GrpcOmServerRequestInterceptor implements ServerInterceptor {
 
     // received time
     receivedTime = System.nanoTime();
-
-    String clientAddress = serverCall.getAttributes()
-        .get(io.grpc.Grpc.TRANSPORT_ATTR_REMOTE_ADDR).toString();
-
-    if (!activeClientMap.containsKey(clientAddress)) {
-      activeClientMap.put(clientAddress, false);
-    }
 
     return new SimpleForwardingServerCallListener<ReqT>(
         serverCallHandler.startCall(serverCall, headers)) {
@@ -92,18 +71,11 @@ public class GrpcOmServerRequestInterceptor implements ServerInterceptor {
         // start time
         startTime = System.nanoTime();
 
-        if (activeClientMap.containsKey(clientAddress)) {
-          activeClientMap.put(clientAddress, true);
-        }
-        grpcMetrics.setNumActiveClientConnections(
-            Collections.frequency(activeClientMap.values(), true));
-
-        LOG.info("clientAddress: " + clientAddress + " number of true: " +
-            Collections.frequency(activeClientMap.values(), true));
-
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream =
+            new ByteArrayOutputStream();
         try {
-          ObjectOutputStream outputStream = new ObjectOutputStream(byteArrayOutputStream);
+          ObjectOutputStream outputStream =
+              new ObjectOutputStream(byteArrayOutputStream);
           outputStream.writeObject(message);
           outputStream.flush();
           outputStream.close();
@@ -111,7 +83,8 @@ public class GrpcOmServerRequestInterceptor implements ServerInterceptor {
           throw new RuntimeException(e);
         }
 
-        InputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+        InputStream inputStream = new ByteArrayInputStream(
+            byteArrayOutputStream.toByteArray());
         ByteBuffer buffer;
         try {
           buffer = ByteBuffer.wrap(IOUtils.toByteArray(inputStream));
@@ -123,17 +96,6 @@ public class GrpcOmServerRequestInterceptor implements ServerInterceptor {
           grpcMetrics.setReceivedBytes(bytesReceived);
         }
         super.onMessage(message);
-      }
-
-      @Override
-      public void onHalfClose() {
-        super.onHalfClose();
-      }
-
-      @Override
-      public void onCancel() {
-        activeClientMap.put(clientAddress, false);
-        super.onCancel();
       }
 
       @Override
@@ -150,11 +112,6 @@ public class GrpcOmServerRequestInterceptor implements ServerInterceptor {
 
         // set metrics processing time
         grpcMetrics.addGrpcOmProcessingTime(processingTime);
-      }
-
-      @Override
-      public void onReady() {
-        super.onReady();
       }
     };
   }

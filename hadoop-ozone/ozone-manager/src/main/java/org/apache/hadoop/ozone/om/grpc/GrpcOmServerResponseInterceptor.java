@@ -24,8 +24,6 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.ForwardingServerCall;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
@@ -39,9 +37,6 @@ import java.nio.ByteBuffer;
  * Interceptor to gather metrics based on server response.
  */
 public class GrpcOmServerResponseInterceptor implements ServerInterceptor {
-
-  public static final Logger
-      LOG = LoggerFactory.getLogger(GrpcOmServerResponseInterceptor.class);
 
   private final GrpcOzoneManagerMetrics grpcMetrics;
   private long bytesSent;
@@ -59,12 +54,15 @@ public class GrpcOmServerResponseInterceptor implements ServerInterceptor {
       ServerCallHandler<ReqT, RespT> serverCallHandler) {
 
     return serverCallHandler.startCall(
-        new ForwardingServerCall.SimpleForwardingServerCall<ReqT, RespT>(serverCall) {
+        new ForwardingServerCall
+            .SimpleForwardingServerCall<ReqT, RespT>(serverCall) {
           @Override
           public void sendMessage(RespT message) {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ByteArrayOutputStream byteArrayOutputStream =
+                new ByteArrayOutputStream();
             try {
-              ObjectOutputStream outputStream = new ObjectOutputStream(byteArrayOutputStream);
+              ObjectOutputStream outputStream =
+                  new ObjectOutputStream(byteArrayOutputStream);
               outputStream.writeObject(message);
               outputStream.flush();
               outputStream.close();
@@ -72,7 +70,8 @@ public class GrpcOmServerResponseInterceptor implements ServerInterceptor {
               throw new RuntimeException(e);
             }
 
-            InputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+            InputStream inputStream = new ByteArrayInputStream(
+                byteArrayOutputStream.toByteArray());
             ByteBuffer buffer;
             try {
               buffer = ByteBuffer.wrap(IOUtils.toByteArray(inputStream));
