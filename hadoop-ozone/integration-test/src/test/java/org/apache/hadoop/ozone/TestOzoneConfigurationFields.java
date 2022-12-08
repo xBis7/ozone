@@ -107,6 +107,7 @@ public class TestOzoneConfigurationFields extends TestConfigurationFieldsBase {
         OzoneConfigKeys.OZONE_RECOVERING_CONTAINER_SCRUBBING_SERVICE_WORKERS,
         OzoneConfigKeys.OZONE_RECOVERING_CONTAINER_SCRUBBING_SERVICE_TIMEOUT,
         OzoneConfigKeys.OZONE_RECOVERING_CONTAINER_TIMEOUT,
+        OzoneConfigKeys.OZONE_GPRC_METRICS_PERCENTILES_INTERVALS_KEY,
         ReconConfigKeys.RECON_SCM_CONFIG_PREFIX,
         ReconConfigKeys.OZONE_RECON_ADDRESS_KEY,
         ReconConfigKeys.OZONE_RECON_DATANODE_ADDRESS_KEY,
@@ -132,9 +133,7 @@ public class TestOzoneConfigurationFields extends TestConfigurationFieldsBase {
         OMConfigKeys.OZONE_RANGER_OM_CONNECTION_REQUEST_TIMEOUT,
         OMConfigKeys.OZONE_RANGER_HTTPS_ADDRESS_KEY,
         OMConfigKeys.OZONE_OM_RANGER_HTTPS_ADMIN_API_USER,
-        OMConfigKeys.OZONE_OM_RANGER_HTTPS_ADMIN_API_PASSWD,
-        OMConfigKeys.OZONE_OM_S3_GPRC_METRICS_PERCENTILES_INTERVALS_KEY,
-        OMConfigKeys.OZONE_OM_S3_GPRC_METRICS_QUANTILE_ENABLED
+        OMConfigKeys.OZONE_OM_RANGER_HTTPS_ADMIN_API_PASSWD
     ));
   }
 }
