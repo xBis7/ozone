@@ -34,6 +34,8 @@ import org.apache.hadoop.metrics2.MetricType;
 import org.apache.hadoop.metrics2.MetricsRecord;
 import org.apache.hadoop.metrics2.MetricsSink;
 import org.apache.hadoop.metrics2.MetricsTag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Metrics sink for prometheus exporter.
@@ -50,6 +52,8 @@ public class PrometheusMetricsSink implements MetricsSink {
   private Map<String, Map<String, String>> nextMetricLines =
       Collections.synchronizedSortedMap(new TreeMap<>());
 
+  public static final Logger LOG =
+      LoggerFactory.getLogger(PrometheusMetricsSink.class);
   private static final Pattern SPLIT_PATTERN =
       Pattern.compile("(?<!(^|[A-Z_]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])");
 
@@ -148,6 +152,7 @@ public class PrometheusMetricsSink implements MetricsSink {
 
   @Override
   public void flush() {
+    LOG.info("xbis2 size: " + nextMetricLines.size());
     metricLines = nextMetricLines;
     nextMetricLines = Collections
         .synchronizedSortedMap(new TreeMap<>());
