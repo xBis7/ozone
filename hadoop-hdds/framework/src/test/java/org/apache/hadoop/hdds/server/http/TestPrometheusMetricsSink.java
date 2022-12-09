@@ -196,6 +196,7 @@ public class TestPrometheusMetricsSink {
     OutputStreamWriter writer = new OutputStreamWriter(stream, UTF_8);
 
     sink.writeMetrics(writer);
+    sink.flush();
     writer.flush();
 
     // WHEN
