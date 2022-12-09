@@ -177,17 +177,17 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
         });
 
+    metrics.publishMetricsNow();
+
+    // unregister the metric
+    metrics.unregisterSource("StaleMetric");
+
     metrics.register("SomeMetric", "someMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
               .add(new MetricsTag(PORT_INFO, "4321"))
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
-
-    metrics.publishMetricsNow();
-
-    // unregister the metric
-    metrics.unregisterSource("StaleMetric");
 
     // publish and flush metrics
     metrics.publishMetricsNow();
@@ -197,7 +197,8 @@ public class TestPrometheusMetricsSink {
 
     sink.writeMetrics(writer);
     writer.flush();
-    
+
+    // WHEN
     String newWrittenMetrics = stream.toString(UTF_8.name());
     // THEN
     // The first metric shouldn't be present
