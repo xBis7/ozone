@@ -177,11 +177,6 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
         });
 
-    metrics.publishMetricsNow();
-
-    // unregister the metric
-    metrics.unregisterSource("StaleMetric");
-
     metrics.register("SomeMetric", "SomeMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
@@ -189,14 +184,19 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
 
+    metrics.publishMetricsNow();
+
+    // unregister the metric
+    metrics.unregisterSource("StaleMetric");
+
     // publish and flush metrics
     metrics.publishMetricsNow();
+    sink.flush();
 
     ByteArrayOutputStream stream = new ByteArrayOutputStream();
     OutputStreamWriter writer = new OutputStreamWriter(stream, UTF_8);
 
     sink.writeMetrics(writer);
-    sink.flush();
     writer.flush();
 
     // WHEN
@@ -276,6 +276,20 @@ public class TestPrometheusMetricsSink {
    */
   @Metrics(about = "Test Metrics", context = "dfs")
   private static class TestMetrics {
+    private String id;
+
+    TestMetrics() {
+      this("1");
+    }
+
+    TestMetrics(String id) {
+      this.id = id;
+    }
+
+    @Metric(value={"testTag", ""}, type= Metric.Type.TAG)
+    String testTag1() {
+      return "testTagValue" + id;
+    }
 
     @Metric
     private MutableCounterLong numBucketCreateFails;
