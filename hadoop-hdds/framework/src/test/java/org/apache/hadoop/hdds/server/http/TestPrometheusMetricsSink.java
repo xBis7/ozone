@@ -172,17 +172,17 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
         });
 
+    metrics.publishMetricsNow();
+
+    // unregister the metric
+    metrics.unregisterSource("StaleMetric");
+
     metrics.register("SomeMetric", "SomeMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
               .add(new MetricsTag(PORT_INFO, "4321"))
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
-
-    metrics.publishMetricsNow();
-
-    // unregister the metric
-    metrics.unregisterSource("StaleMetric");
 
     // publish and flush metrics
     String writtenMetrics = publishMetricsAndGetOutput();
@@ -267,6 +267,11 @@ public class TestPrometheusMetricsSink {
 
     TestMetrics(String id) {
       this.id = id;
+    }
+
+    @Metric(value={"testTag", ""}, type= Metric.Type.TAG)
+    String testTag() {
+      return "testTagValue" + id;
     }
 
     @Metric
