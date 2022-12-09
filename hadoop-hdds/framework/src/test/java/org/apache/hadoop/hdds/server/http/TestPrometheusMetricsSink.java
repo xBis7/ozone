@@ -170,7 +170,7 @@ public class TestPrometheusMetricsSink {
   @Test
   public void testRemovingStaleMetricsOnFlush() throws IOException {
     // GIVEN
-    metrics.register("StaleMetric", "staleMetric",
+    metrics.register("StaleMetric", "StaleMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("StaleMetric")
               .add(new MetricsTag(PORT_INFO, "1234"))
@@ -182,7 +182,7 @@ public class TestPrometheusMetricsSink {
     // unregister the metric
     metrics.unregisterSource("StaleMetric");
 
-    metrics.register("SomeMetric", "someMetric",
+    metrics.register("SomeMetric", "SomeMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
               .add(new MetricsTag(PORT_INFO, "4321"))
