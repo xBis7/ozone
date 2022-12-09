@@ -35,8 +35,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Test prometheus Sink.
@@ -45,9 +43,6 @@ public class TestPrometheusMetricsSink {
 
   private MetricsSystem metrics;
   private PrometheusMetricsSink sink;
-
-  public static final Logger LOG =
-      LoggerFactory.getLogger(TestPrometheusMetricsSink.class);
 
   private static final MetricsInfo PORT_INFO = new MetricsInfo() {
     @Override
@@ -177,17 +172,17 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
         });
 
-    metrics.publishMetricsNow();
-
-    // unregister the metric
-    metrics.unregisterSource("StaleMetric");
-
     metrics.register("SomeMetric", "SomeMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
               .add(new MetricsTag(PORT_INFO, "4321"))
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
+
+    metrics.publishMetricsNow();
+
+    // unregister the metric
+    metrics.unregisterSource("StaleMetric");
 
     // publish and flush metrics
     String writtenMetrics = publishMetricsAndGetOutput();
@@ -264,20 +259,6 @@ public class TestPrometheusMetricsSink {
    */
   @Metrics(about = "Test Metrics", context = "dfs")
   private static class TestMetrics {
-    private String id;
-
-    TestMetrics() {
-      this("1");
-    }
-
-    TestMetrics(String id) {
-      this.id = id;
-    }
-
-    @Metric(value={"testTag", ""}, type= Metric.Type.TAG)
-    String testTag1() {
-      return "testTagValue" + id;
-    }
 
     @Metric
     private MutableCounterLong numBucketCreateFails;
