@@ -269,7 +269,7 @@ public class TestPrometheusMetricsSink {
       this.id = id;
     }
 
-    @Metric(value={"testTag", ""}, type= Metric.Type.TAG)
+    @Metric(value = {"testTag", ""}, type = Metric.Type.TAG)
     String testTag() {
       return "testTagValue" + id;
     }
