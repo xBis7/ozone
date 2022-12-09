@@ -259,6 +259,15 @@ public class TestPrometheusMetricsSink {
    */
   @Metrics(about = "Test Metrics", context = "dfs")
   private static class TestMetrics {
+    private String id;
+
+    TestMetrics() {
+      this("1");
+    }
+
+    TestMetrics(String id) {
+      this.id = id;
+    }
 
     @Metric
     private MutableCounterLong numBucketCreateFails;
