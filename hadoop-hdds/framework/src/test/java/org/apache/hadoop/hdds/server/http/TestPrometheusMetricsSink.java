@@ -190,17 +190,16 @@ public class TestPrometheusMetricsSink {
     metrics.unregisterSource("StaleMetric");
 
     // publish and flush metrics
-    metrics.publishMetricsNow();
-    sink.flush();
-
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    OutputStreamWriter writer = new OutputStreamWriter(stream, UTF_8);
-
-    sink.writeMetrics(writer);
-    writer.flush();
+    String writtenMetrics = publishMetricsAndGetOutput();
+    Assertions.assertTrue(
+        writtenMetrics.contains("stale_metric_counter{port=\"1234\""),
+        "The expected metric line is present in prometheus metrics output");
+    Assertions.assertTrue(
+        writtenMetrics.contains("some_metric_counter{port=\"4321\""),
+        "The expected metric line is present in prometheus metrics output");
 
     // WHEN
-    String newWrittenMetrics = stream.toString(UTF_8.name());
+    String newWrittenMetrics = publishMetricsAndGetOutput();
     // THEN
     // The first metric shouldn't be present
     Assertions.assertFalse(
