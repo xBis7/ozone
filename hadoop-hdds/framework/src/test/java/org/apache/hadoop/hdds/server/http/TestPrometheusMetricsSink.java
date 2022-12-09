@@ -189,10 +189,16 @@ public class TestPrometheusMetricsSink {
     // unregister the metric
     metrics.unregisterSource("StaleMetric");
 
-    // WHEN
     // publish and flush metrics
-    String newWrittenMetrics = publishMetricsAndGetOutput();
-    LOG.info("xbis " + newWrittenMetrics);
+    metrics.publishMetricsNow();
+
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    OutputStreamWriter writer = new OutputStreamWriter(stream, UTF_8);
+
+    sink.writeMetrics(writer);
+    writer.flush();
+    
+    String newWrittenMetrics = stream.toString(UTF_8.name());
     // THEN
     // The first metric shouldn't be present
     Assertions.assertFalse(
