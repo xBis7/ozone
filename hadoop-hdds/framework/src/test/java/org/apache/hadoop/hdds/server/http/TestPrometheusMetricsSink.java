@@ -191,7 +191,7 @@ public class TestPrometheusMetricsSink {
 
     // publish and flush metrics
     String writtenMetrics = publishMetricsAndGetOutput();
-    Assertions.assertTrue(
+    Assertions.assertFalse(
         writtenMetrics.contains("stale_metric_counter{port=\"1234\""),
         "The expected metric line is present in prometheus metrics output");
     Assertions.assertTrue(
