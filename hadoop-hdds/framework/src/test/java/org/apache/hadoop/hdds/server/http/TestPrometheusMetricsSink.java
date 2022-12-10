@@ -165,10 +165,13 @@ public class TestPrometheusMetricsSink {
   @Test
   public void testRemovingStaleMetricsOnFlush() throws IOException {
     // GIVEN
-    TestMetrics staleMetric = metrics
-        .register("StaleMetric", "staleMetric", new TestMetrics("2"));
+    metrics.register("StaleMetric", "staleMetric",
+        (MetricsSource) (collector, all) -> {
+          collector.addRecord("StaleMetric")
+              .add(new MetricsTag(PORT_INFO, "1234"))
+              .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
+        });
 
-    staleMetric.numBucketCreateFails.incr();
     metrics.publishMetricsNow();
 
     // unregister the metric
@@ -176,10 +179,12 @@ public class TestPrometheusMetricsSink {
 
     metrics.publishMetricsNow();
 
-    TestMetrics someMetric = metrics
-        .register("SomeMetric", "someMetric", new TestMetrics("3"));
-
-    someMetric.numBucketCreateFails.incr();
+    metrics.register("SomeMetric", "someMetric",
+        (MetricsSource) (collector, all) -> {
+          collector.addRecord("SomeMetric")
+              .add(new MetricsTag(PORT_INFO, "4321"))
+              .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
+        });
 
     // WHEN
     // publish and flush metrics
@@ -187,13 +192,11 @@ public class TestPrometheusMetricsSink {
 
     // THEN
     // The first metric shouldn't be present
-    Assertions.assertFalse(writtenMetrics.contains(
-        "test_metrics_num_bucket_create_fails{" +
-            "context=\"dfs\",testtag=\"testTagValue2\""),
+    Assertions.assertFalse(
+        writtenMetrics.contains("stale_metric_counter{port=\"1234\""),
         "The expected metric line is present in prometheus metrics output");
-    Assertions.assertTrue(writtenMetrics.contains(
-        "test_metrics_num_bucket_create_fails{" +
-            "context=\"dfs\",testtag=\"testTagValue3\""),
+    Assertions.assertTrue(
+        writtenMetrics.contains("some_metric_counter{port=\"4321\""),
         "The expected metric line is present in prometheus metrics output");
   }
 
