@@ -152,6 +152,7 @@ public class PrometheusMetricsSink implements MetricsSink {
 
   @Override
   public void flush() {
+    LOG.info("xbis2 size: " + nextMetricLines.size());
     metricLines = nextMetricLines;
     nextMetricLines = Collections
         .synchronizedSortedMap(new TreeMap<>());
