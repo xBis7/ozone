@@ -170,7 +170,7 @@ public class TestPrometheusMetricsSink {
   /**
    * Make sure Prometheus metrics start fresh after each flush.
    * Publish the metrics and flush them, then unregister one of them
-   * and register another. Publish and flush the metrics again
+   * and publish and flush the metrics again
    * and then check that the unregistered metric is not present.
    */
   @Test
@@ -183,17 +183,17 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
         });
 
-    metrics.publishMetricsNow();
-
-    // unregister the metric
-    metrics.unregisterSource("StaleMetric");
-
     metrics.register("SomeMetric", "someMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
               .add(new MetricsTag(PORT_INFO, "4321"))
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
+
+    metrics.publishMetricsNow();
+
+    // unregister the metric
+    metrics.unregisterSource("StaleMetric");
 
     // WHEN
     // publish and flush metrics
