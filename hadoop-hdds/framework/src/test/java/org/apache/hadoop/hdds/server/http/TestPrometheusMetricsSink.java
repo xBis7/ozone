@@ -108,6 +108,8 @@ public class TestPrometheusMetricsSink {
             "test_metrics_num_bucket_create_fails{context=\"dfs\""),
         "The expected metric line is missing from prometheus metrics output"
     );
+
+    metrics.unregisterSource("TestMetrics");
   }
 
   @Test
@@ -132,6 +134,8 @@ public class TestPrometheusMetricsSink {
     Assertions.assertTrue(
         writtenMetrics.contains("rpc_metrics_counter{port=\"1234\""),
         "The expected metric line is missing from prometheus metrics output");
+
+    metrics.unregisterSource("FooBar");
   }
 
   @Test
@@ -159,6 +163,8 @@ public class TestPrometheusMetricsSink {
     Assertions.assertTrue(
         writtenMetrics.contains("same_name_counter{port=\"2345\""),
         "The expected metric line is present in prometheus metrics output");
+
+    metrics.unregisterSource("SameName");
   }
 
   /**
@@ -201,6 +207,8 @@ public class TestPrometheusMetricsSink {
     Assertions.assertTrue(
         writtenMetrics.contains("some_metric_counter{port=\"4321\""),
         "The expected metric line is present in prometheus metrics output");
+
+    metrics.unregisterSource("SomeMetric");
   }
 
   @Test
@@ -268,20 +276,6 @@ public class TestPrometheusMetricsSink {
    */
   @Metrics(about = "Test Metrics", context = "dfs")
   private static class TestMetrics {
-    private String id;
-
-    TestMetrics() {
-      this("1");
-    }
-
-    TestMetrics(String id) {
-      this.id = id;
-    }
-
-    @Metric(value = {"testTag", ""}, type = Metric.Type.TAG)
-    String testTag() {
-      return "testTagValue" + id;
-    }
 
     @Metric
     private MutableCounterLong numBucketCreateFails;
