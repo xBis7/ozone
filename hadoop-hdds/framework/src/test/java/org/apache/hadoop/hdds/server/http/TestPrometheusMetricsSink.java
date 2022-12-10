@@ -158,39 +158,40 @@ public class TestPrometheusMetricsSink {
 
   /**
    * Make sure Prometheus metrics start fresh after each flush.
-   * Publish the metrics and flush them, then unregister one of them,
-   * publish and flush the metrics again and then check that
-   * the unregistered metric is not present.
+   * Publish the metrics and flush them, then unregister one of them
+   * and register another. Publish and flush the metrics again
+   * and then check that the unregistered metric is not present.
    */
   @Test
   public void testRemovingStaleMetricsOnFlush() throws IOException {
     // GIVEN
-    metrics.register("StaleMetric", "StaleMetric",
-        (MetricsSource) (collector, all) -> {
-          collector.addRecord("StaleMetric")
-              .add(new MetricsTag(PORT_INFO, "1234"))
-              .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
-        });
+    TestMetrics staleMetric = metrics
+        .register("StaleMetric", "staleMetric", new TestMetrics("2"));
 
-    metrics.publishMetricsNow();
+    staleMetric.numBucketCreateFails.incr();
+//    metrics.publishMetricsNow();
 
     // unregister the metric
     metrics.unregisterSource("StaleMetric");
 
-    metrics.register("SomeMetric", "SomeMetric",
-        (MetricsSource) (collector, all) -> {
-          collector.addRecord("SomeMetric")
-              .add(new MetricsTag(PORT_INFO, "4321"))
-              .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
-        });
+    TestMetrics someMetric = metrics
+        .register("SomeMetric", "someMetric", new TestMetrics("3"));
 
+    someMetric.numBucketCreateFails.incr();
+
+    // WHEN
     // publish and flush metrics
     String writtenMetrics = publishMetricsAndGetOutput();
-    Assertions.assertFalse(
-        writtenMetrics.contains("stale_metric_counter{port=\"1234\""),
+
+    // THEN
+    // The first metric shouldn't be present
+    Assertions.assertFalse(writtenMetrics.contains(
+        "test_metrics_num_bucket_create_fails{" +
+            "context=\"dfs\",testtag=\"testTagValue2\""),
         "The expected metric line is present in prometheus metrics output");
-    Assertions.assertTrue(
-        writtenMetrics.contains("some_metric_counter{port=\"4321\""),
+    Assertions.assertTrue(writtenMetrics.contains(
+        "test_metrics_num_bucket_create_fails{" +
+            "context=\"dfs\",testtag=\"testTagValue3\""),
         "The expected metric line is present in prometheus metrics output");
   }
 
