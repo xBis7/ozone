@@ -169,10 +169,12 @@ public class TestPrometheusMetricsSink {
         .register("StaleMetric", "staleMetric", new TestMetrics("2"));
 
     staleMetric.numBucketCreateFails.incr();
-//    metrics.publishMetricsNow();
+    metrics.publishMetricsNow();
 
     // unregister the metric
     metrics.unregisterSource("StaleMetric");
+
+    metrics.publishMetricsNow();
 
     TestMetrics someMetric = metrics
         .register("SomeMetric", "someMetric", new TestMetrics("3"));
