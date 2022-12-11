@@ -83,6 +83,7 @@ public class TestPrometheusMetricsSink {
     metrics.init("test");
     sink = new PrometheusMetricsSink();
     metrics.register("Prometheus", "Prometheus", sink);
+    metrics.publishMetricsNow();
   }
 
   @AfterEach
