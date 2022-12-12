@@ -27,6 +27,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails.Port.Name;
@@ -50,6 +51,7 @@ import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.util.GlobalTracer;
 import org.apache.hadoop.ozone.container.common.statemachine.DatanodeConfiguration;
+import org.apache.hadoop.ozone.grpc.metrics.GrpcMetrics;
 import org.apache.ratis.thirdparty.com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.ratis.thirdparty.io.grpc.Server;
 import org.apache.ratis.thirdparty.io.grpc.ServerInterceptors;
@@ -83,6 +85,8 @@ public final class XceiverServerGrpc implements XceiverServerSpi {
   private ThreadPoolExecutor readExecutors;
   private EventLoopGroup eventLoopGroup;
   private Class<? extends ServerChannel> channelType;
+
+  private final GrpcMetrics grpcMetrics;
 
   /**
    * Constructs a Grpc server class.
@@ -128,6 +132,8 @@ public final class XceiverServerGrpc implements XceiverServerSpi {
       eventLoopGroup = new NioEventLoopGroup(poolSize / 10, factory);
       channelType = NioServerSocketChannel.class;
     }
+
+    this.grpcMetrics = GrpcMetrics.create(String.valueOf(port), (Configuration) conf);
 
     LOG.info("GrpcServer channel type {}", channelType.getSimpleName());
     NettyServerBuilder nettyServerBuilder = NettyServerBuilder.forPort(port)

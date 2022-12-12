@@ -83,7 +83,7 @@ public class GrpcOzoneManagerServer {
           getPort();
     }
 
-    this.omS3gGrpcMetrics = GrpcMetrics.create(config);
+    this.omS3gGrpcMetrics = GrpcMetrics.create(String.valueOf(port), config);
 
     init(omTranslator,
         delegationTokenMgr,
@@ -145,7 +145,7 @@ public class GrpcOzoneManagerServer {
     } catch (InterruptedException ex) {
       LOG.warn("{} couldn't be stopped gracefully", getClass().getSimpleName());
     } finally {
-      omS3gGrpcMetrics.unRegister();
+      omS3gGrpcMetrics.unRegister(String.valueOf(port));
     }
   }
   public int getPort() {

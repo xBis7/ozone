@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.grpc.metrics;
 
+import io.grpc.Server;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
@@ -46,8 +47,8 @@ public class GrpcMetrics {
   private final MetricsRegistry registry;
   private final boolean grpcQuantileEnable;
 
-  public GrpcMetrics(Configuration conf) {
-    registry = new MetricsRegistry("grpc");
+  public GrpcMetrics(String port, Configuration conf) {
+    registry = new MetricsRegistry("grpc" + port).tag("port", "gRPC port", port);
     int[] intervals = conf.getInts(
         OzoneConfigKeys.OZONE_GPRC_METRICS_PERCENTILES_INTERVALS_KEY);
     grpcQuantileEnable = (intervals.length > 0);
@@ -76,17 +77,18 @@ public class GrpcMetrics {
    * @param conf
    * @return GrpcMetrics
    */
-  public static synchronized GrpcMetrics create(Configuration conf) {
-    GrpcMetrics metrics = new GrpcMetrics(conf);
-    return DefaultMetricsSystem.instance().register(SOURCE_NAME,
+  public static synchronized GrpcMetrics create(String port, Configuration conf) {
+    GrpcMetrics metrics = new GrpcMetrics(port, conf);
+    return DefaultMetricsSystem.instance().register(SOURCE_NAME+port,
         "Metrics for using gRPC", metrics);
   }
 
   /**
    * Unregister the metrics instance.
    */
-  public void unRegister() {
-    DefaultMetricsSystem.instance().unregisterSource(SOURCE_NAME);
+  public void unRegister(String port) {
+    DefaultMetricsSystem.instance()
+        .unregisterSource(SOURCE_NAME+port);
   }
 
   @Metric("Number of sent bytes")
