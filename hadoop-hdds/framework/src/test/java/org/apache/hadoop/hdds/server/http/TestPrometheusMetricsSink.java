@@ -83,7 +83,6 @@ public class TestPrometheusMetricsSink {
     metrics.init("test");
     sink = new PrometheusMetricsSink();
     metrics.register("Prometheus", "Prometheus", sink);
-    metrics.publishMetricsNow();
   }
 
   @AfterEach
@@ -184,11 +183,6 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
         });
 
-    metrics.publishMetricsNow();
-
-    // unregister the metric
-    metrics.unregisterSource("StaleMetric");
-
     metrics.register("SomeMetric", "someMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
@@ -196,10 +190,15 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
 
+//    publishMetricsAndGetOutput();
+
+    // unregister the metric
+    metrics.unregisterSource("StaleMetric");
+
     // WHEN
     // publish and flush metrics
     String writtenMetrics = publishMetricsAndGetOutput();
-    LOG.info("xbis1 metrics: " + writtenMetrics);
+
     // THEN
     // The first metric shouldn't be present
     Assertions.assertFalse(
@@ -268,7 +267,7 @@ public class TestPrometheusMetricsSink {
 
     sink.writeMetrics(writer);
     writer.flush();
-
+    LOG.info(stream.toString(UTF_8.name()));
     return stream.toString(UTF_8.name());
   }
 
