@@ -167,12 +167,14 @@ public class TestPrometheusMetrics {
 
   /**
    * Make sure Prometheus metrics start fresh after each flush.
-   * Publish the metrics and flush them, then unregister one of them
-   * and register another. Publish and flush the metrics again
+   * Publish the metrics and flush them,
+   * then unregister one of them,
+   * publish and flush the metrics again
    * and then check that the unregistered metric is not present.
    */
   @Test
-  public void testRemovingStaleMetricsOnFlush() throws IOException, InterruptedException {
+  public void testRemovingStaleMetricsOnFlush()
+      throws IOException, InterruptedException {
     // GIVEN
     metrics.register("StaleMetric", "staleMetric",
         (MetricsSource) (collector, all) -> {
@@ -194,8 +196,8 @@ public class TestPrometheusMetrics {
     metrics.unregisterSource("StaleMetric");
 
     // WHEN
-    // publish and flush metrics
     try {
+      // publish metrics
       waitForMetricsToPublish();
     } catch (TimeoutException e) {
       throw new RuntimeException(e);
