@@ -90,15 +90,24 @@ public class TestPrometheusMetrics {
   }
 
   @Test
-  public void testPublish() throws IOException {
+  public void testPublish()
+      throws InterruptedException {
     //GIVEN
     TestMetrics testMetrics = metrics
         .register("TestMetrics", "Testing metrics", new TestMetrics());
 
     testMetrics.numBucketCreateFails.incr();
 
-    //WHEN
-    String writtenMetrics = publishMetricsAndGetOutput();
+    String regMetric = "test_metrics_num";
+    String writtenMetrics;
+
+    // WHEN
+    try {
+      // publish metrics
+      writtenMetrics = waitForMetricsToPublish(regMetric);
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
 
     //THEN
     Assertions.assertTrue(
@@ -111,7 +120,8 @@ public class TestPrometheusMetrics {
   }
 
   @Test
-  public void testPublishWithSameName() throws IOException {
+  public void testPublishWithSameName()
+      throws InterruptedException {
     // GIVEN
     metrics.register("FooBar", "fooBar", (MetricsSource) (collector, all) -> {
       collector.addRecord("RpcMetrics").add(new MetricsTag(PORT_INFO, "1234"))
@@ -121,8 +131,16 @@ public class TestPrometheusMetrics {
           PORT_INFO, "2345")).addGauge(COUNTER_INFO, COUNTER_2).endRecord();
     });
 
+    String regMetric = "rpc_metrics_counter";
+    String writtenMetrics;
+
     // WHEN
-    String writtenMetrics = publishMetricsAndGetOutput();
+    try {
+      // publish metrics
+      writtenMetrics = waitForMetricsToPublish(regMetric);
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
 
     // THEN
     Assertions.assertTrue(
@@ -137,7 +155,8 @@ public class TestPrometheusMetrics {
   }
 
   @Test
-  public void testTypeWithSameNameButDifferentLabels() throws IOException {
+  public void testTypeWithSameNameButDifferentLabels()
+      throws InterruptedException {
     // GIVEN
     metrics.register("SameName", "sameName",
         (MetricsSource) (collector, all) -> {
@@ -148,7 +167,16 @@ public class TestPrometheusMetrics {
         });
 
     // WHEN
-    String writtenMetrics = publishMetricsAndGetOutput();
+    String regMetric = "same_name_counter";
+    String writtenMetrics;
+
+    // WHEN
+    try {
+      // publish metrics
+      writtenMetrics = waitForMetricsToPublish(regMetric);
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
 
     // THEN
     Assertions.assertEquals(1, StringUtils.countMatches(writtenMetrics,
@@ -174,7 +202,7 @@ public class TestPrometheusMetrics {
    */
   @Test
   public void testRemovingStaleMetricsOnFlush()
-      throws IOException, InterruptedException {
+      throws InterruptedException {
     // GIVEN
     metrics.register("StaleMetric", "staleMetric",
         (MetricsSource) (collector, all) -> {
@@ -183,6 +211,17 @@ public class TestPrometheusMetrics {
               .addGauge(COUNTER_INFO, COUNTER_1).endRecord();
         });
 
+    String regStaleMetric = "stale_metric_counter";
+
+    try {
+      waitForMetricsToPublish(regStaleMetric);
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
+
+    // unregister the metric
+    metrics.unregisterSource("StaleMetric");
+
     metrics.register("SomeMetric", "someMetric",
         (MetricsSource) (collector, all) -> {
           collector.addRecord("SomeMetric")
@@ -190,18 +229,13 @@ public class TestPrometheusMetrics {
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
 
-    publishMetricsAndGetOutput();
-
-    // unregister the metric
-    metrics.unregisterSource("StaleMetric");
-
-    String staleMetric = "stale_metric_counter";
+    String regSomeMetric = "some_metric_counter";
     String writtenMetrics;
 
     // WHEN
     try {
       // publish metrics
-      writtenMetrics = waitForMetricsToPublish(staleMetric);
+      writtenMetrics = waitForMetricsToPublish(regSomeMetric);
     } catch (TimeoutException e) {
       throw new RuntimeException(e);
     }
@@ -229,7 +263,7 @@ public class TestPrometheusMetrics {
     return stream.toString(UTF_8.name());
   }
 
-  private String waitForMetricsToPublish(String unregisteredMetric)
+  private String waitForMetricsToPublish(String registeredMetric)
       throws InterruptedException, TimeoutException {
 
     final String[] writtenMetrics = new String[1];
@@ -240,7 +274,7 @@ public class TestPrometheusMetrics {
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
-      return !writtenMetrics[0].contains(unregisteredMetric);
+      return writtenMetrics[0].contains(registeredMetric);
     }, 1000, 120000);
 
     return writtenMetrics[0];
