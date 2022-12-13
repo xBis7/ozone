@@ -18,6 +18,7 @@
 package org.apache.hadoop.hdds.server.http;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -29,12 +30,14 @@ import org.apache.hadoop.metrics2.MetricsSystem;
 import org.apache.hadoop.metrics2.MetricsTag;
 import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
+import org.apache.hadoop.metrics2.impl.MetricsSystemImpl;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.MutableCounterLong;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +81,8 @@ public class TestPrometheusMetricsSink {
 
   @BeforeEach
   public void init() {
-    metrics = DefaultMetricsSystem.instance();
+//    metrics = DefaultMetricsSystem.instance();
+    metrics = Mockito.spy(MetricsSystemImpl.class);
 
     metrics.init("test");
     sink = new PrometheusMetricsSink();
@@ -190,7 +194,7 @@ public class TestPrometheusMetricsSink {
               .addGauge(COUNTER_INFO, COUNTER_2).endRecord();
         });
 
-//    publishMetricsAndGetOutput();
+    publishMetricsAndGetOutput();
 
     // unregister the metric
     metrics.unregisterSource("StaleMetric");
