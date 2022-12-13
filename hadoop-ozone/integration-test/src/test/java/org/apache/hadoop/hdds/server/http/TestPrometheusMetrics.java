@@ -195,20 +195,17 @@ public class TestPrometheusMetrics {
     // unregister the metric
     metrics.unregisterSource("StaleMetric");
 
+    String staleMetric = "stale_metric_counter";
+    String writtenMetrics;
+
     // WHEN
     try {
       // publish metrics
-      waitForMetricsToPublish();
+      writtenMetrics = waitForMetricsToPublish(staleMetric);
     } catch (TimeoutException e) {
       throw new RuntimeException(e);
     }
 
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    OutputStreamWriter writer = new OutputStreamWriter(stream, UTF_8);
-
-    sink.writeMetrics(writer);
-    writer.flush();
-    String writtenMetrics = stream.toString(UTF_8.name());
     // THEN
     // The first metric shouldn't be present
     Assertions.assertFalse(
@@ -232,13 +229,21 @@ public class TestPrometheusMetrics {
     return stream.toString(UTF_8.name());
   }
 
-  private void waitForMetricsToPublish()
+  private String waitForMetricsToPublish(String unregisteredMetric)
       throws InterruptedException, TimeoutException {
 
+    final String[] writtenMetrics = new String[1];
+
     GenericTestUtils.waitFor(() -> {
-      metrics.publishMetricsNow();
-      return true;
+      try {
+        writtenMetrics[0] = publishMetricsAndGetOutput();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return !writtenMetrics[0].contains(unregisteredMetric);
     }, 1000, 120000);
+
+    return writtenMetrics[0];
   }
 
   /**
