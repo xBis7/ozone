@@ -22,6 +22,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.concurrent.TimeoutException;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.metrics2.MetricsInfo;
 import org.apache.hadoop.metrics2.MetricsSource;
@@ -31,6 +33,7 @@ import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import org.apache.ozone.test.GenericTestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -169,7 +172,7 @@ public class TestPrometheusMetrics {
    * and then check that the unregistered metric is not present.
    */
   @Test
-  public void testRemovingStaleMetricsOnFlush() throws IOException {
+  public void testRemovingStaleMetricsOnFlush() throws IOException, InterruptedException {
     // GIVEN
     metrics.register("StaleMetric", "staleMetric",
         (MetricsSource) (collector, all) -> {
@@ -192,8 +195,18 @@ public class TestPrometheusMetrics {
 
     // WHEN
     // publish and flush metrics
-    String writtenMetrics = publishMetricsAndGetOutput();
+    try {
+      waitForMetricsToPublish();
+    } catch (TimeoutException e) {
+      throw new RuntimeException(e);
+    }
 
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+    OutputStreamWriter writer = new OutputStreamWriter(stream, UTF_8);
+
+    sink.writeMetrics(writer);
+    writer.flush();
+    String writtenMetrics = stream.toString(UTF_8.name());
     // THEN
     // The first metric shouldn't be present
     Assertions.assertFalse(
@@ -215,6 +228,15 @@ public class TestPrometheusMetrics {
     sink.writeMetrics(writer);
     writer.flush();
     return stream.toString(UTF_8.name());
+  }
+
+  private void waitForMetricsToPublish()
+      throws InterruptedException, TimeoutException {
+
+    GenericTestUtils.waitFor(() -> {
+      metrics.publishMetricsNow();
+      return true;
+    }, 1000, 120000);
   }
 
   /**
