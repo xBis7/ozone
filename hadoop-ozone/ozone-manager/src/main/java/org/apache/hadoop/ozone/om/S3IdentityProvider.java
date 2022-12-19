@@ -22,17 +22,12 @@ import org.apache.hadoop.ipc.Schedulable;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.S3Authentication;
 import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Ozone implementation of IdentityProvider used by
  * Hadoop DecayRpcScheduler.
  */
 public class S3IdentityProvider implements IdentityProvider {
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(S3IdentityProvider.class);
 
   public S3IdentityProvider() {
   }

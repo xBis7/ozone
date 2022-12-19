@@ -285,7 +285,6 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
               .setAccessId(
                   threadLocalS3Auth.get().getAccessID())
               .build());
-      LOG.info("xbis1: " + threadLocalS3Auth.get().getAccessID());
     }
     if (s3AuthCheck && getThreadLocalS3Auth() == null) {
       throw new IllegalArgumentException("S3 Auth expected to " +

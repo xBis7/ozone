@@ -67,6 +67,7 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
   private static final String OM_REQUESTS_PACKAGE = 
       "org.apache.hadoop.ozone";
 
+  // Used for S3IdentityProvider
   private static final ThreadLocal<S3Authentication>
       S3_AUTH_THREAD_LOCAL = new ThreadLocal<>();
 
@@ -168,8 +169,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
           // if current OM is leader and then proceed with
           // processing the request.
           S3SecurityUtil.validateS3Credential(request, ozoneManager);
-          // TODO: check what happens when we overwrite it,
-          //  do we need to clear it?
           S3_AUTH_THREAD_LOCAL.set(request.getS3Authentication());
         } catch (IOException ex) {
           // If validate credentials fail return error OM Response.
@@ -335,6 +334,10 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
     if (!isRatisEnabled) {
       ozoneManagerDoubleBuffer.stop();
     }
+  }
+
+  public static void setS3Auth(S3Authentication s3Auth) {
+    S3_AUTH_THREAD_LOCAL.set(s3Auth);
   }
 
   public static S3Authentication getS3Auth() {

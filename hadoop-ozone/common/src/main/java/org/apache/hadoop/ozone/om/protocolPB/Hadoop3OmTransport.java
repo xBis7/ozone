@@ -36,8 +36,6 @@ import org.apache.hadoop.security.UserGroupInformation;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Full-featured Hadoop RPC implementation with failover support.
@@ -48,9 +46,6 @@ public class Hadoop3OmTransport implements OmTransport {
    * RpcController is not used and hence is set to null.
    */
   private static final RpcController NULL_RPC_CONTROLLER = null;
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(Hadoop3OmTransport.class);
 
   private final HadoopRpcOMFailoverProxyProvider omFailoverProxyProvider;
 
@@ -78,7 +73,6 @@ public class Hadoop3OmTransport implements OmTransport {
     try {
       OMResponse omResponse =
           rpcProxy.submitRequest(NULL_RPC_CONTROLLER, payload);
-      LOG.info("xbis1.3: " + payload.getS3Authentication().getAccessId());
       if (omResponse.hasLeaderOMNodeId() && omFailoverProxyProvider != null) {
         String leaderOmId = omResponse.getLeaderOMNodeId();
 

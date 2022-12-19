@@ -514,7 +514,6 @@ public class RpcClient implements ClientProtocol {
     S3VolumeContext resp = ozoneManagerClient.getS3VolumeContext();
     String userPrincipal = resp.getUserPrincipal();
     updateS3Principal(userPrincipal);
-    LOG.info("xbis1.1: " + userPrincipal);
     return resp;
   }
 
@@ -640,7 +639,6 @@ public class RpcClient implements ClientProtocol {
       final UserGroupInformation s3gUGI = UserGroupInformation.createRemoteUser(
           getThreadLocalS3Auth().getUserPrincipal());
       owner = s3gUGI.getShortUserName();
-      LOG.info("xbis1.2: " + owner);
     } else {
       owner = bucketArgs.getOwner() == null ?
           ugi.getShortUserName() : bucketArgs.getOwner();
