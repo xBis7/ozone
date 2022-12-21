@@ -36,6 +36,8 @@ import org.apache.hadoop.ozone.security.acl.OzoneObjInfo;
 import com.google.common.annotations.VisibleForTesting;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_HTTP_SCHEME;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_RPC_SCHEME;
+import static org.apache.hadoop.ozone.OzoneConsts.OM_SNAPSHOT_INDICATOR;
+import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_SERVICE_IDS_KEY;
 import org.apache.http.client.utils.URIBuilder;
 
@@ -303,8 +305,21 @@ public class OzoneAddress {
 
   public void ensureBucketAddress() throws OzoneClientException {
     if (keyName.length() > 0) {
-      throw new OzoneClientException(
-          "Invalid bucket name. Delimiters (/) not allowed in bucket name");
+      // Check for a snapshot
+      if (keyName.contains(OM_SNAPSHOT_INDICATOR)) {
+        String[] snapValues = keyName.split(OZONE_URI_DELIMITER);
+        if (snapValues.length < 2) {
+          throw new OzoneClientException(
+              "Invalid snapshot path. Snapshot name is missing");
+        } else if (snapValues.length > 2) {
+          throw new OzoneClientException(
+              "Invalid snapshot path. " +
+                  "Delimiters (/) not allowed in snapshot name");
+        }
+      } else {
+        throw new OzoneClientException(
+            "Invalid bucket name. Delimiters (/) not allowed in bucket name");
+      }
     } else if (volumeName.length() == 0) {
       throw new OzoneClientException(
           "Volume name is required.");
