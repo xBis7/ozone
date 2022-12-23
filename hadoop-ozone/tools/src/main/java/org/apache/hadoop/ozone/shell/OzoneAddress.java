@@ -36,8 +36,6 @@ import org.apache.hadoop.ozone.security.acl.OzoneObjInfo;
 import com.google.common.annotations.VisibleForTesting;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_HTTP_SCHEME;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_RPC_SCHEME;
-import static org.apache.hadoop.ozone.OzoneConsts.OM_SNAPSHOT_INDICATOR;
-import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_SERVICE_IDS_KEY;
 import org.apache.http.client.utils.URIBuilder;
 
@@ -55,6 +53,8 @@ public class OzoneAddress {
   private String volumeName = "";
 
   private String bucketName = "";
+
+  private String snapshotName = "";
 
   private String keyName = "";
 
@@ -295,6 +295,10 @@ public class OzoneAddress {
     return bucketName;
   }
 
+  public String getSnapshotName() {
+    return snapshotName;
+  }
+
   public String getKeyName() {
     return keyName;
   }
@@ -305,21 +309,8 @@ public class OzoneAddress {
 
   public void ensureBucketAddress() throws OzoneClientException {
     if (keyName.length() > 0) {
-      // Check for a snapshot
-      if (keyName.contains(OM_SNAPSHOT_INDICATOR)) {
-        String[] snapValues = keyName.split(OZONE_URI_DELIMITER);
-        if (snapValues.length < 2) {
-          throw new OzoneClientException(
-              "Invalid snapshot path. Snapshot name is missing");
-        } else if (snapValues.length > 2) {
-          throw new OzoneClientException(
-              "Invalid snapshot path. " +
-                  "Delimiters (/) not allowed in snapshot name");
-        }
-      } else {
-        throw new OzoneClientException(
-            "Invalid bucket name. Delimiters (/) not allowed in bucket name");
-      }
+      throw new OzoneClientException(
+          "Invalid bucket name. Delimiters (/) not allowed in bucket name");
     } else if (volumeName.length() == 0) {
       throw new OzoneClientException(
           "Volume name is required.");
@@ -355,6 +346,27 @@ public class OzoneAddress {
     } else if (bucketName.length() == 0) {
       throw new OzoneClientException(
           "Bucket name is missing");
+    }
+  }
+
+  public void ensureSnapshotAddress()
+      throws OzoneClientException {
+    if (keyName.length() == 0) {
+      throw new OzoneClientException(
+          "Snapshot name is missing.");
+    } else if (volumeName.length() == 0) {
+      throw new OzoneClientException(
+          "Volume name is missing.");
+    } else if (bucketName.length() == 0) {
+      throw new OzoneClientException(
+          "Bucket name is missing.");
+    }
+
+    if (OmUtils.isBucketSnapshotIndicator(keyName)) {
+      snapshotName += keyName;
+    } else {
+      throw new OzoneClientException(
+          "Invalid snapshot address.");
     }
   }
 
