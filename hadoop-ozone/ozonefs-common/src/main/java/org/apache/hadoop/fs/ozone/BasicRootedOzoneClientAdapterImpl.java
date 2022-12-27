@@ -54,9 +54,16 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ozone.OFSPath;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
-import org.apache.hadoop.ozone.client.*;
+import org.apache.hadoop.ozone.client.ObjectStore;
+import org.apache.hadoop.ozone.client.OzoneBucket;
+import org.apache.hadoop.ozone.client.OzoneClient;
+import org.apache.hadoop.ozone.client.OzoneClientFactory;
+import org.apache.hadoop.ozone.client.OzoneKey;
+import org.apache.hadoop.ozone.client.OzoneVolume;
+import org.apache.hadoop.ozone.client.OzoneSnapshot;
 import org.apache.hadoop.ozone.client.io.OzoneOutputStream;
 import org.apache.hadoop.ozone.client.protocol.ClientProtocol;
+import org.apache.hadoop.ozone.client.BucketArgs;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -598,20 +605,22 @@ public class BasicRootedOzoneClientAdapterImpl
     if (ofsPath.isRoot()) {
       return getFileStatusAdapterForRoot(uri);
     }
+
+    OzoneVolume volume = objectStore.getVolume(ofsPath.getVolumeName());
+
     if (ofsPath.isVolume()) {
-      OzoneVolume volume = objectStore.getVolume(ofsPath.getVolumeName());
       return getFileStatusAdapterForVolume(volume, uri);
     }
     try {
       OzoneBucket bucket = getBucket(ofsPath, false);
 
       if (ofsPath.isSnapshotPrefix()) {
-        OzoneVolume volume = objectStore.getVolume(ofsPath.getVolumeName());
         UserGroupInformation ugi =
             UserGroupInformation.createRemoteUser(volume.getOwner());
         String owner = ugi.getShortUserName();
         String group = getGroupName(ugi);
-        return getFileStatusAdapterForSnapshot(bucket, uri, owner, group);
+        return getFileStatusAdapterWithSnapshotPrefix(
+            bucket, uri, owner, group);
       }
 
       OzoneFileStatus status = bucket.getFileStatus(key);
@@ -759,7 +768,8 @@ public class BasicRootedOzoneClientAdapterImpl
    */
   private List<FileStatusAdapter> listStatusBucketSnapshot(
       String volumeName, String bucketName, URI uri) throws IOException {
-    List<OzoneSnapshot> snapshotList = objectStore.listSnapshot(volumeName, bucketName);
+    List<OzoneSnapshot> snapshotList =
+        objectStore.listSnapshot(volumeName, bucketName);
 
     OzoneVolume volume = objectStore.getVolume(volumeName);
     UserGroupInformation ugi =
@@ -770,7 +780,8 @@ public class BasicRootedOzoneClientAdapterImpl
     List<FileStatusAdapter> fileStatusAdapterList = new ArrayList<>();
     for (OzoneSnapshot ozoneSnapshot : snapshotList) {
       fileStatusAdapterList.add(
-          getFileStatusAdapterForBucketSnapshot(ozoneSnapshot, uri, owner, group));
+          getFileStatusAdapterForBucketSnapshot(
+              ozoneSnapshot, uri, owner, group));
     }
 
     return fileStatusAdapterList;
@@ -831,8 +842,7 @@ public class BasicRootedOzoneClientAdapterImpl
     }
 
     if (ofsPath.isSnapshotPrefix()) {
-      return listStatusBucketSnapshot(
-          ofsPath.getVolumeName(),
+      return listStatusBucketSnapshot(ofsPath.getVolumeName(),
           ofsPath.getBucketName(), uri);
     }
 
@@ -1134,15 +1144,17 @@ public class BasicRootedOzoneClientAdapterImpl
         owner, group, path, new BlockLocation[0]);
   }
 
-  private static FileStatusAdapter getFileStatusAdapterForSnapshot(
+  private static FileStatusAdapter getFileStatusAdapterWithSnapshotPrefix(
       OzoneBucket ozoneBucket, URI uri, String owner, String group) {
     String pathStr = uri.toString() +
         OZONE_URI_DELIMITER + ozoneBucket.getVolumeName() +
         OZONE_URI_DELIMITER + ozoneBucket.getName() +
         OZONE_URI_DELIMITER + OM_SNAPSHOT_INDICATOR;
     if (LOG.isDebugEnabled()) {
-      LOG.debug("getFileStatusAdapterForSnapshot: pathStr={}",
-          pathStr);
+      LOG.debug("getFileStatusAdapterWithSnapshotPrefix: " +
+              "ozoneBucket={}, pathStr={}",
+          ozoneBucket.getVolumeName() + OZONE_URI_DELIMITER +
+              ozoneBucket.getName(), pathStr);
     }
     Path path = new Path(pathStr);
     return new FileStatusAdapter(0L, path, true, (short)0, 0L,
