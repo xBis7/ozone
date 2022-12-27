@@ -54,15 +54,9 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ozone.OFSPath;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
-import org.apache.hadoop.ozone.client.ObjectStore;
-import org.apache.hadoop.ozone.client.OzoneBucket;
-import org.apache.hadoop.ozone.client.OzoneClient;
-import org.apache.hadoop.ozone.client.OzoneClientFactory;
-import org.apache.hadoop.ozone.client.OzoneKey;
-import org.apache.hadoop.ozone.client.OzoneVolume;
+import org.apache.hadoop.ozone.client.*;
 import org.apache.hadoop.ozone.client.io.OzoneOutputStream;
 import org.apache.hadoop.ozone.client.protocol.ClientProtocol;
-import org.apache.hadoop.ozone.client.BucketArgs;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -79,6 +73,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.ozone.OzoneConsts.OM_SNAPSHOT_INDICATOR;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes
     .BUCKET_ALREADY_EXISTS;
@@ -609,6 +604,16 @@ public class BasicRootedOzoneClientAdapterImpl
     }
     try {
       OzoneBucket bucket = getBucket(ofsPath, false);
+
+      if (ofsPath.isSnapshotPrefix()) {
+        OzoneVolume volume = objectStore.getVolume(ofsPath.getVolumeName());
+        UserGroupInformation ugi =
+            UserGroupInformation.createRemoteUser(volume.getOwner());
+        String owner = ugi.getShortUserName();
+        String group = getGroupName(ugi);
+        return getFileStatusAdapterForSnapshot(bucket, uri, owner, group);
+      }
+
       OzoneFileStatus status = bucket.getFileStatus(key);
       return toFileStatusAdapter(status, userName, uri, qualifiedPath,
           ofsPath.getNonKeyPath());
@@ -749,6 +754,29 @@ public class BasicRootedOzoneClientAdapterImpl
   }
 
   /**
+   * Helper for OFS listStatus
+   * on a bucket to get all snapshots.
+   */
+  private List<FileStatusAdapter> listStatusBucketSnapshot(
+      String volumeName, String bucketName, URI uri) throws IOException {
+    List<OzoneSnapshot> snapshotList = objectStore.listSnapshot(volumeName, bucketName);
+
+    OzoneVolume volume = objectStore.getVolume(volumeName);
+    UserGroupInformation ugi =
+        UserGroupInformation.createRemoteUser(volume.getOwner());
+    String owner = ugi.getShortUserName();
+    String group = getGroupName(ugi);
+
+    List<FileStatusAdapter> fileStatusAdapterList = new ArrayList<>();
+    for (OzoneSnapshot ozoneSnapshot : snapshotList) {
+      fileStatusAdapterList.add(
+          getFileStatusAdapterForBucketSnapshot(ozoneSnapshot, uri, owner, group));
+    }
+
+    return fileStatusAdapterList;
+  }
+
+  /**
    * OFS listStatus implementation.
    *
    * @param pathStr Path for the listStatus to operate on.
@@ -800,6 +828,12 @@ public class BasicRootedOzoneClientAdapterImpl
       String startBucket = ofsStartPath.getBucketName();
       return listStatusVolume(ofsPath.getVolumeName(),
           recursive, startBucket, numEntries, uri, workingDir, username);
+    }
+
+    if (ofsPath.isSnapshotPrefix()) {
+      return listStatusBucketSnapshot(
+          ofsPath.getVolumeName(),
+          ofsPath.getBucketName(), uri);
     }
 
     String keyName = ofsPath.getKeyName();
@@ -1073,6 +1107,42 @@ public class BasicRootedOzoneClientAdapterImpl
       LOG.debug("getFileStatusAdapterForBucket: ozoneBucket={}, pathStr={}",
           ozoneBucket.getVolumeName() + OZONE_URI_DELIMITER +
               ozoneBucket.getName(), pathStr);
+    }
+    Path path = new Path(pathStr);
+    return new FileStatusAdapter(0L, path, true, (short)0, 0L,
+        ozoneBucket.getCreationTime().getEpochSecond() * 1000, 0L,
+        FsPermission.getDirDefault().toShort(),
+        owner, group, path, new BlockLocation[0]);
+  }
+
+  private static FileStatusAdapter getFileStatusAdapterForBucketSnapshot(
+      OzoneSnapshot ozoneSnapshot, URI uri, String owner, String group) {
+    String pathStr = uri.toString() +
+        OZONE_URI_DELIMITER + ozoneSnapshot.getVolumeName() +
+        OZONE_URI_DELIMITER + ozoneSnapshot.getBucketName() +
+        OZONE_URI_DELIMITER + OM_SNAPSHOT_INDICATOR +
+        OZONE_URI_DELIMITER + ozoneSnapshot.getName();
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("getFileStatusAdapterForBucketSnapshot: " +
+              "ozoneSnapshot={}, pathStr={}",
+          ozoneSnapshot.getName(), pathStr);
+    }
+    Path path = new Path(pathStr);
+    return new FileStatusAdapter(0L, path, true, (short)0, 0L,
+        ozoneSnapshot.getCreationTime(), 0L,
+        FsPermission.getDirDefault().toShort(),
+        owner, group, path, new BlockLocation[0]);
+  }
+
+  private static FileStatusAdapter getFileStatusAdapterForSnapshot(
+      OzoneBucket ozoneBucket, URI uri, String owner, String group) {
+    String pathStr = uri.toString() +
+        OZONE_URI_DELIMITER + ozoneBucket.getVolumeName() +
+        OZONE_URI_DELIMITER + ozoneBucket.getName() +
+        OZONE_URI_DELIMITER + OM_SNAPSHOT_INDICATOR;
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("getFileStatusAdapterForSnapshot: pathStr={}",
+          pathStr);
     }
     Path path = new Path(pathStr);
     return new FileStatusAdapter(0L, path, true, (short)0, 0L,

@@ -37,6 +37,7 @@ import java.util.StringTokenizer;
 import static org.apache.hadoop.fs.FileSystem.TRASH_PREFIX;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_OFS_URI_SCHEME;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
+import static org.apache.hadoop.ozone.OzoneConsts.OM_SNAPSHOT_INDICATOR;
 
 /**
  * Utility class for Rooted Ozone Filesystem (OFS) path processing.
@@ -261,6 +262,18 @@ public class OFSPath {
     return this.getKeyName().isEmpty() &&
         !this.getBucketName().isEmpty() &&
         !this.getVolumeName().isEmpty();
+  }
+
+  public boolean isSnapshotPrefix() {
+    if (keyName.contains(OM_SNAPSHOT_INDICATOR)) {
+      String[] keyNames = keyName.split(OZONE_URI_DELIMITER);
+
+      if (keyNames.length == 1) {
+        return  !bucketName.isEmpty() &&
+                !volumeName.isEmpty();
+      }
+    }
+    return false;
   }
 
   /**
