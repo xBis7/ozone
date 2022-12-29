@@ -45,8 +45,9 @@ services:
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       <<: *replication
     ports:
-      - 9874
+      - 9874:9874
       - 9862
+      - 3003:3003
     hostname: om1
     command: ["ozone","om"]
   om2:
@@ -74,7 +75,7 @@ services:
   scm1:
     <<: *common-config
     ports:
-      - 9876
+      - 9876:9876
     environment:
       ENSURE_SCM_INITIALIZED: /data/metadata/scm/current/VERSION
       OZONE-SITE.XML_hdds.scm.safemode.min.datanode: ${OZONE_SAFEMODE_MIN_DATANODES:-1}

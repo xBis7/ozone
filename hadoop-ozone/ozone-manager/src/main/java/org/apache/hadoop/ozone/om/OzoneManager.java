@@ -74,6 +74,7 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.Table.KeyValue;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OzoneManagerVersion;
+import org.apache.hadoop.ozone.om.ha.OMHAMetrics;
 import org.apache.hadoop.ozone.om.helpers.KeyInfoWithVolumeContext;
 import org.apache.hadoop.ozone.om.service.OMRangerBGSyncService;
 import org.apache.hadoop.ozone.util.OzoneNetUtils;
@@ -1793,6 +1794,19 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         }
       }
     }
+    if (isRatisEnabled) {
+      List<ServiceInfo> serviceList = null;
+      String leaderId = "";
+      try {
+        serviceList = getServiceList();
+        leaderId = Objects.requireNonNull(omRatisServer.getLeader())
+            .getId().toString();
+      } catch (IOException ex) {
+        LOG.error("Error while getting a list of the services running " +
+            "or there is no leader node elected yet.", ex);
+      }
+      omHAMetricsInit(serviceList, omNodeDetails.getRatisPort(), leaderId);
+    }
   }
 
   /**
@@ -2059,6 +2073,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       if (omRatisServer != null) {
         omRatisServer.stop();
         omRatisServer = null;
+        OMHAMetrics.unRegister();
       }
       isOmRpcServerRunning = false;
       if (isOmGrpcServerEnabled) {
@@ -3074,6 +3089,24 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     } else {
       return "Ratis-Disabled";
     }
+  }
+
+  /**
+   * Create OMHAMetrics instance and set the number of
+   * OM nodes that are up and running.
+   */
+  private void omHAMetricsInit(List<ServiceInfo> serviceInfoList,
+                               int port, String leaderId) {
+    OMHAMetrics omhaMetrics = OMHAMetrics
+        .create(serviceInfoList, port, leaderId);
+
+    int omCount = 0;
+    for (ServiceInfo serviceInfo : serviceInfoList) {
+      if (serviceInfo.getNodeType().equals(HddsProtos.NodeType.OM)) {
+        omCount++;
+      }
+    }
+    omhaMetrics.setNumOfOMNodes(omCount);
   }
 
   public String getRatisLogDirectory() {
