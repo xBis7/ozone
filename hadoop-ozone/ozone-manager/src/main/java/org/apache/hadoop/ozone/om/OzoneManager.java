@@ -3097,6 +3097,8 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
    */
   private void omHAMetricsInit(List<ServiceInfo> serviceInfoList,
                                int port, String leaderId) {
+    // unregister, in case metrics already exist
+    OMHAMetrics.unRegister();
     OMHAMetrics omhaMetrics = OMHAMetrics
         .create(serviceInfoList, port, leaderId);
 
