@@ -217,8 +217,10 @@ public class OMMetrics implements MetricsSource {
   public void getMetrics(MetricsCollector collector, boolean b) {
     MetricsRecordBuilder builder = collector
         .addRecord(SOURCE_NAME)
-        .add(new MetricsTag(OmHAState.OM_HA_STATE,
-            omHAState.getHAState()));
+        .tag(OmHAState.OM_HA_STATE, omHAState.getHAState())
+        .addGauge(Interns.info("HAState",
+            "Ozone Manager Ratis Roles"),
+        1);
     builder.endRecord();
   }
 
@@ -244,8 +246,8 @@ public class OMMetrics implements MetricsSource {
   private OmHAState omHAState = new OmHAState();
 
   public OMMetrics() {
-    this.registry = new MetricsRegistry(SOURCE_NAME)
-        .tag(OmHAState.OM_HA_STATE, omHAState.getHAState());
+    this.registry = new MetricsRegistry(SOURCE_NAME);
+//        .tag(OmHAState.OM_HA_STATE, omHAState.getHAState());
     dbCheckpointMetrics = DBCheckpointMetrics.create("OM Metrics");
   }
 
