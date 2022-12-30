@@ -22,9 +22,16 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.hdds.annotation.InterfaceAudience;
 import org.apache.hadoop.hdds.utils.DBCheckpointMetrics;
 import org.apache.hadoop.metrics2.MetricsSystem;
+import org.apache.hadoop.metrics2.MetricsSource;
+import org.apache.hadoop.metrics2.MetricsTag;
+import org.apache.hadoop.metrics2.MetricsInfo;
+import org.apache.hadoop.metrics2.MetricsCollector;
+import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.metrics2.lib.Interns;
+import org.apache.hadoop.metrics2.lib.MetricsRegistry;
 import org.apache.hadoop.metrics2.lib.MutableCounterLong;
 
 /**
@@ -32,9 +39,10 @@ import org.apache.hadoop.metrics2.lib.MutableCounterLong;
  */
 @InterfaceAudience.Private
 @Metrics(about = "Ozone Manager Metrics", context = "dfs")
-public class OMMetrics {
+public class OMMetrics implements MetricsSource {
   private static final String SOURCE_NAME =
       OMMetrics.class.getSimpleName();
+  private MetricsRegistry registry;
 
   // OM request type op metrics
   private @Metric MutableCounterLong numVolumeOps;
@@ -205,7 +213,39 @@ public class OMMetrics {
 
   private final DBCheckpointMetrics dbCheckpointMetrics;
 
+  @Override
+  public void getMetrics(MetricsCollector collector, boolean b) {
+    MetricsRecordBuilder builder = collector
+        .addRecord(SOURCE_NAME)
+        .add(new MetricsTag(OmHAState.OM_HA_STATE,
+            omHAState.getHAState()));
+    builder.endRecord();
+  }
+
+  private static final class OmHAState {
+    private static final MetricsInfo OM_HA_STATE = Interns.info(
+        "OzoneManagerHAState",
+        "HA State for OzoneManager nodes, either Leader "
+            + "or Follower");
+
+    private String hastate = "";
+
+    OmHAState() {}
+
+    void setHAState(String state) {
+      hastate = state;
+    }
+
+    String getHAState() {
+      return hastate;
+    }
+  }
+
+  private OmHAState omHAState = new OmHAState();
+
   public OMMetrics() {
+    this.registry = new MetricsRegistry(SOURCE_NAME)
+        .tag(OmHAState.OM_HA_STATE, omHAState.getHAState());
     dbCheckpointMetrics = DBCheckpointMetrics.create("OM Metrics");
   }
 
@@ -1192,6 +1232,10 @@ public class OMMetrics {
 
   public void incEcBucketCreateFailsTotal() {
     ecBucketCreateFailsTotal.incr();
+  }
+
+  public void updateHAState(String state) {
+    omHAState.setHAState(state);
   }
 
   public void unRegister() {

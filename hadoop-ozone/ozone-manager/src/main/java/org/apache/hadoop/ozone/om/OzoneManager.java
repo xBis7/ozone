@@ -3070,8 +3070,11 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         LOG.error("IO-Exception Occurred", e);
         return "Exception: " + e.toString();
       }
+      metrics.updateHAState(
+          OmUtils.format(serviceList, port, leaderId.getId().toString()));
       return OmUtils.format(serviceList, port, leaderId.getId().toString());
     } else {
+      metrics.updateHAState("Ratis-Disabled");
       return "Ratis-Disabled";
     }
   }
