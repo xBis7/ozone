@@ -33,7 +33,19 @@ import java.nio.file.StandardCopyOption;
 import java.security.KeyPair;
 import java.security.PrivilegedExceptionAction;
 import java.security.cert.CertificateException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -1783,7 +1795,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       }
     }
     if (isRatisEnabled) {
-      List<ServiceInfo> serviceList = new LinkedList<>();
+      List<ServiceInfo> serviceList = new ArrayList<>();
       try {
         serviceList = getServiceList();
       } catch (IOException ex) {
