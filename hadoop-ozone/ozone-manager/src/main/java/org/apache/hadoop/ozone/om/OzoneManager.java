@@ -33,19 +33,7 @@ import java.nio.file.StandardCopyOption;
 import java.security.KeyPair;
 import java.security.PrivilegedExceptionAction;
 import java.security.cert.CertificateException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -1795,17 +1783,14 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       }
     }
     if (isRatisEnabled) {
-      List<ServiceInfo> serviceList = null;
-      String leaderId = "";
+      List<ServiceInfo> serviceList = new LinkedList<>();
       try {
         serviceList = getServiceList();
-        leaderId = Objects.requireNonNull(omRatisServer.getLeader())
-            .getId().toString();
       } catch (IOException ex) {
-        LOG.error("Error while getting a list of the services running " +
-            "or there is no leader node elected yet.", ex);
+        LOG.error("Error while getting the ServiceInfo list.", ex);
       }
-      omHAMetricsInit(serviceList, omNodeDetails.getRatisPort(), leaderId);
+      String ratisRoles = ratisRolesToString();
+      omHAMetricsInit(serviceList, ratisRoles);
     }
   }
 
@@ -3074,7 +3059,11 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
 
   @Override
   public String getRatisRoles() {
-    List<ServiceInfo> serviceList = null;
+    return ratisRolesToString();
+  }
+
+  private String ratisRolesToString() {
+    List<ServiceInfo> serviceList;
     int port = omNodeDetails.getRatisPort();
     RaftPeer leaderId;
     if (isRatisEnabled) {
@@ -3096,11 +3085,11 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
    * OM nodes that are up and running.
    */
   private void omHAMetricsInit(List<ServiceInfo> serviceInfoList,
-                               int port, String leaderId) {
+                               String ratisRoles) {
     // unregister, in case metrics already exist
     OMHAMetrics.unRegister();
     OMHAMetrics omhaMetrics = OMHAMetrics
-        .create(serviceInfoList, port, leaderId);
+        .create(ratisRoles);
 
     int omCount = 0;
     for (ServiceInfo serviceInfo : serviceInfoList) {

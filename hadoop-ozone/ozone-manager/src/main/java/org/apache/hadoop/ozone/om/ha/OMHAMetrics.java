@@ -16,18 +16,12 @@
  */
 package org.apache.hadoop.ozone.om.ha;
 
-import com.google.gson.Gson;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.MetricsRegistry;
 import org.apache.hadoop.metrics2.lib.MutableGaugeInt;
 import org.apache.hadoop.ozone.OzoneConsts;
-import org.apache.hadoop.ozone.om.helpers.ServiceInfo;
-
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * Class to maintain metrics and info related to OM HA.
@@ -39,47 +33,17 @@ public class OMHAMetrics {
       OMHAMetrics.class.getSimpleName();
   private final MetricsRegistry metricsRegistry;
 
-  public OMHAMetrics(List<ServiceInfo> serviceList,
-                     int portNum,
-                     String leaderId) {
-    List<String> omInfoList = new LinkedList<>();
-
-    for (ServiceInfo serviceInfo : serviceList) {
-      StringBuilder builder = new StringBuilder();
-      if (serviceInfo.getNodeType().equals(HddsProtos.NodeType.OM)) {
-        String nodeId = serviceInfo.getOmRoleInfo().getNodeId();
-
-        builder.append("{ Hostname : ")
-            .append(serviceInfo.getHostname())
-            .append(", HostId : ")
-            .append(nodeId);
-
-        if (nodeId.equals(leaderId)) {
-          builder.append(", Role : LEADER }");
-        } else {
-          builder.append(", Role : FOLLOWER }");
-        }
-        String entry = builder.toString();
-        if (!omInfoList.contains(entry)) {
-          omInfoList.add(entry);
-        }
-      }
-    }
-
-    Gson gson = new Gson();
-    String port = String.valueOf(portNum);
+  public OMHAMetrics(String ratisRoles) {
     this.metricsRegistry = new MetricsRegistry(SOURCE_NAME)
-        .tag("port", "Ratis port", port)
-        .tag("OMRoles", "OM roles", gson.toJson(omInfoList));
+        .tag("OMRoles", "OM roles", ratisRoles);
   }
 
   /**
    * Create and return OMHAMetrics instance.
    * @return OMHAMetrics
    */
-  public static synchronized OMHAMetrics create(
-      List<ServiceInfo> nodes, int port, String leaderId) {
-    OMHAMetrics metrics = new OMHAMetrics(nodes, port, leaderId);
+  public static synchronized OMHAMetrics create(String ratisRoles) {
+    OMHAMetrics metrics = new OMHAMetrics(ratisRoles);
     return DefaultMetricsSystem.instance().register(SOURCE_NAME,
         "Metrics for OM HA", metrics);
   }
