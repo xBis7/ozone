@@ -47,7 +47,6 @@ services:
     ports:
       - 9874
       - 9862
-      - 3003:3003
     hostname: om1
     command: ["ozone","om"]
   om2:
