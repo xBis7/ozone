@@ -344,6 +344,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private final OzoneAdmins s3OzoneAdmins;
 
   private final OMMetrics metrics;
+  private OMHAMetrics omhaMetrics;
   private final ProtocolMessageMetrics<ProtocolMessageEnum>
       omClientProtocolMetrics;
   private OzoneManagerHttpServer httpServer;
@@ -3077,16 +3078,20 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private String ratisRolesToString() {
     List<ServiceInfo> serviceList;
     int port = omNodeDetails.getRatisPort();
-    RaftPeer leaderId;
+    RaftPeer leader;
     if (isRatisEnabled) {
       try {
-        leaderId = omRatisServer.getLeader();
+        leader = omRatisServer.getLeader();
         serviceList = getServiceList();
       } catch (IOException e) {
         LOG.error("IO-Exception Occurred", e);
         return "Exception: " + e.toString();
       }
-      return OmUtils.format(serviceList, port, leaderId.getId().toString());
+      String leaderId = "";
+      if (Objects.nonNull(leader)) {
+        leaderId += leader.getId().toString();
+      }
+      return OmUtils.format(serviceList, port, leaderId);
     } else {
       return "Ratis-Disabled";
     }
@@ -3100,7 +3105,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
                                String ratisRoles) {
     // unregister, in case metrics already exist
     OMHAMetrics.unRegister();
-    OMHAMetrics omhaMetrics = OMHAMetrics
+    omhaMetrics = OMHAMetrics
         .create(ratisRoles);
 
     int omCount = 0;
@@ -3110,6 +3115,10 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       }
     }
     omhaMetrics.setNumOfOMNodes(omCount);
+  }
+
+  public OMHAMetrics getOmhaMetrics() {
+    return omhaMetrics;
   }
 
   public String getRatisLogDirectory() {

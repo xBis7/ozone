@@ -16,6 +16,7 @@
  */
 package org.apache.hadoop.ozone.om.ha;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
@@ -64,5 +65,9 @@ public class OMHAMetrics {
 
   public MutableGaugeInt getNumOfOMNodes() {
     return numOfOMNodes;
+  }
+
+  public MetricsRegistry getMetricsRegistry() {
+    return metricsRegistry;
   }
 }
