@@ -70,6 +70,7 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.Table.KeyValue;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OzoneManagerVersion;
+import org.apache.hadoop.ozone.om.ha.OMHAMetrics;
 import org.apache.hadoop.ozone.om.helpers.KeyInfoWithVolumeContext;
 import org.apache.hadoop.ozone.om.service.OMRangerBGSyncService;
 import org.apache.hadoop.ozone.util.OzoneNetUtils;
@@ -338,6 +339,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private final OzoneAdmins s3OzoneAdmins;
 
   private final OMMetrics metrics;
+  private OMHAMetrics omhaMetrics;
   private final ProtocolMessageMetrics<ProtocolMessageEnum>
       omClientProtocolMetrics;
   private OzoneManagerHttpServer httpServer;
@@ -1795,6 +1797,16 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         }
       }
     }
+    if (isRatisEnabled) {
+      List<ServiceInfo> serviceList = new ArrayList<>();
+      try {
+        serviceList = getServiceList();
+      } catch (IOException ex) {
+        LOG.error("IOException while getting the ServiceInfo list.", ex);
+      }
+      String ratisRoles = ratisRolesToString();
+      omHAMetricsInit(serviceList, ratisRoles);
+    }
   }
 
   /**
@@ -2061,6 +2073,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       if (omRatisServer != null) {
         omRatisServer.stop();
         omRatisServer = null;
+        OMHAMetrics.unRegister();
       }
       isOmRpcServerRunning = false;
       if (isOmGrpcServerEnabled) {
@@ -2945,21 +2958,54 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
 
   @Override
   public String getRatisRoles() {
-    List<ServiceInfo> serviceList = null;
+    return ratisRolesToString();
+  }
+
+  private String ratisRolesToString() {
+    List<ServiceInfo> serviceList;
     int port = omNodeDetails.getRatisPort();
-    RaftPeer leaderId;
+    RaftPeer leader;
     if (isRatisEnabled) {
       try {
-        leaderId = omRatisServer.getLeader();
+        leader = omRatisServer.getLeader();
         serviceList = getServiceList();
       } catch (IOException e) {
         LOG.error("IO-Exception Occurred", e);
         return "Exception: " + e.toString();
       }
-      return OmUtils.format(serviceList, port, leaderId.getId().toString());
+      String leaderId = "";
+      if (Objects.nonNull(leader)) {
+        leaderId += leader.getId().toString();
+      }
+      return OmUtils.format(serviceList, port, leaderId);
     } else {
       return "Ratis-Disabled";
     }
+  }
+
+  /**
+   * Create OMHAMetrics instance and set the number of
+   * OM nodes that are up and running.
+   */
+  private void omHAMetricsInit(List<ServiceInfo> serviceInfoList,
+                               String ratisRoles) {
+    // unregister, in case metrics already exist
+    // so that the metric tags will get updated.
+    OMHAMetrics.unRegister();
+    omhaMetrics = OMHAMetrics
+        .create(ratisRoles);
+
+    int omCount = 0;
+    for (ServiceInfo serviceInfo : serviceInfoList) {
+      if (serviceInfo.getNodeType().equals(HddsProtos.NodeType.OM)) {
+        omCount++;
+      }
+    }
+    omhaMetrics.setNumOfOMNodes(omCount);
+  }
+
+  public OMHAMetrics getOmhaMetrics() {
+    return omhaMetrics;
   }
 
   public String getRatisLogDirectory() {
