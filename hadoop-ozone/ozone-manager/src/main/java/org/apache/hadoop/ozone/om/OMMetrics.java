@@ -26,6 +26,7 @@ import org.apache.hadoop.metrics2.annotation.Metric;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.MutableCounterLong;
+import org.apache.hadoop.metrics2.lib.MutableGaugeLong;
 
 /**
  * This class is for maintaining Ozone Manager statistics.
@@ -119,6 +120,9 @@ public class OMMetrics implements OmMetadataReaderMetrics {
   private @Metric MutableCounterLong numOpenKeyDeleteRequestFails;
   private @Metric MutableCounterLong numSnapshotCreateFails;
   private @Metric MutableCounterLong numSnapshotListFails;
+  private @Metric MutableGaugeLong numSnapshotActive;
+  private @Metric MutableGaugeLong numSnapshotDeleted;
+  private @Metric MutableGaugeLong numSnapshotReclaimed;
 
   // Number of tenant operations attempted
   private @Metric MutableCounterLong numTenantOps;
@@ -438,6 +442,18 @@ public class OMMetrics implements OmMetadataReaderMetrics {
 
   public void incNumSnapshotListFails() {
     numSnapshotListFails.incr();
+  }
+
+  public void setNumSnapshotActive(long num) {
+    numSnapshotActive.set(num);
+  }
+
+  public void setNumSnapshotDeleted(long num) {
+    numSnapshotDeleted.set(num);
+  }
+
+  public void setNumSnapshotReclaimed(long num) {
+    numSnapshotReclaimed.set(num);
   }
 
   public void incNumCompleteMultipartUploadFails() {
@@ -1122,6 +1138,18 @@ public class OMMetrics implements OmMetadataReaderMetrics {
 
   public long getNumSnapshotListFails() {
     return numSnapshotListFails.value();
+  }
+
+  public long getNumSnapshotActive() {
+    return numSnapshotActive.value();
+  }
+
+  public long getNumSnapshotDeleted() {
+    return numSnapshotDeleted.value();
+  }
+
+  public long getNumSnapshotReclaimed() {
+    return numSnapshotReclaimed.value();
   }
 
 
