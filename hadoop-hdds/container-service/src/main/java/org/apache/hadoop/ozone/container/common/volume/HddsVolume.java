@@ -355,9 +355,9 @@ public class HddsVolume extends StorageVolume {
    * @param id clusterId or scmId
    */
   public void checkTmpDirPaths(String id) {
-    String tmpPath = createTmpPath(id);
-    String deleteServicePath = tmpPath + TMP_DELETE_SERVICE_DIR;
-    deleteServiceDirPath = Paths.get(deleteServicePath);
+//    String tmpPath = createTmpPath(id);
+//    String deleteServicePath = tmpPath + TMP_DELETE_SERVICE_DIR;
+//    deleteServiceDirPath = Paths.get(deleteServicePath);
   }
 
   private String createTmpPath(String id) {
