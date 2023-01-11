@@ -23,6 +23,7 @@ import org.apache.hadoop.metrics2.MetricsSource;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
+import org.apache.hadoop.metrics2.lib.Interns;
 import org.apache.hadoop.metrics2.lib.MetricsRegistry;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.helpers.ServiceInfo;
@@ -94,15 +95,20 @@ public final class OMHAMetrics implements MetricsSource {
       if (info.getNodeType()
           .equals(HddsProtos.NodeType.OM)) {
 
+        MetricsInfo metricsInfo = Interns
+            .info("OzoneManagerHALeaderState_" + info.getHostname(),
+                "Leader active state " +
+                    "of OzoneManager node (1 leader, 0 follower)");
+
         if (info.getOmRoleInfo().getNodeId()
             .equals(leaderId)) {
-          recordBuilder.endRecord().addRecord(SOURCE_NAME)
-              .tag(OMHAMetricsInfo.CurrNodeHostName, info.getHostname())
-              .addGauge(OMHAMetricsInfo.OzoneManagerHALeaderState, 1);
+          recordBuilder
+//              .tag(OMHAMetricsInfo.CurrNodeHostName, info.getHostname())
+              .addGauge(metricsInfo, 1);
         } else {
-          recordBuilder.endRecord().addRecord(SOURCE_NAME)
-              .tag(OMHAMetricsInfo.CurrNodeHostName, info.getHostname())
-              .addGauge(OMHAMetricsInfo.OzoneManagerHALeaderState, 0);
+          recordBuilder
+//              .tag(OMHAMetricsInfo.CurrNodeHostName, info.getHostname())
+              .addGauge(metricsInfo, 0);
         }
         recordBuilder.endRecord();
       }
