@@ -16,34 +16,64 @@
  */
 package org.apache.hadoop.ozone.om.ha;
 
-import org.apache.hadoop.metrics2.annotation.Metric;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.metrics2.MetricsCollector;
+import org.apache.hadoop.metrics2.MetricsInfo;
+import org.apache.hadoop.metrics2.MetricsSource;
+import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.metrics2.annotation.Metrics;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.metrics2.lib.MetricsRegistry;
-import org.apache.hadoop.metrics2.lib.MutableGaugeInt;
 import org.apache.hadoop.ozone.OzoneConsts;
+import org.apache.hadoop.ozone.om.helpers.ServiceInfo;
+
+import java.util.List;
 
 /**
  * Class to maintain metrics and info related to OM HA.
  */
-@Metrics(about = "OM HA Metrics", context = OzoneConsts.OZONE)
-public class OMHAMetrics {
+@Metrics(about = "OzoneManager HA Metrics", context = OzoneConsts.OZONE)
+public final class OMHAMetrics implements MetricsSource {
+
+  private enum OMHAMetricsInfo implements MetricsInfo {
+
+    OzoneManagerHALeaderState("Leader active state " +
+        "of OzoneManager node (1 leader, 0 follower)"),
+    CurrNodeHostName("OM hostname");
+
+    private final String description;
+
+    OMHAMetricsInfo(String description) {
+      this.description = description;
+    }
+
+    @Override
+    public String description() {
+      return description;
+    }
+  }
 
   public static final String SOURCE_NAME =
       OMHAMetrics.class.getSimpleName();
-  private final MetricsRegistry metricsRegistry;
+  private MetricsRegistry metricsRegistry;
 
-  public OMHAMetrics(String ratisRoles) {
-    this.metricsRegistry = new MetricsRegistry(SOURCE_NAME)
-        .tag("OMRoles", "OM roles", ratisRoles);
+  private List<ServiceInfo> serviceInfoList;
+  private String leaderId;
+
+  public OMHAMetrics(List<ServiceInfo> serviceInfoList,
+                     String leaderId) {
+    this.serviceInfoList = serviceInfoList;
+    this.leaderId = leaderId;
+    this.metricsRegistry = new MetricsRegistry(SOURCE_NAME);
   }
 
   /**
    * Create and return OMHAMetrics instance.
    * @return OMHAMetrics
    */
-  public static synchronized OMHAMetrics create(String ratisRoles) {
-    OMHAMetrics metrics = new OMHAMetrics(ratisRoles);
+  public static synchronized OMHAMetrics create(
+      List<ServiceInfo> serviceInfoList, String leaderId) {
+    OMHAMetrics metrics = new OMHAMetrics(serviceInfoList, leaderId);
     return DefaultMetricsSystem.instance()
         .register(SOURCE_NAME, "Metrics for OM HA", metrics);
   }
@@ -55,18 +85,27 @@ public class OMHAMetrics {
     DefaultMetricsSystem.instance().unregisterSource(SOURCE_NAME);
   }
 
-  @Metric("Number of OM nodes")
-  private MutableGaugeInt numOfOMNodes;
+  @Override
+  public synchronized void getMetrics(MetricsCollector collector, boolean all) {
 
-  public void setNumOfOMNodes(int count) {
-    numOfOMNodes.set(count);
-  }
+    MetricsRecordBuilder recordBuilder = collector.addRecord(SOURCE_NAME);
 
-  public MutableGaugeInt getNumOfOMNodes() {
-    return numOfOMNodes;
-  }
+    for (ServiceInfo info : serviceInfoList) {
+      if (info.getNodeType()
+          .equals(HddsProtos.NodeType.OM)) {
 
-  public MetricsRegistry getMetricsRegistry() {
-    return metricsRegistry;
+        if (info.getOmRoleInfo().getNodeId()
+            .equals(leaderId)) {
+          recordBuilder.endRecord().addRecord(SOURCE_NAME)
+              .tag(OMHAMetricsInfo.CurrNodeHostName, info.getHostname())
+              .addGauge(OMHAMetricsInfo.OzoneManagerHALeaderState, 1);
+        } else {
+          recordBuilder.endRecord().addRecord(SOURCE_NAME)
+              .tag(OMHAMetricsInfo.CurrNodeHostName, info.getHostname())
+              .addGauge(OMHAMetricsInfo.OzoneManagerHALeaderState, 0);
+        }
+        recordBuilder.endRecord();
+      }
+    }
   }
 }

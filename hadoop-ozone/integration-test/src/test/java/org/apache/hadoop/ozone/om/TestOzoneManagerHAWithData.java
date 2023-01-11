@@ -19,6 +19,7 @@ package org.apache.hadoop.ozone.om;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
+import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.ozone.client.ObjectStore;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneMultipartUploadPartListParts;
@@ -49,6 +50,8 @@ import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.DIRE
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.FILE_ALREADY_EXISTS;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.NOT_A_FILE;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.PARTIAL_DELETE;
+import static org.apache.hadoop.test.MetricsAsserts.assertGauge;
+import static org.apache.hadoop.test.MetricsAsserts.getMetrics;
 import static org.junit.Assert.fail;
 
 /**
@@ -110,13 +113,19 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     Thread.sleep(2000);
     OzoneManager om = getCluster().getOzoneManager(1);
     OMHAMetrics omhaMetrics = om.getOmhaMetrics();
+    MetricsRecordBuilder omMetrics = getMetrics("OMHAMetrics");
 
-    String omRoles = omhaMetrics.getMetricsRegistry()
-        .getTag("OMRoles").value();
+    // Get Leader OM Id.
+    String leaderOMNodeId = OmFailoverProxyUtil
+        .getFailoverProxyProvider(getObjectStore().getClientProxy())
+        .getCurrentProxyOMNodeId();
 
-    Assertions.assertEquals(om.getRatisRoles(), omRoles);
-    Assertions.assertEquals(getNumOfOMs(),
-        omhaMetrics.getNumOfOMNodes().value());
+    if (om.getOMNodeId()
+        .equals(leaderOMNodeId)) {
+      assertGauge("OzoneManagerHALeaderState.1", 1L, omMetrics);
+    } else {
+      assertGauge("OzoneManagerHALeaderState.1", 0L, omMetrics);
+    }
   }
 
   @Test
