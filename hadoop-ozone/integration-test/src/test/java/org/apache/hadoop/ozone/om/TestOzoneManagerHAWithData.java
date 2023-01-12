@@ -19,7 +19,6 @@ package org.apache.hadoop.ozone.om;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
-import org.apache.hadoop.metrics2.MetricsRecordBuilder;
 import org.apache.hadoop.ozone.client.ObjectStore;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneMultipartUploadPartListParts;
@@ -50,8 +49,6 @@ import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.DIRE
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.FILE_ALREADY_EXISTS;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.NOT_A_FILE;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.PARTIAL_DELETE;
-import static org.apache.hadoop.test.MetricsAsserts.assertGauge;
-import static org.apache.hadoop.test.MetricsAsserts.getMetrics;
 import static org.junit.Assert.fail;
 
 /**
@@ -111,26 +108,15 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
   @Test
   public void testOMHAMetrics() throws InterruptedException {
     Thread.sleep(2000);
-    OzoneManager om = getCluster().getOzoneManager(1);
-    MetricsRecordBuilder omHaMetrics = getMetrics("OMHAMetrics");
 
-    // Get Leader OM Id.
-    String leaderOMNodeId = OmFailoverProxyUtil
-        .getFailoverProxyProvider(getObjectStore().getClientProxy())
-        .getCurrentProxyOMNodeId();
+    OzoneManager om = getCluster().getOMLeader();
 
-    // Get current OM hostname
-    String hostname = om.getOmRpcServerAddr().getHostName();
+    // Get OMHAMetrics
+    OMHAMetrics omhaMetrics = om.getOmhaMetrics();
 
-    if (om.getOMNodeId()
-        .equals(leaderOMNodeId)) {
-      // Current OM is leader
-      assertGauge("OzoneManagerHALeaderState_" + om.getOMNodeId(),
-          1L, omHaMetrics);
-    } else {
-      assertGauge("OzoneManagerHALeaderState_" + om.getOMNodeId(),
-          0L, omHaMetrics);
-    }
+    String metric = omhaMetrics.getMetricsRegistry().getTag("State").value();
+
+    Assertions.assertEquals("leader", metric);
   }
 
   @Test

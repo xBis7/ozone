@@ -1797,22 +1797,20 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         }
       }
     }
-    List<ServiceInfo> serviceList = new ArrayList<>();
     String leaderId = "";
     if (isRatisEnabled) {
       RaftPeer leader = null;
       try {
         leader = omRatisServer.getLeader();
-        serviceList = getServiceList();
       } catch (IOException ex) {
         LOG.error("IOException while getting the " +
-            "ServiceInfo list or Ratis server leader.", ex);
+            "Ratis server leader.", ex);
       }
       if (Objects.nonNull(leader)) {
         leaderId += leader.getId().toString();
       }
     }
-    omHAMetricsInit(serviceList, leaderId);
+    omHAMetricsInit(leaderId);
   }
 
   /**
@@ -2982,16 +2980,14 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   }
 
   /**
-   * Create OMHAMetrics instance and set the number of
-   * OM nodes that are up and running.
+   * Create OMHAMetrics instance.
    */
-  private void omHAMetricsInit(List<ServiceInfo> serviceInfoList,
-                               String leaderId) {
+  private void omHAMetricsInit(String leaderId) {
     // unregister, in case metrics already exist
     // so that the metric tags will get updated.
     OMHAMetrics.unRegister();
     omhaMetrics = OMHAMetrics
-        .create(serviceInfoList, leaderId);
+        .create(getOMNodeId(), leaderId);
   }
 
   public OMHAMetrics getOmhaMetrics() {
