@@ -109,14 +109,24 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
   public void testOMHAMetrics() throws InterruptedException {
     Thread.sleep(2000);
 
-    OzoneManager om = getCluster().getOMLeader();
+    OzoneManager leaderOM = getCluster().getOMLeader();
+    OzoneManager randomOM = getCluster().getOzoneManager(1);
 
     // Get OMHAMetrics
-    OMHAMetrics omhaMetrics = om.getOmhaMetrics();
+    OMHAMetrics omhaMetrics = randomOM.getOmhaMetrics();
 
-    String metric = omhaMetrics.getMetricsRegistry().getTag("State").value();
-
-    Assertions.assertEquals("leader", metric);
+    if (randomOM.getOMNodeId()
+        .equals(leaderOM.getOMNodeId())) {
+      Assertions.assertEquals("leader",
+          omhaMetrics.getOmhaInfoState());
+      Assertions.assertEquals(1L,
+          omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
+    } else {
+      Assertions.assertEquals("follower",
+          omhaMetrics.getOmhaInfoState());
+      Assertions.assertEquals(0L,
+          omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
+    }
   }
 
   @Test

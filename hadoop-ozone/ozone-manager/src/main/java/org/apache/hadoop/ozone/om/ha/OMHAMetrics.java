@@ -51,8 +51,50 @@ public final class OMHAMetrics implements MetricsSource {
     }
   }
 
+  /**
+   * Private nested class to hold
+   * the values of OMHAMetricsInfo.
+   */
+  private static final class OMHAInfo {
+
+    private long ozoneManagerHALeaderState;
+    private String state;
+    private String nodeId;
+
+    OMHAInfo() {
+      this.ozoneManagerHALeaderState = 0L;
+      this.state = "";
+      this.nodeId = "";
+    }
+
+    public long getOzoneManagerHALeaderState() {
+      return ozoneManagerHALeaderState;
+    }
+
+    public void setOzoneManagerHALeaderState(long ozoneManagerHALeaderState) {
+      this.ozoneManagerHALeaderState = ozoneManagerHALeaderState;
+    }
+
+    public String getState() {
+      return state;
+    }
+
+    public void setState(String state) {
+      this.state = state;
+    }
+
+    public String getNodeId() {
+      return nodeId;
+    }
+
+    public void setNodeId(String nodeId) {
+      this.nodeId = nodeId;
+    }
+  }
+
   public static final String SOURCE_NAME =
       OMHAMetrics.class.getSimpleName();
+  private final OMHAInfo omhaInfo = new OMHAInfo();
   private MetricsRegistry metricsRegistry;
 
   private String currNodeId;
@@ -88,11 +130,19 @@ public final class OMHAMetrics implements MetricsSource {
     MetricsRecordBuilder recordBuilder = collector.addRecord(SOURCE_NAME);
 
     if (currNodeId.equals(leaderId)) {
+      omhaInfo.setNodeId(currNodeId);
+      omhaInfo.setState("leader");
+      omhaInfo.setOzoneManagerHALeaderState(1);
+
       recordBuilder
           .tag(OMHAMetricsInfo.NodeId, currNodeId)
           .tag(OMHAMetricsInfo.State, "leader")
           .addGauge(OMHAMetricsInfo.OzoneManagerHALeaderState, 1);
     } else {
+      omhaInfo.setNodeId(currNodeId);
+      omhaInfo.setState("follower");
+      omhaInfo.setOzoneManagerHALeaderState(0);
+
       recordBuilder
           .tag(OMHAMetricsInfo.NodeId, currNodeId)
           .tag(OMHAMetricsInfo.State, "follower")
@@ -102,7 +152,17 @@ public final class OMHAMetrics implements MetricsSource {
   }
 
   @VisibleForTesting
-  public MetricsRegistry getMetricsRegistry() {
-    return metricsRegistry;
+  public String getOmhaInfoNodeId() {
+    return omhaInfo.getNodeId();
+  }
+
+  @VisibleForTesting
+  public String getOmhaInfoState() {
+    return omhaInfo.getState();
+  }
+
+  @VisibleForTesting
+  public long getOmhaInfoOzoneManagerHALeaderState() {
+    return omhaInfo.getOzoneManagerHALeaderState();
   }
 }
