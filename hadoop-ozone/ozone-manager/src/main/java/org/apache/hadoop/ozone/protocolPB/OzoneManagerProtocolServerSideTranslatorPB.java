@@ -49,7 +49,6 @@ import com.google.protobuf.ProtocolMessageEnum;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import org.apache.hadoop.ozone.security.S3SecurityUtil;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
@@ -165,12 +164,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
           // if current OM is leader and then proceed with
           // processing the request.
           S3SecurityUtil.validateS3Credential(request, ozoneManager);
-
-          String accessId = request.getS3Authentication().getAccessId();
-          UserGroupInformation s3Ugi =
-              UserGroupInformation.createRemoteUser(accessId);
-          // This is set to be accessed by the OzoneIdentityProvider.
-          UserGroupInformation.setLoginUser(s3Ugi);
         } catch (IOException ex) {
           // If validate credentials fail return error OM Response.
           return createErrorResponse(request, ex);

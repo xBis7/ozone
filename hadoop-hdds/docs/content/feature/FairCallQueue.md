@@ -60,7 +60,7 @@ Port used for below examples : 9862
 </property>
 <property>
    <name>ipc.9862.identity-provider.impl</name>
-   <value>org.apache.hadoop.ozone.om.OzoneIdentityProvider</value>
+   <value>org.apache.hadoop.ozone.callQueue.OzoneIdentityProvider</value>
 </property>
 <property>
    <name>ipc.9862.scheduler.priority.levels</name>

@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.hadoop.ozone.om;
+package org.apache.hadoop.ozone.callQueue;
 
 import org.apache.hadoop.ipc.Schedulable;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+
+import static org.mockito.Mockito.when;
 
 /**
  * Tests for OzoneIdentityProvider.
@@ -42,6 +44,8 @@ public class TestOzoneIdentityProvider {
     UserGroupInformation ugi =
         UserGroupInformation.createRemoteUser("testUser");
     UserGroupInformation.setLoginUser(ugi);
+
+    when(schedulable.getUserGroupInformation()).thenReturn(ugi);
 
     String identity = identityProvider.makeIdentity(schedulable);
 
