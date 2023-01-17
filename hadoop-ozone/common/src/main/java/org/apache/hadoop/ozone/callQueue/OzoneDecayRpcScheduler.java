@@ -17,79 +17,46 @@
  */
 package org.apache.hadoop.ozone.callQueue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.ipc.Schedulable;
 import org.apache.hadoop.ipc.CostProvider;
-import org.apache.hadoop.ipc.IdentityProvider;
 import org.apache.hadoop.ipc.DefaultCostProvider;
 import org.apache.hadoop.ipc.metrics.DecayRpcSchedulerDetailedMetrics;
 import org.apache.hadoop.ipc.metrics.RpcMetrics;
-import org.apache.hadoop.ipc.DecayRpcSchedulerMXBean;
 import org.apache.hadoop.ipc.ProcessingDetails;
 import org.apache.hadoop.ipc.RpcScheduler;
-import org.apache.hadoop.metrics2.MetricsCollector;
-import org.apache.hadoop.metrics2.MetricsRecordBuilder;
-import org.apache.hadoop.metrics2.MetricsSource;
-import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
-import org.apache.hadoop.metrics2.lib.Interns;
-import org.apache.hadoop.metrics2.util.MBeans;
-import org.apache.hadoop.metrics2.util.Metrics2Util;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.thirdparty.com.google.common.annotations.VisibleForTesting;
+import org.apache.hadoop.ozone.callQueue.metrics.OzoneDecayRpcSchedulerMetrics;
+import org.apache.hadoop.ozone.callQueue.metrics.OzoneDecayRpcSchedulerMetricsProxy;
 import org.apache.hadoop.thirdparty.com.google.common.base.Preconditions;
-import org.apache.hadoop.thirdparty.com.google.common.util.concurrent.AtomicDoubleArray;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.management.ObjectName;
-import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Timer;
-import java.util.TimerTask;
-import java.util.Iterator;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Ozone implementation of Hadoop DecayRpcScheduler.
  */
-public class OzoneDecayRpcScheduler implements RpcScheduler,
-    DecayRpcSchedulerMXBean, MetricsSource {
+public class OzoneDecayRpcScheduler implements RpcScheduler {
   /**
    * Period controls how many milliseconds between each decay sweep.
    */
   public static final String IPC_SCHEDULER_DECAYSCHEDULER_PERIOD_KEY =
       "decay-scheduler.period-ms";
   public static final long IPC_SCHEDULER_DECAYSCHEDULER_PERIOD_DEFAULT =
-      5000;
-  @Deprecated
+      5000L;
   public static final String IPC_FCQ_DECAYSCHEDULER_PERIOD_KEY =
       "faircallqueue.decay-scheduler.period-ms";
-
-  /**
-   * Decay factor controls how much each cost is suppressed by on each sweep.
-   * Valid numbers are &gt; 0 and &lt; 1. Decay factor works in tandem with
-   * period
-   * to control how long the scheduler remembers an identity.
-   */
-  public static final String IPC_SCHEDULER_DECAYSCHEDULER_FACTOR_KEY =
-      "decay-scheduler.decay-factor";
-  public static final double IPC_SCHEDULER_DECAYSCHEDULER_FACTOR_DEFAULT =
-      0.5;
-  @Deprecated
-  public static final String IPC_FCQ_DECAYSCHEDULER_FACTOR_KEY =
-      "faircallqueue.decay-scheduler.decay-factor";
 
   /**
    * Thresholds are specified as integer percentages, and specify which usage
@@ -103,7 +70,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
    */
   public static final String IPC_DECAYSCHEDULER_THRESHOLDS_KEY =
       "decay-scheduler.thresholds";
-  @Deprecated
+
   public static final String IPC_FCQ_DECAYSCHEDULER_THRESHOLDS_KEY =
       "faircallqueue.decay-scheduler.thresholds";
 
@@ -130,30 +97,21 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
       "decay-scheduler.metrics.top.user.count";
   public static final int DECAYSCHEDULER_METRICS_TOP_USER_COUNT_DEFAULT = 10;
 
-  public static final Logger LOG =
+  private static final Logger LOG =
       LoggerFactory.getLogger(OzoneDecayRpcScheduler.class);
-
-  private static final ObjectWriter WRITER = new ObjectMapper().writer();
 
   // Track the decayed and raw (no decay) number of calls for each schedulable
   // identity from all previous decay windows: idx 0 for decayed call cost and
   // idx 1 for the raw call cost
   private final ConcurrentHashMap<Object, List<AtomicLong>> callCosts =
-      new ConcurrentHashMap<Object, List<AtomicLong>>();
+      new ConcurrentHashMap<>();
 
   // Should be the sum of all AtomicLongs in decayed callCosts
   private final AtomicLong totalDecayedCallCost = new AtomicLong();
   // The sum of all AtomicLongs in raw callCosts
   private final AtomicLong totalRawCallCost = new AtomicLong();
 
-
-  // Track total call count and response time in current decay window
-  private final AtomicLongArray responseTimeCountInCurrWindow;
-  private final AtomicLongArray responseTimeTotalInCurrWindow;
-
-  // Track average response time in previous decay window
-  private final AtomicDoubleArray responseTimeAvgInLastWindow;
-  private final AtomicLongArray responseTimeCountInLastWindow;
+  private final OzoneDecayRpcSchedulerMetrics metrics;
 
   // RPC queue time rates per queue
   private final DecayRpcSchedulerDetailedMetrics
@@ -162,50 +120,23 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
   // Pre-computed scheduling decisions during the decay sweep are
   // atomically swapped in as a read-only map
   private final AtomicReference<Map<Object, Integer>> scheduleCacheRef =
-      new AtomicReference<Map<Object, Integer>>();
+      new AtomicReference<>();
 
   // Tune the behavior of the scheduler
   private final long decayPeriodMillis; // How long between each tick
-  private final double decayFactor; // nextCost = currentCost * decayFactor
   private final int numLevels;
   private final double[] thresholds;
-  private final IdentityProvider identityProvider;
+  private final OzoneIdentityProvider identityProvider;
   private final boolean backOffByResponseTimeEnabled;
   private final long[] backOffResponseTimeThresholds;
   private final String namespace;
+  private final Configuration configuration;
   private final int topUsersCount; // e.g., report top 10 users' metrics
-  private static final double PRECISION = 0.0001;
   private final TimeUnit metricsTimeUnit;
-  private OzoneDecayRpcScheduler.MetricsProxy metricsProxy;
+  private final OzoneDecayRpcSchedulerMetricsProxy metricsProxy;
   private final CostProvider costProvider;
 
   private final Map<String, Integer> staticPriorities = new HashMap<>();
-  /**
-   * This TimerTask will call decayCurrentCosts until
-   * the scheduler has been garbage collected.
-   */
-  public static class DecayTask extends TimerTask {
-    private WeakReference<OzoneDecayRpcScheduler> schedulerRef;
-    private Timer timer;
-
-    public DecayTask(OzoneDecayRpcScheduler scheduler, Timer timer) {
-      this.schedulerRef = new WeakReference<>(scheduler);
-      this.timer = timer;
-    }
-
-    @Override
-    public void run() {
-      OzoneDecayRpcScheduler sched = schedulerRef.get();
-      if (sched != null) {
-        sched.decayCurrentCosts();
-      } else {
-        // Our scheduler was garbage collected since it is no longer in use,
-        // so we should terminate the timer as well
-        timer.cancel();
-        timer.purge();
-      }
-    }
-  }
 
   /**
    * Create a decay scheduler.
@@ -221,9 +152,9 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
     }
     this.numLevels = numLevels;
     this.namespace = ns;
-    this.decayFactor = parseDecayFactor(ns, conf);
+    this.configuration = conf;
     this.decayPeriodMillis = parseDecayPeriodMillis(ns, conf);
-    this.identityProvider = this.parseIdentityProvider();
+    this.identityProvider = new OzoneIdentityProvider();
     this.costProvider = this.parseCostProvider(ns, conf);
     this.thresholds = parseThresholds(ns, conf, numLevels);
     this.backOffByResponseTimeEnabled = parseBackOffByResponseTimeEnabled(ns,
@@ -231,11 +162,8 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
     this.backOffResponseTimeThresholds =
         parseBackOffResponseTimeThreshold(ns, conf, numLevels);
 
-    // Setup response time metrics
-    responseTimeTotalInCurrWindow = new AtomicLongArray(numLevels);
-    responseTimeCountInCurrWindow = new AtomicLongArray(numLevels);
-    responseTimeAvgInLastWindow = new AtomicDoubleArray(numLevels);
-    responseTimeCountInLastWindow = new AtomicLongArray(numLevels);
+    this.metrics =
+        new OzoneDecayRpcSchedulerMetrics(this);
 
     topUsersCount =
         conf.getInt(DECAYSCHEDULER_METRICS_TOP_USER_COUNT,
@@ -251,11 +179,11 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
 
     // Setup delay timer
     Timer timer = new Timer(true);
-    OzoneDecayRpcScheduler.DecayTask task =
-        new OzoneDecayRpcScheduler.DecayTask(this, timer);
+    OzoneDecayTask task =
+        new OzoneDecayTask(this, timer);
     timer.scheduleAtFixedRate(task, decayPeriodMillis, decayPeriodMillis);
 
-    metricsProxy = OzoneDecayRpcScheduler.MetricsProxy
+    metricsProxy = OzoneDecayRpcSchedulerMetricsProxy
         .getInstance(ns, numLevels, this);
     recomputeScheduleCache();
   }
@@ -276,31 +204,6 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
     CostProvider provider = providers.get(0); // use the first
     provider.init(ns, conf);
     return provider;
-  }
-
-  // Pass an object that holds all the S3Auth info
-  private IdentityProvider parseIdentityProvider() {
-    return new OzoneIdentityProvider();
-  }
-
-  private static double parseDecayFactor(String ns, Configuration conf) {
-    double factor = conf.getDouble(ns + "." +
-        IPC_FCQ_DECAYSCHEDULER_FACTOR_KEY, 0.0);
-    if (factor == 0.0) {
-      factor = conf.getDouble(ns + "." +
-              IPC_SCHEDULER_DECAYSCHEDULER_FACTOR_KEY,
-          IPC_SCHEDULER_DECAYSCHEDULER_FACTOR_DEFAULT);
-    } else if ((factor > 0.0) && (factor < 1)) {
-      LOG.warn(IPC_FCQ_DECAYSCHEDULER_FACTOR_KEY +
-          " is deprecated. Please use " +
-          IPC_SCHEDULER_DECAYSCHEDULER_FACTOR_KEY + ".");
-    }
-    if (factor <= 0 || factor >= 1) {
-      throw new IllegalArgumentException("Decay Factor " +
-          "must be between 0 and 1");
-    }
-
-    return factor;
   }
 
   private static long parseDecayPeriodMillis(String ns, Configuration conf) {
@@ -413,66 +316,9 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
   }
 
   /**
-   * Decay the stored costs for each user and clean as necessary.
-   * This method should be called periodically in order to keep
-   * costs current.
-   */
-  private void decayCurrentCosts() {
-    LOG.debug("Start to decay current costs.");
-    try {
-      long totalDecayedCost = 0;
-      long totalRawCost = 0;
-      Iterator<Map.Entry<Object, List<AtomicLong>>> it =
-          callCosts.entrySet().iterator();
-
-      while (it.hasNext()) {
-        Map.Entry<Object, List<AtomicLong>> entry = it.next();
-        AtomicLong decayedCost = entry.getValue().get(0);
-        AtomicLong rawCost = entry.getValue().get(1);
-
-
-        // Compute the next value by reducing it by the decayFactor
-        totalRawCost += rawCost.get();
-        long currentValue = decayedCost.get();
-        long nextValue = (long) (currentValue * decayFactor);
-        totalDecayedCost += nextValue;
-        decayedCost.set(nextValue);
-
-        LOG.debug(
-            "Decaying costs for the user: {}, its decayedCost: {}, rawCost: {}",
-            entry.getKey(), nextValue, rawCost.get());
-        if (nextValue == 0) {
-          LOG.debug("The decayed cost for the user {} is zero " +
-              "and being cleaned.", entry.getKey());
-          // We will clean up unused keys here. An interesting optimization
-          // might be to have an upper bound on keyspace in callCosts and only
-          // clean once we pass it.
-          it.remove();
-        }
-      }
-
-      // Update the total so that we remain in sync
-      totalDecayedCallCost.set(totalDecayedCost);
-      totalRawCallCost.set(totalRawCost);
-
-      LOG.debug("After decaying the stored costs, totalDecayedCost: {}, " +
-          "totalRawCallCost: {}.", totalDecayedCost, totalRawCost);
-      // Now refresh the cache of scheduling decisions
-      recomputeScheduleCache();
-
-      // Update average response time with decay
-      updateAverageResponseTime(true);
-    } catch (Exception ex) {
-      LOG.error("decayCurrentCosts exception: " +
-          ExceptionUtils.getStackTrace(ex));
-      throw ex;
-    }
-  }
-
-  /**
    * Update the scheduleCache to match current conditions in callCosts.
    */
-  private void recomputeScheduleCache() {
+  protected void recomputeScheduleCache() {
     Map<Object, Integer> nextCache = new HashMap<Object, Integer>();
 
     for (Map.Entry<Object, List<AtomicLong>> entry : callCosts.entrySet()) {
@@ -602,43 +448,13 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
     return Math.max(0, cachedOrComputedPriorityLevel(identity));
   }
 
-  @VisibleForTesting
-  int getPriorityLevel(UserGroupInformation ugi) {
-    String identity = getIdentity(newSchedulable(ugi));
-    // returns true priority of the user.
-    return cachedOrComputedPriorityLevel(identity);
-  }
-
-  @VisibleForTesting
-  void setPriorityLevel(UserGroupInformation ugi, int priority) {
-    String identity = getIdentity(newSchedulable(ugi));
-    priority = Math.min(numLevels - 1, priority);
-    LOG.info("Setting priority for user:" + identity + "=" + priority);
-    staticPriorities.put(identity, priority);
-  }
-
-  // dummy instance to conform to identity provider api.
-  private static Schedulable newSchedulable(UserGroupInformation ugi) {
-    return new Schedulable() {
-      @Override
-      public UserGroupInformation getUserGroupInformation() {
-        return ugi;
-      }
-
-      @Override
-      public int getPriorityLevel() {
-        return 0;
-      }
-    };
-  }
-
   @Override
   public boolean shouldBackOff(Schedulable obj) {
     Boolean backOff = false;
     if (backOffByResponseTimeEnabled) {
       int priorityLevel = obj.getPriorityLevel();
       if (LOG.isDebugEnabled()) {
-        double[] responseTimes = getAverageResponseTime();
+        double[] responseTimes = metrics.getAverageResponseTime();
         LOG.debug("Current Caller: {}  Priority: {} ",
             obj.getUserGroupInformation().getUserName(),
             obj.getPriorityLevel());
@@ -649,7 +465,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
       }
       // High priority rpc over threshold triggers back off of low priority rpc
       for (int i = 0; i < priorityLevel + 1; i++) {
-        if (responseTimeAvgInLastWindow.get(i) >
+        if (metrics.getResponseTimeCountInLastWindowAtomic().get(i) >
             backOffResponseTimeThresholds[i]) {
           backOff = true;
           break;
@@ -677,8 +493,10 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
     this.decayRpcSchedulerDetailedMetrics.addProcessingTime(
         priorityLevel, processingTime);
 
-    responseTimeCountInCurrWindow.getAndIncrement(priorityLevel);
-    responseTimeTotalInCurrWindow.getAndAdd(priorityLevel,
+    metrics.getResponseTimeCountInCurrWindow()
+        .getAndIncrement(priorityLevel);
+    metrics.getResponseTimeTotalInCurrWindow()
+        .getAndAdd(priorityLevel,
         queueTime + processingTime);
     if (LOG.isDebugEnabled()) {
       LOG.debug("addResponseTime for call: {} " +
@@ -688,367 +506,46 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
     }
   }
 
-  // Update the cached average response time at the end of the decay window
-  void updateAverageResponseTime(boolean enableDecay) {
-    for (int i = 0; i < numLevels; i++) {
-      double averageResponseTime = 0;
-      long totalResponseTime = responseTimeTotalInCurrWindow.get(i);
-      long responseTimeCount = responseTimeCountInCurrWindow.get(i);
-      if (responseTimeCount > 0) {
-        averageResponseTime = (double) totalResponseTime / responseTimeCount;
-      }
-      final double lastAvg = responseTimeAvgInLastWindow.get(i);
-      if (lastAvg > PRECISION || averageResponseTime > PRECISION) {
-        if (enableDecay) {
-          final double decayed = decayFactor * lastAvg + averageResponseTime;
-          responseTimeAvgInLastWindow.set(i, decayed);
-        } else {
-          responseTimeAvgInLastWindow.set(i, averageResponseTime);
-        }
-      } else {
-        responseTimeAvgInLastWindow.set(i, 0);
-      }
-      responseTimeCountInLastWindow.set(i, responseTimeCount);
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("updateAverageResponseTime queue: {} Average: {} Count: {}",
-            i, averageResponseTime, responseTimeCount);
-      }
-      // Reset for next decay window
-      responseTimeTotalInCurrWindow.set(i, 0);
-      responseTimeCountInCurrWindow.set(i, 0);
-    }
+  public String getNamespace() {
+    return namespace;
   }
 
-  // For testing
-  @VisibleForTesting
-  double getDecayFactor() {
-    return decayFactor;
+  public Configuration getConfiguration() {
+    return configuration;
   }
 
-  @VisibleForTesting
-  long getDecayPeriodMillis() {
-    return decayPeriodMillis;
+  public ConcurrentHashMap<Object, List<AtomicLong>> getCallCosts() {
+    return callCosts;
   }
 
-  @VisibleForTesting
-  double[] getThresholds() {
-    return thresholds;
+  public OzoneDecayRpcSchedulerMetrics getSchedulerMetrics() {
+    return metrics;
   }
 
-  @VisibleForTesting
-  void forceDecay() {
-    decayCurrentCosts();
+  public int getNumLevels() {
+    return numLevels;
   }
 
-  @VisibleForTesting
-  Map<Object, Long> getCallCostSnapshot() {
-    HashMap<Object, Long> snapshot = new HashMap<Object, Long>();
-
-    for (Map.Entry<Object, List<AtomicLong>> entry : callCosts.entrySet()) {
-      snapshot.put(entry.getKey(), entry.getValue().get(0).get());
-    }
-
-    return Collections.unmodifiableMap(snapshot);
+  public AtomicReference<Map<Object, Integer>> getScheduleCacheRef() {
+    return scheduleCacheRef;
   }
 
-  @VisibleForTesting
-  long getTotalCallSnapshot() {
-    return totalDecayedCallCost.get();
+  public AtomicLong getTotalDecayedCallCost() {
+    return totalDecayedCallCost;
   }
 
-  /**
-   * MetricsProxy is a singleton because we may init multiple schedulers and we
-   * want to clean up resources when a new scheduler replaces the old one.
-   */
-  public static final class MetricsProxy implements DecayRpcSchedulerMXBean,
-      MetricsSource {
-    // One singleton per namespace
-    private static final HashMap<String, OzoneDecayRpcScheduler.MetricsProxy>
-        INSTANCES = new HashMap<>();
-
-    // Weakref for delegate, so we don't retain it forever if it can be GC'd
-    private WeakReference<OzoneDecayRpcScheduler> delegate;
-    private double[] averageResponseTimeDefault;
-    private long[] callCountInLastWindowDefault;
-    private ObjectName decayRpcSchedulerInfoBeanName;
-
-    private MetricsProxy(String namespace, int numLevels,
-                         OzoneDecayRpcScheduler drs) {
-      averageResponseTimeDefault = new double[numLevels];
-      callCountInLastWindowDefault = new long[numLevels];
-      setDelegate(drs);
-      decayRpcSchedulerInfoBeanName =
-          MBeans.register(namespace, "OzoneDecayRpcScheduler", this);
-      this.registerMetrics2Source(namespace);
-    }
-
-    public static synchronized OzoneDecayRpcScheduler.MetricsProxy getInstance(
-        String namespace, int numLevels, OzoneDecayRpcScheduler drs) {
-      OzoneDecayRpcScheduler.MetricsProxy mp = INSTANCES.get(namespace);
-      if (mp == null) {
-        // We must create one
-        mp = new OzoneDecayRpcScheduler.MetricsProxy(namespace, numLevels, drs);
-        INSTANCES.put(namespace, mp);
-      } else  if (drs != mp.delegate.get()) {
-        // in case of delegate is reclaimed, we should set it again
-        mp.setDelegate(drs);
-      }
-      return mp;
-    }
-
-    public static synchronized void removeInstance(String namespace) {
-      OzoneDecayRpcScheduler.MetricsProxy.INSTANCES.remove(namespace);
-    }
-
-    public void setDelegate(OzoneDecayRpcScheduler obj) {
-      this.delegate = new WeakReference<>(obj);
-    }
-
-    void registerMetrics2Source(String namespace) {
-      final String name = "OzoneDecayRpcSchedulerMetrics2." + namespace;
-      DefaultMetricsSystem.instance().register(name, name, this);
-    }
-
-    void unregisterSource(String namespace) {
-      final String name = "OzoneDecayRpcSchedulerMetrics2." + namespace;
-      DefaultMetricsSystem.instance().unregisterSource(name);
-      if (decayRpcSchedulerInfoBeanName != null) {
-        MBeans.unregister(decayRpcSchedulerInfoBeanName);
-      }
-    }
-
-    @Override
-    public String getSchedulingDecisionSummary() {
-      OzoneDecayRpcScheduler scheduler = delegate.get();
-      if (scheduler == null) {
-        return "No Active Scheduler";
-      } else {
-        return scheduler.getSchedulingDecisionSummary();
-      }
-    }
-
-    @Override
-    public String getCallVolumeSummary() {
-      OzoneDecayRpcScheduler scheduler = delegate.get();
-      if (scheduler == null) {
-        return "No Active Scheduler";
-      } else {
-        return scheduler.getCallVolumeSummary();
-      }
-    }
-
-    @Override
-    public int getUniqueIdentityCount() {
-      OzoneDecayRpcScheduler scheduler = delegate.get();
-      if (scheduler == null) {
-        return -1;
-      } else {
-        return scheduler.getUniqueIdentityCount();
-      }
-    }
-
-    @Override
-    public long getTotalCallVolume() {
-      OzoneDecayRpcScheduler scheduler = delegate.get();
-      if (scheduler == null) {
-        return -1;
-      } else {
-        return scheduler.getTotalCallVolume();
-      }
-    }
-
-    @Override
-    public double[] getAverageResponseTime() {
-      OzoneDecayRpcScheduler scheduler = delegate.get();
-      if (scheduler == null) {
-        return averageResponseTimeDefault;
-      } else {
-        return scheduler.getAverageResponseTime();
-      }
-    }
-
-    public long[] getResponseTimeCountInLastWindow() {
-      OzoneDecayRpcScheduler scheduler = delegate.get();
-      if (scheduler == null) {
-        return callCountInLastWindowDefault;
-      } else {
-        return scheduler.getResponseTimeCountInLastWindow();
-      }
-    }
-
-    @Override
-    public void getMetrics(MetricsCollector collector, boolean all) {
-      OzoneDecayRpcScheduler scheduler = delegate.get();
-      if (scheduler != null) {
-        scheduler.getMetrics(collector, all);
-      }
-    }
+  public AtomicLong getTotalRawCallCost() {
+    return totalRawCallCost;
   }
 
-  public int getUniqueIdentityCount() {
-    return callCosts.size();
-  }
-
-  public long getTotalCallVolume() {
-    return totalDecayedCallCost.get();
-  }
-
-  public long getTotalRawCallVolume() {
-    return totalRawCallCost.get();
-  }
-
-  public long[] getResponseTimeCountInLastWindow() {
-    long[] ret = new long[responseTimeCountInLastWindow.length()];
-    for (int i = 0; i < responseTimeCountInLastWindow.length(); i++) {
-      ret[i] = responseTimeCountInLastWindow.get(i);
-    }
-    return ret;
-  }
-
-  @Override
-  public double[] getAverageResponseTime() {
-    double[] ret = new double[responseTimeAvgInLastWindow.length()];
-    for (int i = 0; i < responseTimeAvgInLastWindow.length(); i++) {
-      ret[i] = responseTimeAvgInLastWindow.get(i);
-    }
-    return ret;
-  }
-
-  @Override
-  public void getMetrics(MetricsCollector collector, boolean all) {
-    // Metrics2 interface to act as a Metric source
-    try {
-      MetricsRecordBuilder rb = collector.addRecord(getClass().getName())
-          .setContext(namespace);
-      addDecayedCallVolume(rb);
-      addUniqueIdentityCount(rb);
-      addTopNCallerSummary(rb);
-      addAvgResponseTimePerPriority(rb);
-      addCallVolumePerPriority(rb);
-      addRawCallVolume(rb);
-    } catch (Exception e) {
-      LOG.warn("Exception thrown while metric collection. Exception : "
-          + e.getMessage());
-    }
-  }
-
-  // Key: UniqueCallers
-  private void addUniqueIdentityCount(MetricsRecordBuilder rb) {
-    rb.addCounter(Interns.info("UniqueCallers", "Total unique callers"),
-        getUniqueIdentityCount());
-  }
-
-  // Key: DecayedCallVolume
-  private void addDecayedCallVolume(MetricsRecordBuilder rb) {
-    rb.addCounter(Interns.info("DecayedCallVolume", "Decayed Total " +
-        "incoming Call Volume"), getTotalCallVolume());
-  }
-
-  private void addRawCallVolume(MetricsRecordBuilder rb) {
-    rb.addCounter(Interns.info("CallVolume", "Raw Total " +
-        "incoming Call Volume"), getTotalRawCallVolume());
-  }
-
-  // Key: Priority.0.CompletedCallVolume
-  private void addCallVolumePerPriority(MetricsRecordBuilder rb) {
-    for (int i = 0; i < responseTimeCountInLastWindow.length(); i++) {
-      rb.addGauge(Interns.info("Priority." + i + ".CompletedCallVolume",
-          "Completed Call volume " +
-              "of priority " + i), responseTimeCountInLastWindow.get(i));
-    }
-  }
-
-  // Key: Priority.0.AvgResponseTime
-  private void addAvgResponseTimePerPriority(MetricsRecordBuilder rb) {
-    for (int i = 0; i < responseTimeAvgInLastWindow.length(); i++) {
-      rb.addGauge(Interns.info("Priority." + i + ".AvgResponseTime", "Average" +
-              " response time of priority " + i),
-          responseTimeAvgInLastWindow.get(i));
-    }
-  }
-
-  // Key: Caller(xyz).Volume and Caller(xyz).Priority
-  private void addTopNCallerSummary(MetricsRecordBuilder rb) {
-    Metrics2Util.TopN topNCallers = getTopCallers(topUsersCount);
-    Map<Object, Integer> decisions = scheduleCacheRef.get();
-    final int actualCallerCount = topNCallers.size();
-    for (int i = 0; i < actualCallerCount; i++) {
-      Metrics2Util.NameValuePair entry =  topNCallers.poll();
-      String topCaller = "Caller(" + entry.getName() + ")";
-      String topCallerVolume = topCaller + ".Volume";
-      String topCallerPriority = topCaller + ".Priority";
-      rb.addCounter(Interns.info(topCallerVolume, topCallerVolume),
-          entry.getValue());
-      Integer priority = decisions.get(entry.getName());
-      if (priority != null) {
-        rb.addCounter(Interns.info(topCallerPriority, topCallerPriority),
-            priority);
-      }
-    }
-  }
-
-  // Get the top N callers' raw call cost and scheduler decision
-  private Metrics2Util.TopN getTopCallers(int n) {
-    Metrics2Util.TopN topNCallers = new Metrics2Util.TopN(n);
-    Iterator<Map.Entry<Object, List<AtomicLong>>> it =
-        callCosts.entrySet().iterator();
-    while (it.hasNext()) {
-      Map.Entry<Object, List<AtomicLong>> entry = it.next();
-      String caller = entry.getKey().toString();
-      Long cost = entry.getValue().get(1).get();
-      if (cost > 0) {
-        topNCallers.offer(new Metrics2Util.NameValuePair(caller, cost));
-      }
-    }
-    return topNCallers;
-  }
-
-  public String getSchedulingDecisionSummary() {
-    Map<Object, Integer> decisions = scheduleCacheRef.get();
-    if (decisions == null) {
-      return "{}";
-    } else {
-      try {
-        return WRITER.writeValueAsString(decisions);
-      } catch (Exception e) {
-        return "Error: " + e.getMessage();
-      }
-    }
-  }
-
-  public String getCallVolumeSummary() {
-    try {
-      return WRITER.writeValueAsString(getDecayedCallCosts());
-    } catch (Exception e) {
-      return "Error: " + e.getMessage();
-    }
-  }
-
-  private Map<Object, Long> getDecayedCallCosts() {
-    Map<Object, Long> decayedCallCosts = new HashMap<>(callCosts.size());
-    Iterator<Map.Entry<Object, List<AtomicLong>>> it =
-        callCosts.entrySet().iterator();
-    while (it.hasNext()) {
-      Map.Entry<Object, List<AtomicLong>> entry = it.next();
-      Object user = entry.getKey();
-      Long decayedCost = entry.getValue().get(0).get();
-      if (decayedCost > 0) {
-        decayedCallCosts.put(user, decayedCost);
-      }
-    }
-    return decayedCallCosts;
-  }
-
-  @VisibleForTesting
-  public DecayRpcSchedulerDetailedMetrics
-      getDecayRpcSchedulerDetailedMetrics() {
-    return decayRpcSchedulerDetailedMetrics;
+  public int getTopUsersCount() {
+    return topUsersCount;
   }
 
   @Override
   public void stop() {
     metricsProxy.unregisterSource(namespace);
-    OzoneDecayRpcScheduler.MetricsProxy.removeInstance(namespace);
+    OzoneDecayRpcSchedulerMetricsProxy.removeInstance(namespace);
     decayRpcSchedulerDetailedMetrics.shutdown();
   }
 }

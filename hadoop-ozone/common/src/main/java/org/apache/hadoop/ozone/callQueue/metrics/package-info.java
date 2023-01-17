@@ -15,23 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.ozone.callQueue;
-
-import org.apache.hadoop.ipc.IdentityProvider;
-import org.apache.hadoop.ipc.Schedulable;
-import org.apache.hadoop.security.UserGroupInformation;
 
 /**
- * Ozone implementation of Hadoop IdentityProvider.
+ * Ozone-side Hadoop CallQueue Metrics related classes.
  */
-public class OzoneIdentityProvider implements IdentityProvider {
-
-  public OzoneIdentityProvider() {
-  }
-
-  @Override
-  public String makeIdentity(Schedulable schedulable) {
-    UserGroupInformation ugi = schedulable.getUserGroupInformation();
-    return ugi == null ? null : ugi.getShortUserName();
-  }
-}
+package org.apache.hadoop.ozone.callQueue.metrics;
