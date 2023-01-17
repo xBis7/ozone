@@ -3,6 +3,7 @@ package org.apache.hadoop.ozone.callQueue;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ozone.callQueue.metrics.OzoneDecayRpcSchedulerMetrics;
+import org.apache.hadoop.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -178,5 +179,16 @@ public class OzoneDecayTask extends TimerTask {
     }
 
     return factor;
+  }
+
+  // For testing
+  @VisibleForTesting
+  double getDecayFactor() {
+    return decayFactor;
+  }
+
+  @VisibleForTesting
+  void forceDecay(OzoneDecayRpcScheduler scheduler) {
+    decayCurrentCosts(scheduler);
   }
 }

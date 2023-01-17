@@ -17,7 +17,7 @@ import java.util.HashMap;
  * This class is a singleton because we may init multiple schedulers
  * and clean up resources when a new scheduler replaces the old one.
  */
-public class OzoneDecayRpcSchedulerMetricsProxy
+public final class OzoneDecayRpcSchedulerMetricsProxy
     implements DecayRpcSchedulerMXBean, MetricsSource {
 
   // One singleton per namespace

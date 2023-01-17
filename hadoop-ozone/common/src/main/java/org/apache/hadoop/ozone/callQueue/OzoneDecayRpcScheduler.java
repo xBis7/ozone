@@ -28,6 +28,8 @@ import org.apache.hadoop.ipc.ProcessingDetails;
 import org.apache.hadoop.ipc.RpcScheduler;
 import org.apache.hadoop.ozone.callQueue.metrics.OzoneDecayRpcSchedulerMetrics;
 import org.apache.hadoop.ozone.callQueue.metrics.OzoneDecayRpcSchedulerMetricsProxy;
+import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hadoop.thirdparty.com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.thirdparty.com.google.common.base.Preconditions;
 
 import org.slf4j.Logger;
@@ -379,7 +381,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
   private int computePriorityLevel(long cost, Object identity) {
     Integer staticPriority = staticPriorities.get(identity);
     if (staticPriority != null) {
-      return staticPriority.intValue();
+      return staticPriority;
     }
     long totalCallSnapshot = totalDecayedCallCost.get();
 
@@ -448,9 +450,32 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
     return Math.max(0, cachedOrComputedPriorityLevel(identity));
   }
 
+  @VisibleForTesting
+  void setPriorityLevel(UserGroupInformation ugi, int priority) {
+    String identity = getIdentity(newSchedulable(ugi));
+    priority = Math.min(numLevels - 1, priority);
+    LOG.info("Setting priority for user:" + identity + "=" + priority);
+    staticPriorities.put(identity, priority);
+  }
+
+  // dummy instance to conform to identity provider api.
+  private static Schedulable newSchedulable(UserGroupInformation ugi) {
+    return new Schedulable() {
+      @Override
+      public UserGroupInformation getUserGroupInformation() {
+        return ugi;
+      }
+
+      @Override
+      public int getPriorityLevel() {
+        return 0;
+      }
+    };
+  }
+
   @Override
   public boolean shouldBackOff(Schedulable obj) {
-    Boolean backOff = false;
+    boolean backOff = false;
     if (backOffByResponseTimeEnabled) {
       int priorityLevel = obj.getPriorityLevel();
       if (LOG.isDebugEnabled()) {
@@ -496,14 +521,39 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
     metrics.getResponseTimeCountInCurrWindow()
         .getAndIncrement(priorityLevel);
     metrics.getResponseTimeTotalInCurrWindow()
-        .getAndAdd(priorityLevel,
-        queueTime + processingTime);
+        .getAndAdd(priorityLevel, queueTime + processingTime);
     if (LOG.isDebugEnabled()) {
       LOG.debug("addResponseTime for call: {} " +
               "priority: {} queueTime: {} " +
               "processingTime: {} ", callName, priorityLevel, queueTime,
           processingTime);
     }
+  }
+
+  @VisibleForTesting
+  long getDecayPeriodMillis() {
+    return decayPeriodMillis;
+  }
+
+  @VisibleForTesting
+  double[] getThresholds() {
+    return thresholds;
+  }
+
+  @VisibleForTesting
+  Map<Object, Long> getCallCostSnapshot() {
+    HashMap<Object, Long> snapshot = new HashMap<Object, Long>();
+
+    for (Map.Entry<Object, List<AtomicLong>> entry : callCosts.entrySet()) {
+      snapshot.put(entry.getKey(), entry.getValue().get(0).get());
+    }
+
+    return Collections.unmodifiableMap(snapshot);
+  }
+
+  @VisibleForTesting
+  long getTotalCallSnapshot() {
+    return totalDecayedCallCost.get();
   }
 
   public String getNamespace() {
@@ -520,6 +570,10 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
 
   public OzoneDecayRpcSchedulerMetrics getSchedulerMetrics() {
     return metrics;
+  }
+
+  public OzoneDecayRpcSchedulerMetricsProxy getSchedulerMetricsProxy() {
+    return metricsProxy;
   }
 
   public int getNumLevels() {
