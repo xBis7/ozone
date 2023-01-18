@@ -17,6 +17,17 @@
  */
 package org.apache.hadoop.ozone.callQueue;
 
+import java.util.Map;
+import java.util.List;
+import java.util.HashMap;
+import java.util.Timer;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.ipc.Schedulable;
@@ -35,19 +46,12 @@ import org.apache.hadoop.thirdparty.com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Timer;
-import java.util.Collections;
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
-
 /**
  * Ozone implementation of Hadoop DecayRpcScheduler.
+ * The decay RPC scheduler tracks the cost of incoming requests in a map, then
+ * decays the costs at a fixed time interval. The scheduler is optimized
+ * for large periods (on the order of seconds), as it offloads work to the
+ * decay sweep.
  */
 public class OzoneDecayRpcScheduler implements RpcScheduler {
   /**
@@ -393,7 +397,8 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
     // Start with low priority levels, since they will be most common
     for (int i = (numLevels - 1); i > 0; i--) {
       if (proportion >= this.thresholds[i - 1]) {
-        return i; // We've found our level number
+        // We've found our level number
+        return i;
       }
     }
 

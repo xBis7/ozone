@@ -26,6 +26,7 @@ import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.apache.hadoop.ozone.callQueue.metrics.OzoneDecayRpcSchedulerMetrics;
 import org.apache.hadoop.ozone.callQueue.metrics.OzoneDecayRpcSchedulerMetricsProxy;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.ozone.test.GenericTestUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Timeout;
@@ -33,13 +34,9 @@ import org.mockito.Mockito;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
 import java.util.Timer;
 
-import static java.lang.Thread.sleep;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -47,12 +44,12 @@ import static org.mockito.Mockito.when;
  */
 public class TestOzoneDecayRpcScheduler {
   private Schedulable mockCall(String id) {
-    Schedulable mockCall = mock(Schedulable.class);
+    Schedulable schedulable = Mockito.mock(Schedulable.class);
     UserGroupInformation ugi = UserGroupInformation.createRemoteUser(id);
 
-    when(mockCall.getUserGroupInformation()).thenReturn(ugi);
+    when(schedulable.getUserGroupInformation()).thenReturn(ugi);
 
-    return mockCall;
+    return schedulable;
   }
 
   private OzoneDecayRpcScheduler scheduler;
@@ -86,8 +83,8 @@ public class TestOzoneDecayRpcScheduler {
   }
 
   @Test
-  public void testParseFactor() {
-    // Default
+  public void testParseFactorDefault() {
+    // Default factor
     scheduler = new OzoneDecayRpcScheduler(1, "ipc.3", new Configuration());
     Timer timer = new Timer(true);
     OzoneDecayTask task = new OzoneDecayTask(scheduler, timer);
@@ -95,12 +92,17 @@ public class TestOzoneDecayRpcScheduler {
     Assertions.assertEquals(OzoneDecayTask
             .IPC_SCHEDULER_DECAYSCHEDULER_FACTOR_DEFAULT,
         task.getDecayFactor(), 0.00001);
+  }
 
-    // Custom
+  @Test
+  public void testParseFactorCustom() {
+    // Custom factor
     Configuration conf = new Configuration();
     conf.set("ipc.4." + OzoneDecayTask.IPC_FCQ_DECAYSCHEDULER_FACTOR_KEY,
         "0.125");
     scheduler = new OzoneDecayRpcScheduler(1, "ipc.4", conf);
+    Timer timer = new Timer(true);
+    OzoneDecayTask task = new OzoneDecayTask(scheduler, timer);
     Assertions.assertEquals(0.125, task.getDecayFactor(), 0.00001);
   }
 
@@ -184,7 +186,7 @@ public class TestOzoneDecayRpcScheduler {
       getPriorityIncrementCallCount("A");
     }
 
-    sleep(1000);
+    Thread.sleep(1000L);
 
     for (int i = 0; i < 8; i++) {
       getPriorityIncrementCallCount("B");
@@ -230,8 +232,9 @@ public class TestOzoneDecayRpcScheduler {
   public void testPriority() throws Exception {
     Configuration conf = new Configuration();
     final String namespace = "ipc.12";
+    // Never flush
     conf.set(namespace + "." + OzoneDecayRpcScheduler
-        .IPC_FCQ_DECAYSCHEDULER_PERIOD_KEY, "99999999"); // Never flush
+        .IPC_FCQ_DECAYSCHEDULER_PERIOD_KEY, "99999999");
     conf.set(namespace + "." + OzoneDecayRpcScheduler
         .IPC_FCQ_DECAYSCHEDULER_THRESHOLDS_KEY, "25, 50, 75");
     scheduler = new OzoneDecayRpcScheduler(4, namespace, conf);
@@ -260,16 +263,16 @@ public class TestOzoneDecayRpcScheduler {
     Assertions.assertEquals(2, getPriorityIncrementCallCount("A"));
 
     MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-    ObjectName mxbeanName = new ObjectName(
+    ObjectName mxBeanName = new ObjectName(
         "Hadoop:service=" + namespace + ",name=OzoneDecayRpcScheduler");
 
-    String cvs1 = (String) mbs.getAttribute(mxbeanName, "CallVolumeSummary");
+    String cvs1 = (String) mbs.getAttribute(mxBeanName, "CallVolumeSummary");
     Assertions.assertEquals(cvs1, "{\"A\":6,\"B\":2,\"C\":2}",
         "Get expected JMX of CallVolumeSummary before decay");
 
     task.forceDecay(scheduler);
 
-    String cvs2 = (String) mbs.getAttribute(mxbeanName, "CallVolumeSummary");
+    String cvs2 = (String) mbs.getAttribute(mxBeanName, "CallVolumeSummary");
     Assertions.assertEquals(cvs2, "{\"A\":3,\"B\":1,\"C\":1}",
         "Get expected JMX for CallVolumeSummary after decay");
   }
@@ -295,30 +298,25 @@ public class TestOzoneDecayRpcScheduler {
 
     // It should eventually decay to zero
     while (scheduler.getTotalCallSnapshot() > 0) {
-      sleep(10);
+      Thread.sleep(10L);
     }
   }
 
   @Test
   @Timeout(value = 60000)
-  public void testNPEatInitialization() throws InterruptedException {
-    // redirect the LOG to and check if there is NPE message while initializing
-    // the OzoneDecayRpcScheduler
-    PrintStream output = System.out;
-    try {
-      ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(bytes));
-
-      // initializing DefaultMetricsSystem here would set "monitoring" flag in
-      // MetricsSystemImpl to true
+  public void testNPEatInitialization() throws Exception {
+    // Capture the LOG and check if there is NPE message
+    // while initializing the DecayRpcScheduler
+    try (GenericTestUtils.SystemOutCapturer capture =
+             new GenericTestUtils.SystemOutCapturer()) {
+      // Initializing DefaultMetricsSystem here would
+      // set "monitoring" flag in MetricsSystemImpl to true
       DefaultMetricsSystem.initialize("NameNode");
       Configuration conf = new Configuration();
       scheduler = new OzoneDecayRpcScheduler(1, "ipc.14", conf);
-      // check if there is npe in log
-      Assertions.assertFalse(bytes.toString().contains("NullPointerException"));
-    } finally {
-      //set systout back
-      System.setOut(output);
+      // Check if there is npe in log
+      Assertions.assertFalse(capture.getOutput()
+          .contains("NullPointerException"));
     }
   }
 
@@ -335,14 +333,16 @@ public class TestOzoneDecayRpcScheduler {
     // 3 details in increasing order of cost. Although medium has a longer
     // duration, the shared lock is weighted less than the exclusive lock
     ProcessingDetails callDetailsLow = Mockito.mock(ProcessingDetails.class);
-
-    callDetailsLow.set(ProcessingDetails.Timing.LOCKFREE, 1);
+    when(callDetailsLow.get(ProcessingDetails.Timing.LOCKFREE))
+        .thenReturn(1L);
 
     ProcessingDetails callDetailsMedium = Mockito.mock(ProcessingDetails.class);
-    callDetailsMedium.set(ProcessingDetails.Timing.LOCKSHARED, 500);
+    when(callDetailsMedium.get(ProcessingDetails.Timing.LOCKSHARED))
+        .thenReturn(500L);
 
     ProcessingDetails callDetailsHigh = Mockito.mock(ProcessingDetails.class);
-    callDetailsHigh.set(ProcessingDetails.Timing.LOCKEXCLUSIVE, 100);
+    when(callDetailsHigh.get(ProcessingDetails.Timing.LOCKEXCLUSIVE))
+        .thenReturn(100L);
 
     for (int i = 0; i < 10; i++) {
       scheduler.addResponseTime("ignored",
