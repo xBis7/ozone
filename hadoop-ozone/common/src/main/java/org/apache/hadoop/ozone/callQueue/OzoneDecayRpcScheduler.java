@@ -106,6 +106,8 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
   private static final Logger LOG =
       LoggerFactory.getLogger(OzoneDecayRpcScheduler.class);
 
+  public static ThreadLocal<Schedulable> CURR_SCHEDULABLE = new ThreadLocal<>();
+
   // Track the decayed and raw (no decay) number of calls for each schedulable
   // identity from all previous decay windows: idx 0 for decayed call cost and
   // idx 1 for the raw call cost
@@ -464,7 +466,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
   }
 
   // dummy instance to conform to identity provider api.
-  private static Schedulable newSchedulable(UserGroupInformation ugi) {
+  public static Schedulable newSchedulable(UserGroupInformation ugi) {
     return new Schedulable() {
       @Override
       public UserGroupInformation getUserGroupInformation() {

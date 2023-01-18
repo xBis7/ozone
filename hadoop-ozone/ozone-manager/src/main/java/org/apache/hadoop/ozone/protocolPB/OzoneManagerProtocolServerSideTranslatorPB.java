@@ -28,7 +28,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.hadoop.hdds.server.OzoneProtocolMessageDispatcher;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
 import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
+import org.apache.hadoop.ipc.Schedulable;
 import org.apache.hadoop.ozone.OmUtils;
+import org.apache.hadoop.ozone.callQueue.OzoneDecayRpcScheduler;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.exceptions.OMLeaderNotReadyException;
@@ -49,6 +51,7 @@ import com.google.protobuf.ProtocolMessageEnum;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import org.apache.hadoop.ozone.security.S3SecurityUtil;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
@@ -164,6 +167,14 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
           // if current OM is leader and then proceed with
           // processing the request.
           S3SecurityUtil.validateS3Credential(request, ozoneManager);
+
+          // This AccessId should be passed on OzoneDecayRpcScheduler
+          // as a new schedulable
+          UserGroupInformation ugi = UserGroupInformation
+              .createRemoteUser(request.getS3Authentication().getAccessId());
+
+          OzoneDecayRpcScheduler.CURR_SCHEDULABLE
+              .set(OzoneDecayRpcScheduler.newSchedulable(ugi));
         } catch (IOException ex) {
           // If validate credentials fail return error OM Response.
           return createErrorResponse(request, ex);
