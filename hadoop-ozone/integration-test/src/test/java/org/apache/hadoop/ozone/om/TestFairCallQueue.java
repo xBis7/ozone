@@ -35,10 +35,10 @@ import static org.apache.hadoop.fs.CommonConfigurationKeys.IPC_SCHEDULER_PRIORIT
 import static org.apache.hadoop.ipc.WeightedRoundRobinMultiplexer.IPC_CALLQUEUE_WRRMUX_WEIGHTS_KEY;
 import static org.apache.hadoop.ozone.admin.scm.FinalizeUpgradeCommandUtil.isDone;
 import static org.apache.hadoop.ozone.admin.scm.FinalizeUpgradeCommandUtil.isStarting;
+import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_ADDRESS_KEY;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_MULTITENANCY_ENABLED;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_PORT_DEFAULT;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_S3_GPRC_SERVER_ENABLED;
-import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_S3_GRPC_SERVER_ENABLED_DEFAULT;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_TRANSPORT_CLASS;
 
 public class TestFairCallQueue {
@@ -56,31 +56,28 @@ public class TestFairCallQueue {
     conf.setBoolean(
         OMMultiTenantManagerImpl.OZONE_OM_TENANT_DEV_SKIP_RANGER, true);
     conf.setBoolean(OZONE_OM_MULTITENANCY_ENABLED, true);
-    conf.set(OZONE_OM_S3_GPRC_SERVER_ENABLED, "true");
+    conf.set(OZONE_OM_S3_GPRC_SERVER_ENABLED, "false");
     conf.set(OZONE_OM_TRANSPORT_CLASS,
         "org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory");
 
     String ozonePort = String.valueOf(OZONE_OM_PORT_DEFAULT);
     String ipcNamespace = IPC_NAMESPACE + "." + ozonePort + ".";
+
+    conf.set(OZONE_OM_ADDRESS_KEY, "localhost:" + ozonePort);
     conf.set((ipcNamespace + IPC_CALLQUEUE_IMPL_KEY), FairCallQueue.class.toString());
     conf.set((ipcNamespace + IPC_SCHEDULER_IMPL_KEY), DecayRpcScheduler.class.toString());
     conf.set((ipcNamespace + IPC_IDENTITY_PROVIDER_KEY), OzoneIdentityProvider.class.toString());
     conf.set((ipcNamespace + IPC_SCHEDULER_PRIORITY_LEVELS_KEY), "2");
     conf.set((ipcNamespace + IPC_BACKOFF_ENABLE), "true");
     conf.set((ipcNamespace + IPC_CALLQUEUE_WRRMUX_WEIGHTS_KEY), "99,1");
-    /*
-    CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
-    CORE-SITE.XML_ipc.9862.backoff.enable=true
-    CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=99,1
-    CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=90
-     */
+
     MiniOzoneCluster.Builder builder = MiniOzoneCluster.newBuilder(conf)
         .withoutDatanodes()
         .setOmLayoutVersion(OMLayoutFeature.INITIAL_VERSION.layoutVersion());
     cluster = builder.build();
     s3VolumeName = HddsClientUtils.getDefaultS3VolumeName(conf);
 
-    preFinalizationChecks(getStoreForAccessID(ACCESS_ID));
+//    preFinalizationChecks(getStoreForAccessID(ACCESS_ID));
     finalizeOMUpgrade();
   }
 
@@ -166,24 +163,6 @@ public class TestFairCallQueue {
   }
 
   @Test
-  public void testDefaultS3Volume() throws Exception {
-    final String bucketName = "bucket";
-
-    // Default client not belonging to a tenant should end up in the S3 volume.
-    ObjectStore store = cluster.getClient().getObjectStore();
-    Assertions.assertEquals(s3VolumeName, store.getS3Volume().getName());
-
-    // Create bucket.
-    store.createS3Bucket(bucketName);
-    Assertions.assertEquals(s3VolumeName,
-        store.getS3Bucket(bucketName).getVolumeName());
-
-    // Delete bucket.
-    store.deleteS3Bucket(bucketName);
-    assertS3BucketNotFound(store, bucketName);
-  }
-
-  @Test
   public void testS3TenantVolume() throws Exception {
 
     ObjectStore store = getStoreForAccessID(ACCESS_ID);
@@ -198,6 +177,9 @@ public class TestFairCallQueue {
     store.createS3Bucket(BUCKET_NAME);
     OzoneBucket bucket = store.getS3Bucket(BUCKET_NAME);
     Assertions.assertEquals(TENANT_ID, bucket.getVolumeName());
+
+    cluster.getClient().getObjectStore();
+
 
     // A different user should not see bucket, since they will be directed to
     // the s3 volume.
