@@ -18,7 +18,6 @@
 package org.apache.hadoop.ozone.om.protocolPB;
 
 import java.io.IOException;
-import java.security.PrivilegedExceptionAction;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,15 +186,12 @@ import org.apache.hadoop.ozone.security.proto.SecurityProtos.GetDelegationTokenR
 import org.apache.hadoop.ozone.security.proto.SecurityProtos.RenewDelegationTokenRequestProto;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.protobuf.ByteString;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.TOKEN_ERROR_OTHER;
@@ -220,8 +216,7 @@ import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.
 @InterfaceAudience.Private
 public final class OzoneManagerProtocolClientSideTranslatorPB
     implements OzoneManagerClientProtocol {
-  public static final Logger LOG =
-      LoggerFactory.getLogger(OzoneManagerProtocolClientSideTranslatorPB.class);
+
   private final String clientID;
   private OmTransport transport;
   private ThreadLocal<S3Auth> threadLocalS3Auth
@@ -290,29 +285,9 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
       throw new IllegalArgumentException("S3 Auth expected to " +
           "be set but is null " + omRequest.toString());
     }
-
-    OMResponse response;
-
-    if (!Strings.isNullOrEmpty(threadLocalS3Auth.get().getAccessID())) {
-      LOG.info("xbisClient: " + threadLocalS3Auth.get().getAccessID());
-      UserGroupInformation proxyUser = UserGroupInformation
-          .createProxyUser(threadLocalS3Auth.get().getAccessID(),
-              UserGroupInformation.getCurrentUser());
-      try {
-        response = proxyUser.doAs(new PrivilegedExceptionAction<OMResponse>() {
-          @Override
-          public OMResponse run() throws IOException {
-            return transport.submitRequest(
-                builder.setTraceID(TracingUtil.exportCurrentSpan()).build());
-          }
-        });
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      }
-    } else {
-      response = transport.submitRequest(
-          builder.setTraceID(TracingUtil.exportCurrentSpan()).build());
-    }
+    OMResponse response =
+        transport.submitRequest(
+            builder.setTraceID(TracingUtil.exportCurrentSpan()).build());
     return response;
   }
 

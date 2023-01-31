@@ -44,7 +44,6 @@ import org.apache.hadoop.ozone.om.request.validation.ValidationContext;
 import org.apache.hadoop.ozone.om.response.OMClientResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
-import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.S3Authentication;
 
 import com.google.protobuf.ProtocolMessageEnum;
 import com.google.protobuf.RpcController;
@@ -66,10 +65,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       .getLogger(OzoneManagerProtocolServerSideTranslatorPB.class);
   private static final String OM_REQUESTS_PACKAGE = 
       "org.apache.hadoop.ozone";
-
-  // Used by OzoneIdentityProvider to makeIdentity
-  private static final ThreadLocal<S3Authentication>
-      S3_AUTH_THREAD_LOCAL = new ThreadLocal<>();
 
   private final OzoneManagerRatisServer omRatisServer;
   private final RequestHandler handler;
@@ -169,7 +164,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
           // if current OM is leader and then proceed with
           // processing the request.
           S3SecurityUtil.validateS3Credential(request, ozoneManager);
-          S3_AUTH_THREAD_LOCAL.set(request.getS3Authentication());
         } catch (IOException ex) {
           // If validate credentials fail return error OM Response.
           return createErrorResponse(request, ex);
@@ -334,14 +328,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
     if (!isRatisEnabled) {
       ozoneManagerDoubleBuffer.stop();
     }
-  }
-
-  public static void setS3Auth(S3Authentication s3Auth) {
-    S3_AUTH_THREAD_LOCAL.set(s3Auth);
-  }
-
-  public static S3Authentication getS3Auth() {
-    return S3_AUTH_THREAD_LOCAL.get();
   }
 
   public static Logger getLog() {

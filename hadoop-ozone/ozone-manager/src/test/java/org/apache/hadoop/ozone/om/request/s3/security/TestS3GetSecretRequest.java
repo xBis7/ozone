@@ -121,7 +121,7 @@ public class TestS3GetSecretRequest {
         RPC.RpcKind.RPC_BUILTIN, new byte[] {1, 2, 3}));
     // Run as alice, so that Server.getRemoteUser() won't return null.
     when(call.getRemoteUser()).thenReturn(ugiAlice);
-//    Server.getCurCall().set(call);
+    Server.getCurCall().set(call);
 
     omMetrics = OMMetrics.create();
     OzoneConfiguration conf = new OzoneConfiguration();
