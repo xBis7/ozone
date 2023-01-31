@@ -17,6 +17,7 @@
 package org.apache.hadoop.ozone.om;
 
 import org.apache.hadoop.ipc.Schedulable;
+import org.apache.hadoop.ozone.client.OzoneIdentityProvider;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.S3Authentication;
 import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
 import org.apache.hadoop.security.UserGroupInformation;

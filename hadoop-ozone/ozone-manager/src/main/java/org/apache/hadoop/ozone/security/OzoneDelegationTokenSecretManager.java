@@ -526,6 +526,8 @@ public class OzoneDelegationTokenSecretManager
           + identifier);
     }
 
+//    LOG.info("xBis7: " + identifier.toString());
+
     if (AWSV4AuthValidator.validateRequest(identifier.getStrToSign(),
         identifier.getSignature(), awsSecret)) {
       return identifier.getSignature().getBytes(UTF_8);

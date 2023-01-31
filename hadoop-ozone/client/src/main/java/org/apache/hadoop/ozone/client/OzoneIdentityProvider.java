@@ -15,13 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.ozone.om;
+package org.apache.hadoop.ozone.client;
 
 import org.apache.hadoop.ipc.IdentityProvider;
 import org.apache.hadoop.ipc.Schedulable;
-import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.S3Authentication;
-import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Ozone implementation of IdentityProvider used by
@@ -29,18 +29,16 @@ import org.apache.hadoop.security.UserGroupInformation;
  */
 public class OzoneIdentityProvider implements IdentityProvider {
 
+  private static final Logger LOG =
+      LoggerFactory.getLogger(OzoneIdentityProvider.class);
+
   public OzoneIdentityProvider() {
   }
 
   @Override
   public String makeIdentity(Schedulable schedulable) {
-    S3Authentication s3Authentication =
-        OzoneManagerProtocolServerSideTranslatorPB.getS3Auth();
-    if (s3Authentication != null) {
-      return s3Authentication.getAccessId();
-    } else {
-      UserGroupInformation ugi = schedulable.getUserGroupInformation();
-      return ugi == null ? null : ugi.getShortUserName();
-    }
+    UserGroupInformation ugi = schedulable.getUserGroupInformation();
+    LOG.info("xbis2: " + ugi.getShortUserName() + " / Thread: " + Thread.currentThread().getName());
+    return ugi.getShortUserName() == null ? null : ugi.getShortUserName();
   }
 }
