@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Strings;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.apache.hadoop.ipc.Schedulable;
@@ -54,6 +55,8 @@ import org.slf4j.LoggerFactory;
  * decay sweep.
  */
 public class OzoneDecayRpcScheduler implements RpcScheduler {
+
+  public static ThreadLocal<String> identityThreadLocal = new ThreadLocal<>();
   /**
    * Period controls how many milliseconds between each decay sweep.
    */
@@ -433,7 +436,15 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
   }
 
   private String getIdentity(Schedulable obj) {
-    String identity = this.identityProvider.makeIdentity(obj);
+    String identity = "";
+    if (Strings.isNullOrEmpty(identityThreadLocal.get())) {
+      identity = this.identityProvider.makeIdentity(obj);
+      LOG.info("xbis1: " + identity + " / Thread: " + Thread.currentThread().getName());
+    } else {
+      identity = identityThreadLocal.get();
+      LOG.info("xbis2: " + identity + " / Thread: " + Thread.currentThread().getName());
+    }
+
     if (identity == null) {
       // Identity provider did not handle this
       identity = DECAYSCHEDULER_UNKNOWN_IDENTITY;
@@ -508,7 +519,14 @@ public class OzoneDecayRpcScheduler implements RpcScheduler {
   @Override
   public void addResponseTime(String callName, Schedulable schedulable,
                               ProcessingDetails details) {
-    String user = identityProvider.makeIdentity(schedulable);
+    String user = "";
+    if (Strings.isNullOrEmpty(identityThreadLocal.get())) {
+      user = this.identityProvider.makeIdentity(schedulable);
+      LOG.info("xbis3: " + user + " / Thread: " + Thread.currentThread().getName());
+    } else {
+      user = identityThreadLocal.get();
+      LOG.info("xbis4: " + user + " / Thread: " + Thread.currentThread().getName());
+    }
     long processingCost = costProvider.getCost(details);
     addCost(user, processingCost);
 

@@ -29,6 +29,7 @@ import org.apache.hadoop.hdds.server.OzoneProtocolMessageDispatcher;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
 import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
 import org.apache.hadoop.ozone.OmUtils;
+import org.apache.hadoop.ozone.callQueue.OzoneDecayRpcScheduler;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.exceptions.OMLeaderNotReadyException;
@@ -164,6 +165,9 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
           // if current OM is leader and then proceed with
           // processing the request.
           S3SecurityUtil.validateS3Credential(request, ozoneManager);
+          OzoneDecayRpcScheduler.identityThreadLocal
+              .set(request.getS3Authentication().getAccessId());
+          LOG.info("xbis5: " + request.getS3Authentication().getAccessId());
         } catch (IOException ex) {
           // If validate credentials fail return error OM Response.
           return createErrorResponse(request, ex);
