@@ -52,6 +52,7 @@ import org.apache.hadoop.hdds.scm.ha.HASecurityUtils;
 import org.apache.hadoop.hdds.scm.ha.SCMContext;
 import org.apache.hadoop.hdds.scm.ha.SCMHAManager;
 import org.apache.hadoop.hdds.scm.ha.SCMHAManagerImpl;
+import org.apache.hadoop.hdds.scm.ha.SCMHAMetrics;
 import org.apache.hadoop.hdds.scm.ha.SCMHANodeDetails;
 import org.apache.hadoop.hdds.scm.ha.SCMNodeInfo;
 import org.apache.hadoop.hdds.scm.ha.SCMRatisServer;
@@ -152,6 +153,8 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
 import org.apache.hadoop.util.JvmPauseMonitor;
+import org.apache.ratis.server.DivisionInfo;
+import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -263,6 +266,7 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
   private final OzoneConfiguration configuration;
   private SCMContainerMetrics scmContainerMetrics;
   private SCMContainerPlacementMetrics placementMetrics;
+  private SCMHAMetrics scmhaMetrics;
   private PlacementPolicy<ContainerReplica> containerPlacementPolicy;
   private PlacementPolicy<ContainerReplica> ecContainerPlacementPolicy;
   private PlacementPolicyValidateProxy placementPolicyValidateProxy;
@@ -1979,6 +1983,27 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
     return containerTokenMgr != null
         ? containerTokenMgr
         : ContainerTokenGenerator.DISABLED;
+  }
+
+  public void setScmHaMetrics() {
+    String nodeId = getSCMNodeId();
+    DivisionInfo divisionInfo = scmHAManager
+        .getRatisServer().getDivision().getInfo();
+    boolean isLeader = divisionInfo.isLeader();
+    String leaderId;
+    if (!isLeader) {
+      leaderId = divisionInfo.getRoleInfoProto().getFollowerInfo()
+          .getLeaderInfo().getId().toString();
+    } else {
+      leaderId = divisionInfo.getLeaderId().toString();
+    }
+    SCMHAMetrics.unRegister();
+    scmhaMetrics = SCMHAMetrics.create(nodeId, leaderId);
+  }
+
+  @VisibleForTesting
+  public SCMHAMetrics getScmHAMetrics() {
+    return scmhaMetrics;
   }
 
   @Override

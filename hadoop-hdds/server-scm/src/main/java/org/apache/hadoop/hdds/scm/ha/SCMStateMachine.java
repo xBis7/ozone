@@ -251,6 +251,8 @@ public class SCMStateMachine extends BaseStateMachine {
     currentLeaderTerm.set(scm.getScmHAManager().getRatisServer().getDivision()
         .getInfo().getCurrentTerm());
 
+    scm.setScmHaMetrics();
+
     if (!groupMemberId.getPeerId().equals(newLeaderId)) {
       LOG.info("leader changed, yet current SCM is still follower.");
       return;
