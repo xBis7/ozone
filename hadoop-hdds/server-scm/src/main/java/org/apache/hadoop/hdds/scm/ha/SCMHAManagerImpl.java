@@ -122,6 +122,7 @@ public class SCMHAManagerImpl implements SCMHAManager {
           ratisServer.getDivision().getInfo().getCurrentRole(),
           ratisServer.getDivision().getGroup().getPeers());
     }
+    scm.setScmHaMetrics();
     grpcServer.start();
   }
 
