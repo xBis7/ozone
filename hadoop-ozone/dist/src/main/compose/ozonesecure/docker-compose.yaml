@@ -57,6 +57,8 @@ services:
     ports:
       - 9874:9874
       - 9862:9862
+      - 3003:3003
+      - 4004:4004
     environment:
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       OZONE_OPTS: -Dcom.sun.net.ssl.checkRevocation=false
@@ -102,6 +104,7 @@ services:
     ports:
       - 9876:9876
       - 9860:9860
+      - 6006:6006
     env_file:
       - docker-config
     environment:

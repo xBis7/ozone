@@ -17,7 +17,19 @@
 CORE-SITE.XML_fs.defaultFS=ofs://om
 CORE-SITE.XML_fs.trash.interval=1
 
-OZONE-SITE.XML_ozone.om.address=om
+CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
+CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
+# CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.client.OzoneIdentityProvider
+CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
+CORE-SITE.XML_ipc.9862.backoff.enable=true
+CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=99,1
+CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=90
+
+OZONE-SITE.XML_ozone.om.address=om:9862
+
+OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransportFactory
+
+# OZONE-SITE.XML_ozone.om.address=om
 OZONE-SITE.XML_ozone.om.http-address=om:9874
 # TODO: HDDS-7495
 #   S3 security tests need object store layout from s3 gateway. Other tests on
@@ -88,8 +100,8 @@ HDFS-SITE.XML_dfs.web.authentication.kerberos.principal=HTTP/ozone@EXAMPLE.COM
 HDFS-SITE.XML_dfs.web.authentication.kerberos.keytab=/etc/security/keytabs/HTTP.keytab
 
 
-OZONE-SITE.XML_ozone.security.http.kerberos.enabled=true
-OZONE-SITE.XML_ozone.http.filter.initializers=org.apache.hadoop.security.AuthenticationFilterInitializer
+OZONE-SITE.XML_ozone.security.http.kerberos.enabled=false
+OZONE-SITE.XML_ozone.http.filter.initializers=
 
 OZONE-SITE.XML_ozone.om.http.auth.type=kerberos
 OZONE-SITE.XML_hdds.scm.http.auth.type=kerberos
@@ -169,3 +181,8 @@ OZONE-SITE.XML_ozone.om.multitenancy.ranger.sync.timeout=10s
 # change or let all OMs write to AccessController if this dev flag is set.
 #
 OZONE-SITE.XML_ozone.om.tenant.dev.skip.ranger=true
+
+# LOG4J.PROPERTIES_log4j.rootLogger=ALL, stdout
+# LOG4J.PROPERTIES_log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+# LOG4J.PROPERTIES_log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+# LOG4J.PROPERTIES_log4j.appender.stdout.layout.ConversionPattern='%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n'
