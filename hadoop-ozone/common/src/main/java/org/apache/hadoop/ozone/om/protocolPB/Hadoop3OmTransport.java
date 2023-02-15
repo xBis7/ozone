@@ -27,6 +27,7 @@ import org.apache.hadoop.ipc.ProtobufHelper;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
+import org.apache.hadoop.ozone.om.callqueue.CallHandler;
 import org.apache.hadoop.ozone.om.exceptions.OMNotLeaderException;
 import org.apache.hadoop.ozone.om.ha.HadoopRpcOMFailoverProxyProvider;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
@@ -76,8 +77,13 @@ public class Hadoop3OmTransport implements OmTransport {
   @Override
   public OMResponse submitRequest(OMRequest payload) throws IOException {
     try {
-      OMResponse omResponse =
-          rpcProxy.submitRequest(NULL_RPC_CONTROLLER, payload);
+      // Initialize queueHandler
+      CallHandler queueHandler =
+          new CallHandler(rpcProxy);
+      OMResponse omResponse = queueHandler
+          .handleRequest(NULL_RPC_CONTROLLER, payload);
+//      OMResponse omResponse =
+//          rpcProxy.submitRequest(NULL_RPC_CONTROLLER, payload);
 
       if (omResponse.hasLeaderOMNodeId() && omFailoverProxyProvider != null) {
         String leaderOmId = omResponse.getLeaderOMNodeId();

@@ -24,6 +24,7 @@ import org.apache.hadoop.hdds.security.x509.SecurityConfig;
 import org.apache.hadoop.ipc.ClientId;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
+import org.apache.hadoop.ozone.om.callqueue.CallHandler;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerServiceGrpc.OzoneManagerServiceImplBase;
 import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
 import org.apache.hadoop.ozone.protocol.proto
@@ -83,8 +84,12 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
     // for OMRequests.  Test through successful ratis-enabled OMRequest
     // handling without dependency on hadoop IPC based Server.
     try {
-      OMResponse omResponse = this.omTranslator.
-          submitRequest(NULL_RPC_CONTROLLER, request);
+      CallHandler callHandler =
+          new CallHandler(omTranslator);
+      OMResponse omResponse = callHandler
+          .handleRequest(NULL_RPC_CONTROLLER, request);
+//      OMResponse omResponse = this.omTranslator.
+//          submitRequest(NULL_RPC_CONTROLLER, request);
       responseObserver.onNext(omResponse);
     } catch (Throwable e) {
       IOException ex = new IOException(e.getCause());
