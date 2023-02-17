@@ -87,7 +87,7 @@ public class OzoneManagerServiceGrpc extends OzoneManagerServiceImplBase {
       CallHandler callHandler =
           new CallHandler(omTranslator);
       OMResponse omResponse = callHandler
-          .handleRequest(NULL_RPC_CONTROLLER, request);
+          .handleRequest(request);
 //      OMResponse omResponse = this.omTranslator.
 //          submitRequest(NULL_RPC_CONTROLLER, request);
       responseObserver.onNext(omResponse);

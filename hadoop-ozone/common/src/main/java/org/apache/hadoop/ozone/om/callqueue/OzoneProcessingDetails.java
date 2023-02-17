@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.hadoop.ozone.om.callqueue.server;
+package org.apache.hadoop.ozone.om.callqueue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +47,7 @@ public class OzoneProcessingDetails {
 
   private long[] timings = new long[Timing.values().length];
 
-  OzoneProcessingDetails(TimeUnit timeUnit) {
+  public OzoneProcessingDetails(TimeUnit timeUnit) {
     this.valueTimeUnit = timeUnit;
   }
 

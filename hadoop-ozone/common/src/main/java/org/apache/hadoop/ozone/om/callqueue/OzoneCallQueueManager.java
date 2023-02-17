@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class OzoneCallQueueManager<E extends Schedulable>
     extends AbstractQueue<E> implements BlockingQueue<E> {
-  public static final Logger LOG =
+  private static final Logger LOG =
       LoggerFactory.getLogger(OzoneCallQueueManager.class);
   // Number of checkpoints for empty queue.
   private static final int CHECKPOINT_NUM = 20;

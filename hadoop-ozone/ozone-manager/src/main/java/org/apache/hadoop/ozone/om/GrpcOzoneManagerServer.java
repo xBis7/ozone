@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.hdds.HddsUtils;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.ozone.ha.ConfUtils;
-import org.apache.hadoop.ozone.om.callqueue.grpc.GrpcServerTransportFilter;
 import org.apache.hadoop.ozone.protocolPB.OzoneManagerProtocolServerSideTranslatorPB;
 import org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransport;
 import org.apache.hadoop.ozone.security.OzoneDelegationTokenSecretManager;
@@ -94,8 +93,7 @@ public class GrpcOzoneManagerServer {
         .maxInboundMessageSize(maxSize)
         .addService(new OzoneManagerServiceGrpc(omTranslator,
             delegationTokenMgr,
-            omServerConfig))
-        .addTransportFilter(new GrpcServerTransportFilter());
+            omServerConfig));
 
     SecurityConfig secConf = new SecurityConfig(omServerConfig);
     if (secConf.isGrpcTlsEnabled()) {
