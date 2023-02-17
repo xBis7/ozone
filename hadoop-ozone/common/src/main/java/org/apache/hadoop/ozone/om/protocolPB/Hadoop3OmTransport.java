@@ -81,7 +81,7 @@ public class Hadoop3OmTransport implements OmTransport {
       CallHandler queueHandler =
           new CallHandler(rpcProxy);
       OMResponse omResponse = queueHandler
-          .handleRequest(NULL_RPC_CONTROLLER, payload);
+          .handleRequest(payload);
 //      OMResponse omResponse =
 //          rpcProxy.submitRequest(NULL_RPC_CONTROLLER, payload);
 

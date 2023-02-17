@@ -21,7 +21,6 @@ import com.google.protobuf.ServiceException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.CallerContext;
 import org.apache.hadoop.ipc.RpcScheduler;
-import org.apache.hadoop.ozone.om.callqueue.server.OzoneProcessingDetails;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolPB;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
@@ -32,6 +31,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,13 +45,17 @@ public class CallHandler {
   private static final Logger LOG =
       LoggerFactory.getLogger(CallHandler.class);
 
+  private static final RpcController NULL_RPC_CONTROLLER = null;
+  private final ThreadLocal<OMRequest> omRequestThreadLocal = new ThreadLocal<>();
+  private final ThreadLocal<OMResponse> omResponseThreadLocal = new ThreadLocal<>();
   private final OzoneManagerProtocolPB omTranslator;
-  private OzoneCallQueueManager<OMRequestCall> callQueue;
-  private ThreadLocal<OMRequest> omRequestThreadLocal = new ThreadLocal<>();
+  private final OzoneCallQueueManager<OMRequestCall> callQueue;
+  private final Handler handler;
+  private boolean requestOnTheQueue;
 
   public CallHandler(OzoneManagerProtocolPB omTranslator) {
     this.omTranslator = omTranslator;
-
+    this.requestOnTheQueue = false;
     Class<? extends BlockingQueue<OMRequestCall>>
         queueClass = OzoneCallQueueManager
         .convertQueueClass(OzoneFairCallQueue.class, OMRequestCall.class);
@@ -60,10 +66,13 @@ public class CallHandler {
         queueClass,
         schedulerClass,
         false, 100, "callqueue.9862", new Configuration());
+
+    // Start the handler thread
+    this.handler = new Handler();
+    handler.start();
   }
 
-  public OMResponse handleRequest(RpcController rpcController,
-                                  OMRequest omRequest)
+  public OMResponse handleRequest(OMRequest omRequest)
       throws ServiceException {
     CallerContext callerContext =
         new CallerContext.Builder(omRequest.getTraceID())
@@ -79,8 +88,19 @@ public class CallHandler {
     } catch (InterruptedException | IOException e) {
       throw new RuntimeException(e);
     }
+    requestOnTheQueue = true;
 
-    return submitRequest(rpcController);
+    // Return OMResponse instead of Void
+    RunnableFuture<Void> handlerTask = new FutureTask<>(handler, null);
+    handlerTask.run();
+    try {
+      handlerTask.get();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+
+    return Objects.nonNull(omResponseThreadLocal.get()) ?
+        omResponseThreadLocal.get() : null;
   }
 
   public boolean reqIsBlocked(OMRequest omRequest) {
@@ -91,19 +111,24 @@ public class CallHandler {
     }
   }
 
-  public OMResponse submitRequestFromQueue(RpcController rpcController)
+  public OMResponse submitRequestFromQueue()
       throws ServiceException {
     while (true) {
       if (Objects.nonNull(omRequestThreadLocal.get())) {
-        return submitRequest(rpcController);
+        return submitRequest();
       }
     }
   }
 
-  private OMResponse submitRequest(RpcController rpcController)
+  private OMResponse submitRequest()
       throws ServiceException {
     OMRequest omRequest = omRequestThreadLocal.get();
-    return omTranslator.submitRequest(rpcController, omRequest);
+    return omTranslator.submitRequest(NULL_RPC_CONTROLLER, omRequest);
+  }
+
+  private OMResponse submitRequest(OMRequest omRequest)
+      throws ServiceException {
+    return omTranslator.submitRequest(NULL_RPC_CONTROLLER, omRequest);
   }
 
   private void internalQueueCall(OMRequestCall omRequestCall)
@@ -154,15 +179,38 @@ public class CallHandler {
 
     @Override
     public void run() {
-      OMRequestCall omRequestCall;
-      try {
-        omRequestCall = callQueue.take();
-        OMRequest requestFromQueue = omRequestCall.getOmRequest();
+      while (requestOnTheQueue) {
+        OMRequestCall omRequestCall;
+        try {
+          omRequestCall = callQueue.take();
+          OMRequest requestFromQueue = omRequestCall.getOmRequest();
 
-        omRequestThreadLocal.set(requestFromQueue);
-      } catch (InterruptedException ex) {
-        LOG.error(Thread.currentThread().getName() + " unexpectedly interrupted", ex);
+          // Maybe used for checking that we the response belongs to the correct request
+          // and that we are not sending back a response from another request
+          omRequestThreadLocal.set(requestFromQueue);
+
+          OMResponse omResponse = submitRequest(requestFromQueue);
+          omResponseThreadLocal.set(omResponse);
+        } catch (InterruptedException ex) {
+          LOG.error(Thread.currentThread().getName() + " unexpectedly interrupted", ex);
+        } catch (ServiceException e) {
+          throw new RuntimeException(e);
+        } //finally {
+//          omResponseThreadLocal.set(null);
+//        }
+
+//        synchronized (this) {
+//          this.notify();
+//        }
+
+        if (callQueue.size() == 0) {
+//          omResponseThreadLocal.set(null);
+          requestOnTheQueue = false;
+          return;
+        }
       }
+
+
     }
   }
 }
