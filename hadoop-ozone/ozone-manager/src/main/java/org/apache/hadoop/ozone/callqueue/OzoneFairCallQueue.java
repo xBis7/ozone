@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.hadoop.ozone.om.callqueue;
+package org.apache.hadoop.ozone.callqueue;
 
 import java.lang.ref.WeakReference;
 
@@ -28,8 +28,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import org.apache.hadoop.ozone.om.callqueue.OzoneCallQueueManager.CallQueueOverflowException;
 
 import org.apache.hadoop.ipc.FairCallQueueMXBean;
 import org.apache.hadoop.ipc.RpcMultiplexer;
@@ -170,15 +168,15 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
     // try offering to all queues.
     if (!offerQueues(priorityLevel, e, true)) {
 
-      CallQueueOverflowException ex;
+      OzoneCallQueueManager.CallQueueOverflowException ex;
       if (serverFailOverEnabled) {
         // Signal clients to failover and try a separate server.
-        ex = CallQueueOverflowException.FAILOVER;
+        ex = OzoneCallQueueManager.CallQueueOverflowException.FAILOVER;
       } else if (priorityLevel == queues.size() - 1){
         // only disconnect the lowest priority users that overflow the queue.
-        ex = CallQueueOverflowException.DISCONNECT;
+        ex = OzoneCallQueueManager.CallQueueOverflowException.DISCONNECT;
       } else {
-        ex = CallQueueOverflowException.KEEPALIVE;
+        ex = OzoneCallQueueManager.CallQueueOverflowException.KEEPALIVE;
       }
       throw ex;
     }

@@ -18,4 +18,4 @@
 /**
  * Ozone Call Queue related classes.
  */
-package org.apache.hadoop.ozone.om.callqueue;
+package org.apache.hadoop.ozone.callqueue;
