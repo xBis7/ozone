@@ -135,7 +135,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
       "decay-scheduler.metrics.top.user.count";
   public static final int DECAYSCHEDULER_METRICS_TOP_USER_COUNT_DEFAULT = 10;
 
-  public static final Logger LOG =
+  private static final Logger LOG =
       LoggerFactory.getLogger(OzoneDecayRpcScheduler.class);
 
   private static final ObjectWriter WRITER = new ObjectMapper().writer();
@@ -292,7 +292,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
 
     if (providers.size() < 1) {
       LOG.info("IdentityProvider not specified, " +
-          "defaulting to UserIdentityProvider");
+          "defaulting to OzoneIdentityProvider");
       return new OzoneIdentityProvider();
     }
 

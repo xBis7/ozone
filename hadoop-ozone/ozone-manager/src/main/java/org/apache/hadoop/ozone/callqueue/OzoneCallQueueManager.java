@@ -88,8 +88,8 @@ public class OzoneCallQueueManager<E extends Schedulable>
         namespace + "." +
             CommonConfigurationKeys.IPC_CALLQUEUE_SERVER_FAILOVER_ENABLE,
         CommonConfigurationKeys.IPC_CALLQUEUE_SERVER_FAILOVER_ENABLE_DEFAULT);
-    this.putRef = new AtomicReference<BlockingQueue<E>>(bq);
-    this.takeRef = new AtomicReference<BlockingQueue<E>>(bq);
+    this.putRef = new AtomicReference<>(bq);
+    this.takeRef = new AtomicReference<>(bq);
     LOG.info("Using callQueue: {}, queueCapacity: {}, " +
             "scheduler: {}, ipcBackoff: {}.",
         backingClass, maxQueueSize, schedulerClass, clientBackOffEnabled);
@@ -99,8 +99,8 @@ public class OzoneCallQueueManager<E extends Schedulable>
     // only!
   OzoneCallQueueManager(BlockingQueue<E> queue, RpcScheduler scheduler,
                    boolean clientBackOffEnabled, boolean serverFailOverEnabled) {
-    this.putRef = new AtomicReference<BlockingQueue<E>>(queue);
-    this.takeRef = new AtomicReference<BlockingQueue<E>>(queue);
+    this.putRef = new AtomicReference<>(queue);
+    this.takeRef = new AtomicReference<>(queue);
     this.scheduler = scheduler;
     this.clientBackOffEnabled = clientBackOffEnabled;
     this.serverFailOverEnabled = serverFailOverEnabled;

@@ -57,7 +57,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
   public static final String IPC_CALLQUEUE_PRIORITY_LEVELS_KEY =
       "faircallqueue.priority-levels";
 
-  public static final Logger LOG =
+  private static final Logger LOG =
       LoggerFactory.getLogger(OzoneFairCallQueue.class);
 
   /* The queues */

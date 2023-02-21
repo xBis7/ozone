@@ -54,7 +54,7 @@ public class CallHandler {
     this.callQueue = new OzoneCallQueueManager<>(
         queueClass,
         schedulerClass,
-        false, 100, "callqueue.9862", new Configuration());
+        false, 100, "ipc.9862", new Configuration());
   }
 
   public Future<OMRequest> handleRequest(OMRequest omRequest)
@@ -126,6 +126,7 @@ public class CallHandler {
     } catch (InterruptedException ex) {
       LOG.error(Thread.currentThread().getName() + " unexpectedly interrupted", ex);
     }
+    LOG.info("xbis11: " + requestFromQueue);
     return requestFromQueue;
   }
 }

@@ -59,7 +59,14 @@ public class OMRequestCall implements Schedulable,
 
   @Override
   public UserGroupInformation getUserGroupInformation() {
-    return null;
+    UserGroupInformation ugi;
+    if (omRequest.hasS3Authentication()) {
+      ugi = UserGroupInformation.createRemoteUser(omRequest.getS3Authentication().getAccessId());
+    } else {
+      // debug the request to check for username
+      ugi = null;
+    }
+    return ugi;
   }
 
   public void setPriorityLevel(int priorityLevel) {

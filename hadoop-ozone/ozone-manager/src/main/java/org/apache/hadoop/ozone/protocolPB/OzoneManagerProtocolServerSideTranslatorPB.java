@@ -55,7 +55,7 @@ import com.google.protobuf.ServiceException;
 import org.apache.hadoop.ozone.security.S3SecurityUtil;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.util.ExitUtils;
-import org.jetbrains.annotations.NotNull;
+import org.checkerframework.checker.units.qual.C;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +80,7 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
   private final OzoneProtocolMessageDispatcher<OMRequest, OMResponse,
       ProtocolMessageEnum> dispatcher;
   private final RequestValidations requestValidations;
+  private final CallHandler callHandler;
 
   /**
    * Constructs an instance of the server handler.
@@ -93,6 +94,7 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       boolean enableRatis,
       long lastTransactionIndexForNonRatis) {
     this.ozoneManager = impl;
+    this.callHandler = new CallHandler();
     this.isRatisEnabled = enableRatis;
     // Update the transactionIndex with the last TransactionIndex read from DB.
     // New requests should have transactionIndex incremented from this index
@@ -158,7 +160,7 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
   }
 
   private OMResponse processRequest(OMRequest request) throws ServiceException {
-    Future<OMRequest> future = new CallHandler().handleRequest(request);
+    Future<OMRequest> future = callHandler.handleRequest(request);
 
     try {
       return handleRequest(future.get());
