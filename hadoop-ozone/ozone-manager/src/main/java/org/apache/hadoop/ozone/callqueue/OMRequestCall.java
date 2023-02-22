@@ -18,11 +18,13 @@ package org.apache.hadoop.ozone.callqueue;
 
 import org.apache.hadoop.ipc.CallerContext;
 import org.apache.hadoop.ipc.Schedulable;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
 
 import java.security.PrivilegedExceptionAction;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -35,7 +37,8 @@ public class OMRequestCall implements Schedulable,
   private final OzoneProcessingDetails processingDetails =
       new OzoneProcessingDetails(TimeUnit.NANOSECONDS);
   private final OMRequest omRequest;
-  private final CallerContext callerContext;
+  private Future<OMResponse> omResponseFuture;
+  private CallerContext callerContext;
 
   private int priorityLevel;
 
@@ -44,10 +47,11 @@ public class OMRequestCall implements Schedulable,
 
   // time the call was served
   private long responseTimestampNanos;
+
   public OMRequestCall(OMRequest omRequest,
-                         CallerContext callerContext) {
+                       Future<OMResponse> omResponseFuture) {
     this.omRequest = omRequest;
-    this.callerContext = callerContext;
+    this.omResponseFuture = omResponseFuture;
     this.timestampNanos = Time.monotonicNowNanos();
     this.responseTimestampNanos = timestampNanos;
   }
@@ -61,7 +65,8 @@ public class OMRequestCall implements Schedulable,
   public UserGroupInformation getUserGroupInformation() {
     UserGroupInformation ugi;
     if (omRequest.hasS3Authentication()) {
-      ugi = UserGroupInformation.createRemoteUser(omRequest.getS3Authentication().getAccessId());
+      ugi = UserGroupInformation
+          .createRemoteUser(omRequest.getS3Authentication().getAccessId());
     } else {
       // debug the request to check for username
       ugi = null;
@@ -71,6 +76,10 @@ public class OMRequestCall implements Schedulable,
 
   public void setPriorityLevel(int priorityLevel) {
     this.priorityLevel = priorityLevel;
+  }
+
+  public void setOmResponseFuture(Future<OMResponse> omResponseFuture) {
+    this.omResponseFuture = omResponseFuture;
   }
 
   @Override
@@ -84,6 +93,10 @@ public class OMRequestCall implements Schedulable,
 
   public OMRequest getOmRequest() {
     return omRequest;
+  }
+
+  public Future<OMResponse> getOmResponseFuture() {
+    return omResponseFuture;
   }
 
   public long getTimestampNanos() {

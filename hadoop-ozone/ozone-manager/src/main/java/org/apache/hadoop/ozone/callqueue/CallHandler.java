@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,7 +42,9 @@ public class CallHandler {
   private static final Logger LOG =
       LoggerFactory.getLogger(CallHandler.class);
 
-  private static final ExecutorService executorService = Executors.newCachedThreadPool();
+
+  private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
+  private static final ExecutorService executorPoolService = Executors.newCachedThreadPool();
   private final OzoneCallQueueManager<OMRequestCall> callQueue;
 
   public CallHandler() {
@@ -57,14 +60,13 @@ public class CallHandler {
         false, 100, "ipc.9862", new Configuration());
   }
 
-  public Future<OMRequest> handleRequest(OMRequest omRequest)
-      throws ServiceException {
-    CallerContext callerContext =
-        new CallerContext.Builder(omRequest.getTraceID())
-            .setSignature(omRequest.getTraceIDBytes().toByteArray())
-            .build();
-    OMRequestCall omRequestCall =
-        new OMRequestCall(omRequest, callerContext);
+  public void addRequestToQueue(OMRequestCall omRequestCall) {
+//    CallerContext callerContext =
+//        new CallerContext.Builder(omRequest.getTraceID())
+//            .setSignature(omRequest.getTraceIDBytes().toByteArray())
+//            .build();
+//    OMRequestCall omRequestCall =
+//        new OMRequestCall(omRequest, callerContext);
 
     omRequestCall.setPriorityLevel(callQueue.getPriorityLevel(omRequestCall));
 
@@ -73,9 +75,6 @@ public class CallHandler {
     } catch (InterruptedException | IOException e) {
       throw new RuntimeException(e);
     }
-
-    return executorService
-        .submit(this::getRequestFromQueue);
   }
 
   private void internalQueueCall(OMRequestCall omRequestCall)
@@ -118,15 +117,18 @@ public class CallHandler {
     }
   }
 
-  public OMRequest getRequestFromQueue() {
-    OMRequest requestFromQueue = null;
-    try {
-      OMRequestCall omRequestCall = callQueue.take();
-      requestFromQueue = omRequestCall.getOmRequest();
-    } catch (InterruptedException ex) {
-      LOG.error(Thread.currentThread().getName() + " unexpectedly interrupted", ex);
-    }
-    LOG.info("xbis11: " + requestFromQueue);
-    return requestFromQueue;
+  public OMRequestCall getRequestFromTheQueue() {
+    OMRequestCall omRequestCall = null;
+      try {
+        omRequestCall = callQueue.take();
+      } catch (InterruptedException ex) {
+        LOG.error(Thread.currentThread().getName() +
+            " unexpectedly interrupted", ex);
+      }
+    return omRequestCall;
+  }
+
+  public OzoneCallQueueManager<OMRequestCall> getCallQueue() {
+    return callQueue;
   }
 }

@@ -22,10 +22,14 @@ import static org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils.crea
 import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type.PrepareStatus;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.hadoop.hdds.server.OzoneProtocolMessageDispatcher;
@@ -33,6 +37,7 @@ import org.apache.hadoop.hdds.tracing.TracingUtil;
 import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.callqueue.CallHandler;
+import org.apache.hadoop.ozone.callqueue.OMRequestCall;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.exceptions.OMLeaderNotReadyException;
@@ -56,6 +61,7 @@ import org.apache.hadoop.ozone.security.S3SecurityUtil;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.util.ExitUtils;
 import org.checkerframework.checker.units.qual.C;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +87,7 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       ProtocolMessageEnum> dispatcher;
   private final RequestValidations requestValidations;
   private final CallHandler callHandler;
+//  private final Handler callHandlerThread;
 
   /**
    * Constructs an instance of the server handler.
@@ -94,7 +101,9 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       boolean enableRatis,
       long lastTransactionIndexForNonRatis) {
     this.ozoneManager = impl;
-    this.callHandler = new CallHandler();
+    callHandler = new CallHandler();
+//    callHandlerThread = new Handler();
+//    callHandlerThread.start();
     this.isRatisEnabled = enableRatis;
     // Update the transactionIndex with the last TransactionIndex read from DB.
     // New requests should have transactionIndex incremented from this index
@@ -159,13 +168,59 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
     return requestValidations.validateResponse(request, response);
   }
 
-  private OMResponse processRequest(OMRequest request) throws ServiceException {
-    Future<OMRequest> future = callHandler.handleRequest(request);
+  private static final ExecutorService executorPoolService = Executors.newCachedThreadPool();
+
+  private OMResponse processRequest(OMRequest request) {
+
+    Future<OMResponse> omResponseFuture = executorPoolService
+        .submit(() -> new Handler().getOMResponse());
+
+    OMRequestCall omRequestCall =
+        new OMRequestCall(request, omResponseFuture);
+
+    callHandler.addRequestToQueue(omRequestCall);
 
     try {
-      return handleRequest(future.get());
-    } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException(e);
+      return omRequestCall.getOmResponseFuture().get();
+    } catch (InterruptedException | ExecutionException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
+  /**
+   * Background daemon thread to pick requests
+   * from the queue and process them.
+   */
+  private class Handler implements Runnable {
+
+    private OMRequestCall omRequestCall;
+
+    @Override
+    public void run() {
+      while(callHandler.getCallQueue().size() > 0) {
+        omRequestCall = callHandler.getRequestFromTheQueue();
+
+        if (Objects.nonNull(omRequestCall)) {
+          OMRequest omRequest = omRequestCall.getOmRequest();
+          LOG.info("xbis11: " + omRequest.getCmdType());
+          Future<OMResponse> omResponseFuture = executorPoolService.submit(() -> {
+            try {
+              return handleRequest(omRequest);
+            } catch (ServiceException e) {
+              throw new RuntimeException(e);
+            }
+          });
+          omRequestCall.setOmResponseFuture(omResponseFuture);
+        }
+      }
+    }
+
+    public OMResponse getOMResponse() {
+      try {
+        return omRequestCall.getOmResponseFuture().get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
