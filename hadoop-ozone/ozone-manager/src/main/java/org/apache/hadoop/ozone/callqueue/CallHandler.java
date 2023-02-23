@@ -16,21 +16,16 @@
  */
 package org.apache.hadoop.ozone.callqueue;
 
-import com.google.protobuf.ServiceException;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.ipc.CallerContext;
 import org.apache.hadoop.ipc.RpcScheduler;
-import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,9 +37,6 @@ public class CallHandler {
   private static final Logger LOG =
       LoggerFactory.getLogger(CallHandler.class);
 
-
-  private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
-  private static final ExecutorService executorPoolService = Executors.newCachedThreadPool();
   private final OzoneCallQueueManager<OMRequestCall> callQueue;
 
   public CallHandler() {
@@ -58,6 +50,10 @@ public class CallHandler {
         queueClass,
         schedulerClass,
         false, 100, "ipc.9862", new Configuration());
+
+    // Start the thread that takes calls from the queue
+    QueueHandler queueHandler = new QueueHandler();
+    queueHandler.start();
   }
 
   public void addRequestToQueue(OMRequestCall omRequestCall) {
@@ -117,18 +113,29 @@ public class CallHandler {
     }
   }
 
-  public OMRequestCall getRequestFromTheQueue() {
-    OMRequestCall omRequestCall = null;
-      try {
-        omRequestCall = callQueue.take();
-      } catch (InterruptedException ex) {
-        LOG.error(Thread.currentThread().getName() +
-            " unexpectedly interrupted", ex);
-      }
-    return omRequestCall;
-  }
+  /**
+   * Background daemon thread to pick requests
+   * from the queue and process them.
+   */
+  private class QueueHandler extends Thread {
 
-  public OzoneCallQueueManager<OMRequestCall> getCallQueue() {
-    return callQueue;
+    private final ExecutorService executorPoolService = Executors.newCachedThreadPool();
+
+    public QueueHandler() {
+      this.setDaemon(true);
+    }
+
+    @Override
+    public void run() {
+      while(true) {
+        OMRequestCall omRequestCall;
+        try {
+          omRequestCall = callQueue.take();
+        } catch (InterruptedException e) {
+          throw new RuntimeException(e);
+        }
+        executorPoolService.execute(omRequestCall.getOmResponseFuture());
+      }
+    }
   }
 }

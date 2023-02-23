@@ -25,6 +25,7 @@ import org.apache.hadoop.util.Time;
 
 import java.security.PrivilegedExceptionAction;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -37,7 +38,7 @@ public class OMRequestCall implements Schedulable,
   private final OzoneProcessingDetails processingDetails =
       new OzoneProcessingDetails(TimeUnit.NANOSECONDS);
   private final OMRequest omRequest;
-  private Future<OMResponse> omResponseFuture;
+  private FutureTask<OMResponse> omResponseFuture;
   private CallerContext callerContext;
 
   private int priorityLevel;
@@ -49,7 +50,7 @@ public class OMRequestCall implements Schedulable,
   private long responseTimestampNanos;
 
   public OMRequestCall(OMRequest omRequest,
-                       Future<OMResponse> omResponseFuture) {
+                       FutureTask<OMResponse> omResponseFuture) {
     this.omRequest = omRequest;
     this.omResponseFuture = omResponseFuture;
     this.timestampNanos = Time.monotonicNowNanos();
@@ -78,7 +79,7 @@ public class OMRequestCall implements Schedulable,
     this.priorityLevel = priorityLevel;
   }
 
-  public void setOmResponseFuture(Future<OMResponse> omResponseFuture) {
+  public void setOmResponseFuture(FutureTask<OMResponse> omResponseFuture) {
     this.omResponseFuture = omResponseFuture;
   }
 
@@ -95,7 +96,7 @@ public class OMRequestCall implements Schedulable,
     return omRequest;
   }
 
-  public Future<OMResponse> getOmResponseFuture() {
+  public FutureTask<OMResponse> getOmResponseFuture() {
     return omResponseFuture;
   }
 

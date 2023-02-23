@@ -23,6 +23,7 @@ import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -87,7 +88,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       ProtocolMessageEnum> dispatcher;
   private final RequestValidations requestValidations;
   private final CallHandler callHandler;
-//  private final Handler callHandlerThread;
 
   /**
    * Constructs an instance of the server handler.
@@ -102,8 +102,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       long lastTransactionIndexForNonRatis) {
     this.ozoneManager = impl;
     callHandler = new CallHandler();
-//    callHandlerThread = new Handler();
-//    callHandlerThread.start();
     this.isRatisEnabled = enableRatis;
     // Update the transactionIndex with the last TransactionIndex read from DB.
     // New requests should have transactionIndex incremented from this index
@@ -168,12 +166,10 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
     return requestValidations.validateResponse(request, response);
   }
 
-  private static final ExecutorService executorPoolService = Executors.newCachedThreadPool();
-
   private OMResponse processRequest(OMRequest request) {
 
-    Future<OMResponse> omResponseFuture = executorPoolService
-        .submit(() -> new Handler().getOMResponse());
+    FutureOMResponseTask futureResponseTask = new FutureOMResponseTask(request);
+    FutureTask<OMResponse> omResponseFuture = new FutureTask<>(futureResponseTask);
 
     OMRequestCall omRequestCall =
         new OMRequestCall(request, omResponseFuture);
@@ -187,40 +183,17 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
     }
   }
 
-  /**
-   * Background daemon thread to pick requests
-   * from the queue and process them.
-   */
-  private class Handler implements Runnable {
+  private class FutureOMResponseTask implements Callable<OMResponse> {
 
-    private OMRequestCall omRequestCall;
+    private final OMRequest omRequest;
 
-    @Override
-    public void run() {
-      while(callHandler.getCallQueue().size() > 0) {
-        omRequestCall = callHandler.getRequestFromTheQueue();
-
-        if (Objects.nonNull(omRequestCall)) {
-          OMRequest omRequest = omRequestCall.getOmRequest();
-          LOG.info("xbis11: " + omRequest.getCmdType());
-          Future<OMResponse> omResponseFuture = executorPoolService.submit(() -> {
-            try {
-              return handleRequest(omRequest);
-            } catch (ServiceException e) {
-              throw new RuntimeException(e);
-            }
-          });
-          omRequestCall.setOmResponseFuture(omResponseFuture);
-        }
-      }
+    public FutureOMResponseTask(OMRequest omRequest) {
+      this.omRequest = omRequest;
     }
 
-    public OMResponse getOMResponse() {
-      try {
-        return omRequestCall.getOmResponseFuture().get();
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e);
-      }
+    @Override
+    public OMResponse call() throws Exception {
+      return handleRequest(omRequest);
     }
   }
 
