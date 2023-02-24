@@ -187,6 +187,8 @@ public class GrpcOmTransport implements OmTransport {
       tryOtherHost = false;
       expectedFailoverCount = syncFailoverCount.get();
       try {
+        LOG.info("xbis2.1: " + UserGroupInformation.getCurrentUser().getShortUserName());
+        LOG.info("xbis2.2: " + UserGroupInformation.getLoginUser().getShortUserName());
         resp = clients.get(host.get()).submitRequest(payload);
       } catch (StatusRuntimeException e) {
         if (e.getStatus().getCode() == Status.Code.UNAVAILABLE) {

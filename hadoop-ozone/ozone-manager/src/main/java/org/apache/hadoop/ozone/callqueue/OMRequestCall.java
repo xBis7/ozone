@@ -18,13 +18,13 @@ package org.apache.hadoop.ozone.callqueue;
 
 import org.apache.hadoop.ipc.CallerContext;
 import org.apache.hadoop.ipc.Schedulable;
+import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
 
 import java.security.PrivilegedExceptionAction;
-import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 
@@ -39,6 +39,7 @@ public class OMRequestCall implements Schedulable,
       new OzoneProcessingDetails(TimeUnit.NANOSECONDS);
   private final OMRequest omRequest;
   private FutureTask<OMResponse> omResponseFuture;
+  private UserGroupInformation ugi;
   private CallerContext callerContext;
 
   private int priorityLevel;
@@ -50,9 +51,11 @@ public class OMRequestCall implements Schedulable,
   private long responseTimestampNanos;
 
   public OMRequestCall(OMRequest omRequest,
-                       FutureTask<OMResponse> omResponseFuture) {
+                       FutureTask<OMResponse> omResponseFuture,
+                       UserGroupInformation ugi) {
     this.omRequest = omRequest;
     this.omResponseFuture = omResponseFuture;
+    this.ugi = ugi;
     this.timestampNanos = Time.monotonicNowNanos();
     this.responseTimestampNanos = timestampNanos;
   }
@@ -98,6 +101,10 @@ public class OMRequestCall implements Schedulable,
 
   public FutureTask<OMResponse> getOmResponseFuture() {
     return omResponseFuture;
+  }
+
+  public UserGroupInformation getUgi() {
+    return ugi;
   }
 
   public long getTimestampNanos() {

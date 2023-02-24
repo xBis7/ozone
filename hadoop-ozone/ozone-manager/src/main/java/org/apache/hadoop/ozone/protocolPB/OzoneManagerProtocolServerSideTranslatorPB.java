@@ -22,20 +22,19 @@ import static org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils.crea
 import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type.PrepareStatus;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.hadoop.hdds.server.OzoneProtocolMessageDispatcher;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
 import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
+import org.apache.hadoop.ipc.ClientId;
+import org.apache.hadoop.ipc.ProtobufRpcEngine;
+import org.apache.hadoop.ipc.RPC;
+import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.callqueue.CallHandler;
 import org.apache.hadoop.ozone.callqueue.OMRequestCall;
@@ -59,10 +58,9 @@ import com.google.protobuf.ProtocolMessageEnum;
 import com.google.protobuf.RpcController;
 import com.google.protobuf.ServiceException;
 import org.apache.hadoop.ozone.security.S3SecurityUtil;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.util.ExitUtils;
-import org.checkerframework.checker.units.qual.C;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,6 +86,8 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       ProtocolMessageEnum> dispatcher;
   private final RequestValidations requestValidations;
   private final CallHandler callHandler;
+
+  public static final ThreadLocal<Server> serverThreadLocal = new ThreadLocal<>();
 
   /**
    * Constructs an instance of the server handler.
@@ -167,12 +167,15 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
   }
 
   private OMResponse processRequest(OMRequest request) {
-
-    FutureOMResponseTask futureResponseTask = new FutureOMResponseTask(request);
+    UserGroupInformation ugi = ProtobufRpcEngine.Server.getRemoteUser();
+    FutureOMResponseTask futureResponseTask = new FutureOMResponseTask(request, ugi);
     FutureTask<OMResponse> omResponseFuture = new FutureTask<>(futureResponseTask);
 
-    OMRequestCall omRequestCall =
-        new OMRequestCall(request, omResponseFuture);
+    OMRequestCall omRequestCall = new OMRequestCall(request,
+        omResponseFuture, ugi);
+
+    LOG.info("xbis111: cmdType: " + request.getCmdType() +
+        " / server user: " + ugi);
 
     callHandler.addRequestToQueue(omRequestCall);
 
@@ -186,18 +189,35 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
   private class FutureOMResponseTask implements Callable<OMResponse> {
 
     private final OMRequest omRequest;
+    private final UserGroupInformation ugi;
 
-    public FutureOMResponseTask(OMRequest omRequest) {
+    public FutureOMResponseTask(OMRequest omRequest, UserGroupInformation ugi) {
       this.omRequest = omRequest;
+      this.ugi = ugi;
     }
 
     @Override
     public OMResponse call() throws Exception {
-      return handleRequest(omRequest);
+      AtomicInteger callCount = new AtomicInteger(0);
+
+      Server.Call call = new Server.Call(1,
+          callCount.incrementAndGet(),
+          null,
+          null,
+          RPC.RpcKind.RPC_PROTOCOL_BUFFER,
+          ClientId.getClientId());
+      Server.getCurCall().set(call);
+
+      OMClientRequest.ugiThreadLocal.set(ugi);
+
+      LOG.info("xbis222: cmdType: " + omRequest.getCmdType() +
+          " / server user: " + ugi);
+      return handleRequest(omRequest, ugi);
     }
   }
 
-  private OMResponse handleRequest(OMRequest request) throws ServiceException {
+  private OMResponse handleRequest(OMRequest request, UserGroupInformation ugi)
+      throws ServiceException {
     OMClientRequest omClientRequest = null;
     boolean s3Auth = false;
 

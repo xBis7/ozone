@@ -131,6 +131,7 @@ public class CallHandler {
         OMRequestCall omRequestCall;
         try {
           omRequestCall = callQueue.take();
+          //LOG.info("xbis1: " + omRequestCall.getUserGroupInformation().getShortUserName());
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
