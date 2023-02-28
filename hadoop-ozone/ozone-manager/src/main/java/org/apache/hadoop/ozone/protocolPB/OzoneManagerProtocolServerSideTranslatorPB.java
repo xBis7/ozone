@@ -37,7 +37,7 @@ import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.callqueue.CallHandler;
-import org.apache.hadoop.ozone.callqueue.OMRequestCall;
+import org.apache.hadoop.ozone.callqueue.OMQueueCall;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.exceptions.OMLeaderNotReadyException;
@@ -86,8 +86,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       ProtocolMessageEnum> dispatcher;
   private final RequestValidations requestValidations;
   private final CallHandler callHandler;
-
-  public static final ThreadLocal<Server> serverThreadLocal = new ThreadLocal<>();
 
   /**
    * Constructs an instance of the server handler.
@@ -167,20 +165,30 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
   }
 
   private OMResponse processRequest(OMRequest request) {
-    UserGroupInformation ugi = ProtobufRpcEngine.Server.getRemoteUser();
-    FutureOMResponseTask futureResponseTask = new FutureOMResponseTask(request, ugi);
-    FutureTask<OMResponse> omResponseFuture = new FutureTask<>(futureResponseTask);
+    UserGroupInformation ugi;
+    if (request.hasS3Authentication()) {
+      ugi = UserGroupInformation
+          .createRemoteUser(request.getS3Authentication().getAccessId());
+      LOG.info("xbis111: S3 before queue: cmdType: " +
+          request.getCmdType() + " / ugi: " + ugi);
+    } else {
+      ugi = ProtobufRpcEngine.Server.getRemoteUser();
+      LOG.info("xbis222: non-S3 before queue: cmdType: " +
+          request.getCmdType() + " / ugi: " + ugi);
+    }
 
-    OMRequestCall omRequestCall = new OMRequestCall(request,
+    FutureOMResponseTask futureResponseTask =
+        new FutureOMResponseTask(request, ugi);
+    FutureTask<OMResponse> omResponseFuture =
+        new FutureTask<>(futureResponseTask);
+
+    OMQueueCall omQueueCall = new OMQueueCall(request,
         omResponseFuture, ugi);
 
-    LOG.info("xbis111: cmdType: " + request.getCmdType() +
-        " / server user: " + ugi);
-
-    callHandler.addRequestToQueue(omRequestCall);
+    callHandler.addRequestToQueue(omQueueCall);
 
     try {
-      return omRequestCall.getOmResponseFuture().get();
+      return omQueueCall.getOmResponseFuture().get();
     } catch (InterruptedException | ExecutionException ex) {
       throw new RuntimeException(ex);
     }
@@ -191,7 +199,8 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
     private final OMRequest omRequest;
     private final UserGroupInformation ugi;
 
-    public FutureOMResponseTask(OMRequest omRequest, UserGroupInformation ugi) {
+    FutureOMResponseTask(OMRequest omRequest,
+                         UserGroupInformation ugi) {
       this.omRequest = omRequest;
       this.ugi = ugi;
     }
@@ -208,9 +217,9 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
           ClientId.getClientId());
       Server.getCurCall().set(call);
 
-      OMClientRequest.ugiThreadLocal.set(ugi);
+      CallHandler.CURRENT_UGI.set(ugi);
 
-      LOG.info("xbis222: cmdType: " + omRequest.getCmdType() +
+      LOG.info("xbis333: after queue: cmdType: " + omRequest.getCmdType() +
           " / server user: " + ugi);
       return handleRequest(omRequest, ugi);
     }

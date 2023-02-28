@@ -31,6 +31,7 @@ import org.apache.hadoop.ozone.audit.AuditLogger;
 import org.apache.hadoop.ozone.audit.AuditMessage;
 import org.apache.hadoop.ozone.audit.Auditor;
 import org.apache.hadoop.ozone.audit.OMAction;
+import org.apache.hadoop.ozone.callqueue.CallHandler;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.KeyInfoWithVolumeContext;
 import org.apache.hadoop.ozone.om.helpers.OmKeyArgs;
@@ -427,7 +428,8 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
           OzoneAclUtils.accessIdToUserPrincipal(getS3Auth().getAccessId());
       user = UserGroupInformation.createRemoteUser(principal);
     } else {
-      user = ProtobufRpcEngine.Server.getRemoteUser();
+//      user = ProtobufRpcEngine.Server.getRemoteUser();
+      user = CallHandler.CURRENT_UGI.get();
     }
 
     InetAddress remoteIp = ProtobufRpcEngine.Server.getRemoteIp();

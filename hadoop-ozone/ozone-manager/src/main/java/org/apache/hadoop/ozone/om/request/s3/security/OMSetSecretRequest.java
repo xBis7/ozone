@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.audit.OMAction;
+import org.apache.hadoop.ozone.callqueue.CallHandler;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
@@ -91,7 +92,8 @@ public class OMSetSecretRequest extends OMClientRequest {
           OMException.ResultCodes.INVALID_REQUEST);
     }
 
-    final UserGroupInformation ugi = ProtobufRpcEngine.Server.getRemoteUser();
+//    final UserGroupInformation ugi = ProtobufRpcEngine.Server.getRemoteUser();
+    final UserGroupInformation ugi = CallHandler.CURRENT_UGI.get();
     // Permission check
     S3SecretRequestHelper.checkAccessIdSecretOpPermission(
         ozoneManager, ugi, accessId);

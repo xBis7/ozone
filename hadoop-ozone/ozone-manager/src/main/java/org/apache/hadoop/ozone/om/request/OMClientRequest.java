@@ -22,13 +22,13 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
-import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.audit.AuditAction;
 import org.apache.hadoop.ozone.audit.AuditEventStatus;
 import org.apache.hadoop.ozone.audit.AuditLogger;
 import org.apache.hadoop.ozone.audit.AuditMessage;
+import org.apache.hadoop.ozone.callqueue.CallHandler;
 import org.apache.hadoop.ozone.om.OzoneAclUtils;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.OzonePrefixPathImpl;
@@ -70,8 +70,6 @@ public abstract class OMClientRequest implements RequestAuditor {
 
   private UserGroupInformation userGroupInformation;
   private InetAddress inetAddress;
-
-  public static final ThreadLocal<UserGroupInformation> ugiThreadLocal = new ThreadLocal<>();
 
   /**
    * Stores the result of request execution in
@@ -142,7 +140,7 @@ public abstract class OMClientRequest implements RequestAuditor {
    */
   public OzoneManagerProtocolProtos.UserInfo getUserInfo() throws IOException {
 //    UserGroupInformation user = ProtobufRpcEngine.Server.getRemoteUser();
-    UserGroupInformation user = ugiThreadLocal.get();
+    UserGroupInformation user = CallHandler.CURRENT_UGI.get();
     InetAddress remoteAddress = ProtobufRpcEngine.Server.getRemoteIp();
     OzoneManagerProtocolProtos.UserInfo.Builder userInfo =
         OzoneManagerProtocolProtos.UserInfo.newBuilder();

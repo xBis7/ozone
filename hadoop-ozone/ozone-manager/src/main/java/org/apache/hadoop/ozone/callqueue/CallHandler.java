@@ -18,6 +18,7 @@ package org.apache.hadoop.ozone.callqueue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.ipc.RpcScheduler;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,16 +38,19 @@ public class CallHandler {
   private static final Logger LOG =
       LoggerFactory.getLogger(CallHandler.class);
 
-  private final OzoneCallQueueManager<OMRequestCall> callQueue;
+  public static final ThreadLocal<UserGroupInformation> CURRENT_UGI =
+      new ThreadLocal<>();
+
+  private final OzoneCallQueueManager<OMQueueCall> callQueueManager;
 
   public CallHandler() {
-    Class<? extends BlockingQueue<OMRequestCall>>
+    Class<? extends BlockingQueue<OMQueueCall>>
         queueClass = OzoneCallQueueManager
-        .convertQueueClass(OzoneFairCallQueue.class, OMRequestCall.class);
+        .convertQueueClass(OzoneFairCallQueue.class, OMQueueCall.class);
     Class<? extends RpcScheduler> schedulerClass = OzoneCallQueueManager
         .convertSchedulerClass(OzoneDecayRpcScheduler.class);
 
-    this.callQueue = new OzoneCallQueueManager<>(
+    this.callQueueManager = new OzoneCallQueueManager<>(
         queueClass,
         schedulerClass,
         false, 100, "ipc.9862", new Configuration());
@@ -56,15 +60,9 @@ public class CallHandler {
     queueHandler.start();
   }
 
-  public void addRequestToQueue(OMRequestCall omRequestCall) {
-//    CallerContext callerContext =
-//        new CallerContext.Builder(omRequest.getTraceID())
-//            .setSignature(omRequest.getTraceIDBytes().toByteArray())
-//            .build();
-//    OMRequestCall omRequestCall =
-//        new OMRequestCall(omRequest, callerContext);
-
-    omRequestCall.setPriorityLevel(callQueue.getPriorityLevel(omRequestCall));
+  public void addRequestToQueue(OMQueueCall omRequestCall) {
+    omRequestCall.setPriorityLevel(callQueueManager
+        .getPriorityLevel(omRequestCall));
 
     try {
       internalQueueCall(omRequestCall);
@@ -73,22 +71,23 @@ public class CallHandler {
     }
   }
 
-  private void internalQueueCall(OMRequestCall omRequestCall)
+  private void internalQueueCall(OMQueueCall omRequestCall)
       throws IOException, InterruptedException {
     internalQueueCall(omRequestCall, true);
   }
 
-  private void internalQueueCall(OMRequestCall omRequestCall, boolean blocking)
+  private void internalQueueCall(OMQueueCall omQueueCall, boolean blocking)
       throws IOException, InterruptedException {
     try {
       // queue the call, may be blocked if blocking is true.
       if (blocking) {
-        callQueue.put(omRequestCall);
+        callQueueManager.put(omQueueCall);
       } else {
-        callQueue.add(omRequestCall);
+        callQueueManager.add(omQueueCall);
       }
-      long deltaNanos = Time.monotonicNowNanos() - omRequestCall.getTimestampNanos();
-      omRequestCall.getOzoneProcessingDetails()
+      long deltaNanos = Time.monotonicNowNanos() -
+          omQueueCall.getTimestampNanos();
+      omQueueCall.getOzoneProcessingDetails()
           .set(OzoneProcessingDetails.Timing.ENQUEUE,
               deltaNanos, TimeUnit.NANOSECONDS);
     } catch (OzoneCallQueueManager.CallQueueOverflowException cqe) {
@@ -104,7 +103,7 @@ public class CallHandler {
     }
   }
 
-  private void requeueCall(OMRequestCall omRequestCall)
+  private void requeueCall(OMQueueCall omRequestCall)
       throws IOException, InterruptedException {
     try {
       internalQueueCall(omRequestCall, false);
@@ -119,23 +118,23 @@ public class CallHandler {
    */
   private class QueueHandler extends Thread {
 
-    private final ExecutorService executorPoolService = Executors.newCachedThreadPool();
+    private final ExecutorService executorPoolService =
+        Executors.newCachedThreadPool();
 
-    public QueueHandler() {
+    QueueHandler() {
       this.setDaemon(true);
     }
 
     @Override
     public void run() {
-      while(true) {
-        OMRequestCall omRequestCall;
+      while (true) {
+        OMQueueCall omQueueCall;
         try {
-          omRequestCall = callQueue.take();
-          //LOG.info("xbis1: " + omRequestCall.getUserGroupInformation().getShortUserName());
+          omQueueCall = callQueueManager.take();
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
-        executorPoolService.execute(omRequestCall.getOmResponseFuture());
+        executorPoolService.execute(omQueueCall.getOmResponseFuture());
       }
     }
   }

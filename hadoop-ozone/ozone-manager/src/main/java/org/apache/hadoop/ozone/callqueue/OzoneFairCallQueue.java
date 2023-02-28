@@ -91,9 +91,9 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
    * The first or the highest priority sub-queue has an excess capacity
    * of `capacity % numSubqueues`
    */
-  public OzoneFairCallQueue(int priorityLevels, int capacity, String ns,
-                       Configuration conf) {
-    if(priorityLevels < 1) {
+  public OzoneFairCallQueue(int priorityLevels, int capacity,
+                            String ns, Configuration conf) {
+    if (priorityLevels < 1) {
       throw new IllegalArgumentException("Number of Priority Levels must be " +
           "at least 1");
     }
@@ -105,7 +105,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
     this.overflowedCalls = new ArrayList<>(numQueues);
     int queueCapacity = capacity / numQueues;
     int capacityForFirstQueue = queueCapacity + (capacity % numQueues);
-    for(int i=0; i < numQueues; i++) {
+    for (int i = 0; i < numQueues; i++) {
       if (i == 0) {
         this.queues.add(new LinkedBlockingQueue<E>(capacityForFirstQueue));
       } else {
@@ -172,7 +172,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
       if (serverFailOverEnabled) {
         // Signal clients to failover and try a separate server.
         ex = OzoneCallQueueManager.CallQueueOverflowException.FAILOVER;
-      } else if (priorityLevel == queues.size() - 1){
+      } else if (priorityLevel == queues.size() - 1) {
         // only disconnect the lowest priority users that overflow the queue.
         ex = OzoneCallQueueManager.CallQueueOverflowException.DISCONNECT;
       } else {
@@ -227,7 +227,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
    */
   private boolean offerQueues(int priority, E e, boolean includeLast) {
     int lastPriority = queues.size() - (includeLast ? 1 : 2);
-    for (int i=priority; i <= lastPriority; i++) {
+    for (int i = priority; i <= lastPriority; i++) {
       if (offerQueue(i, e)) {
         return true;
       }
@@ -286,7 +286,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
   @Override
   public E peek() {
     E e = null;
-    for (int i=0; e == null && i < queues.size(); i++) {
+    for (int i = 0; e == null && i < queues.size(); i++) {
       e = queues.get(i).peek();
     }
     return e;
@@ -312,9 +312,11 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
   }
 
   /**
-   * drainTo defers to each sub-queue. Note that draining from a OzoneFairCallQueue
-   * to another OzoneFairCallQueue will likely fail, since the incoming calls
-   * may be scheduled differently in the new FairCallQueue. Nonetheless this
+   * drainTo defers to each sub-queue.
+   * Note that draining from an OzoneFairCallQueue
+   * to another OzoneFairCallQueue will likely fail,
+   * since the incoming calls may be scheduled differently
+   * in the new FairCallQueue. Nonetheless, this
    * method is provided for completeness.
    */
   @Override
@@ -324,7 +326,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
     final int permits = semaphore.drainPermits();
     final int numElements = Math.min(maxElements, permits);
     int numRemaining = numElements;
-    for (int i=0; numRemaining > 0 && i < queues.size(); i++) {
+    for (int i = 0; numRemaining > 0 && i < queues.size(); i++) {
       numRemaining -= queues.get(i).drainTo(c, numRemaining);
     }
     int drained = numElements - numRemaining;
@@ -340,9 +342,9 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
   }
 
   /**
-   * Returns maximum remaining capacity. This does not reflect how much you can
-   * ideally fit in this OzoneFairCallQueue, as that would depend on the scheduler's
-   * decisions.
+   * Returns maximum remaining capacity. This does not reflect
+   * how much you can ideally fit in this OzoneFairCallQueue,
+   * as that would depend on the scheduler's decisions.
    */
   @Override
   public int remainingCapacity() {
@@ -355,7 +357,8 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
 
   /**
    * MetricsProxy is a singleton because we may init multiple
-   * OzoneFairCallQueues, but the metrics system cannot unregister beans cleanly.
+   * OzoneFairCallQueues, but the metrics system cannot
+   * unregister beans cleanly.
    */
   private static final class MetricsProxy implements FairCallQueueMXBean,
       MetricsSource {
@@ -399,7 +402,8 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
      * is no delegate, or the delegate is empty, this will return null.
      */
     private OzoneFairCallQueue<? extends Schedulable> getCallQueue() {
-      WeakReference<OzoneFairCallQueue<? extends Schedulable>> ref = this.delegate;
+      WeakReference<OzoneFairCallQueue<? extends Schedulable>>
+          ref = this.delegate;
       if (ref == null) {
         return null;
       }
@@ -453,7 +457,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
   public int[] getQueueSizes() {
     int numQueues = queues.size();
     int[] sizes = new int[numQueues];
-    for (int i=0; i < numQueues; i++) {
+    for (int i = 0; i < numQueues; i++) {
       sizes[i] = queues.get(i).size();
     }
     return sizes;
@@ -462,7 +466,7 @@ public class OzoneFairCallQueue<E extends Schedulable> extends AbstractQueue<E>
   public long[] getOverflowedCalls() {
     int numQueues = queues.size();
     long[] calls = new long[numQueues];
-    for (int i=0; i < numQueues; i++) {
+    for (int i = 0; i < numQueues; i++) {
       calls[i] = overflowedCalls.get(i).get();
     }
     return calls;

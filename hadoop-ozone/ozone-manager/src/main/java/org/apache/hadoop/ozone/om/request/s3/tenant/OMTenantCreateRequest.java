@@ -26,6 +26,7 @@ import org.apache.hadoop.ipc.ProtobufRpcEngine;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.audit.OMAction;
+import org.apache.hadoop.ozone.callqueue.CallHandler;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OMMetrics;
 import org.apache.hadoop.ozone.om.OMMultiTenantManager;
@@ -143,7 +144,8 @@ public class OMTenantCreateRequest extends OMVolumeRequest {
     // - User's login name when security is not enabled
     // - AWS_ACCESS_KEY_ID if the original request comes from S3 Gateway.
     //    Not Applicable to TenantCreateRequest.
-    final UserGroupInformation ugi = ProtobufRpcEngine.Server.getRemoteUser();
+//    final UserGroupInformation ugi = ProtobufRpcEngine.Server.getRemoteUser();
+    final UserGroupInformation ugi = CallHandler.CURRENT_UGI.get();
     // getShortUserName here follows RpcClient#createVolume
     // A caveat is that this assumes OM's auth_to_local is the same as
     //  the client's. Maybe move this logic to the client and pass VolumeArgs?

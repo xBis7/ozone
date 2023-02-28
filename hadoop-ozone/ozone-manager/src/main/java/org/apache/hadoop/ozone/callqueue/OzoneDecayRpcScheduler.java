@@ -1056,7 +1056,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
 
   @VisibleForTesting
   public DecayRpcSchedulerDetailedMetrics
-  getDecayRpcSchedulerDetailedMetrics() {
+        getDecayRpcSchedulerDetailedMetrics() {
     return decayRpcSchedulerDetailedMetrics;
   }
 

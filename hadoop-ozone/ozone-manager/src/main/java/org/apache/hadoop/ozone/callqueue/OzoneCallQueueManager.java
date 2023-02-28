@@ -75,9 +75,9 @@ public class OzoneCallQueueManager<E extends Schedulable>
   private RpcScheduler scheduler;
 
   public OzoneCallQueueManager(Class<? extends BlockingQueue<E>> backingClass,
-                          Class<? extends RpcScheduler> schedulerClass,
-                          boolean clientBackOffEnabled, int maxQueueSize, String namespace,
-                          Configuration conf) {
+                               Class<? extends RpcScheduler> schedulerClass,
+                               boolean clientBackOffEnabled, int maxQueueSize,
+                               String namespace, Configuration conf) {
     int priorityLevels = parseNumLevels(namespace, conf);
     this.scheduler = createScheduler(schedulerClass, priorityLevels,
         namespace, conf);
@@ -96,9 +96,10 @@ public class OzoneCallQueueManager<E extends Schedulable>
   }
 
   @VisibleForTesting
-    // only!
-  OzoneCallQueueManager(BlockingQueue<E> queue, RpcScheduler scheduler,
-                   boolean clientBackOffEnabled, boolean serverFailOverEnabled) {
+  OzoneCallQueueManager(BlockingQueue<E> queue,
+                        RpcScheduler scheduler,
+                        boolean clientBackOffEnabled,
+                        boolean serverFailOverEnabled) {
     this.putRef = new AtomicReference<>(queue);
     this.takeRef = new AtomicReference<>(queue);
     this.scheduler = scheduler;
@@ -355,7 +356,7 @@ public class OzoneCallQueueManager<E extends Schedulable>
           " is deprecated. Please use " + ns + "." +
           CommonConfigurationKeys.IPC_SCHEDULER_PRIORITY_LEVELS_KEY + ".");
     }
-    if(retval < 1) {
+    if (retval < 1) {
       throw new IllegalArgumentException("numLevels must be at least 1");
     }
     return retval;
@@ -383,7 +384,9 @@ public class OzoneCallQueueManager<E extends Schedulable>
     putRef.set(newQ);
 
     // Wait for handlers to drain the oldQ
-    while (!queueIsReallyEmpty(oldQ)) {}
+    while (!queueIsReallyEmpty(oldQ)) {
+      continue;
+    }
 
     // Swap takeRef to handle new calls
     takeRef.set(newQ);
@@ -436,9 +439,8 @@ public class OzoneCallQueueManager<E extends Schedulable>
   // exception that mimics the standard ISE thrown by blocking queues but
   // embeds a rpc server exception for the client to retry and indicate
   // if the client should be disconnected.
-  @SuppressWarnings("serial")
   static class CallQueueOverflowException extends IllegalStateException {
-    private static String TOO_BUSY = "Server too busy";
+    private static final String TOO_BUSY = "Server too busy";
     static final CallQueueOverflowException KEEPALIVE =
         new CallQueueOverflowException(
             new RetriableException(TOO_BUSY),
@@ -452,10 +454,12 @@ public class OzoneCallQueueManager<E extends Schedulable>
             new StandbyException(TOO_BUSY + " - disconnect and failover"),
             RpcHeaderProtos.RpcResponseHeaderProto.RpcStatusProto.FATAL);
     CallQueueOverflowException(final IOException ioe,
-                               final RpcHeaderProtos.RpcResponseHeaderProto.RpcStatusProto status) {
-      super("Queue full", new RpcServerException(ioe.getMessage(), ioe){
+                               final RpcHeaderProtos.RpcResponseHeaderProto
+                                   .RpcStatusProto status) {
+      super("Queue full", new RpcServerException(ioe.getMessage(), ioe) {
         @Override
-        public RpcHeaderProtos.RpcResponseHeaderProto.RpcStatusProto getRpcStatusProto() {
+        public RpcHeaderProtos.RpcResponseHeaderProto
+            .RpcStatusProto getRpcStatusProto() {
           return status;
         }
       });

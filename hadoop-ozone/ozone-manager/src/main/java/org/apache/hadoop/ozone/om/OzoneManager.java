@@ -83,6 +83,7 @@ import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.Table.KeyValue;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.OzoneManagerVersion;
+import org.apache.hadoop.ozone.callqueue.CallHandler;
 import org.apache.hadoop.ozone.om.ha.OMHAMetrics;
 import org.apache.hadoop.ozone.om.helpers.KeyInfoWithVolumeContext;
 import org.apache.hadoop.ozone.om.helpers.SnapshotInfo;
@@ -2604,8 +2605,8 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   @Override
   public List<OmVolumeArgs> listVolumeByUser(String userName, String prefix,
       String prevKey, int maxKeys) throws IOException {
-    UserGroupInformation remoteUserUgi =
-        ProtobufRpcEngine.Server.getRemoteUser();
+    UserGroupInformation remoteUserUgi = CallHandler.CURRENT_UGI.get();
+//        ProtobufRpcEngine.Server.getRemoteUser();
     if (isAclEnabled) {
       if (remoteUserUgi == null) {
         LOG.error("Rpc user UGI is null. Authorization failed.");
@@ -3311,7 +3312,9 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     boolean lockAcquired =
         metadataManager.getLock().acquireReadLock(VOLUME_LOCK, volumeName);
     try {
-      final UserGroupInformation ugi = ProtobufRpcEngine.Server.getRemoteUser();
+//      final UserGroupInformation ugi =
+//      ProtobufRpcEngine.Server.getRemoteUser();
+      final UserGroupInformation ugi = CallHandler.CURRENT_UGI.get();
       if (!multiTenantManager.isTenantAdmin(ugi, tenantId, false)) {
         throw new OMException("Only tenant and ozone admins can access this " +
             "API. '" + ugi.getShortUserName() + "' is not an admin.",

@@ -19,6 +19,8 @@ package org.apache.hadoop.ozone.callqueue;
 import org.apache.hadoop.ipc.IdentityProvider;
 import org.apache.hadoop.ipc.Schedulable;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Ozone implementation of Hadoop IdentityProvider
@@ -26,12 +28,16 @@ import org.apache.hadoop.security.UserGroupInformation;
  */
 public class OzoneIdentityProvider implements IdentityProvider {
 
+  private static final Logger LOG =
+      LoggerFactory.getLogger(OzoneIdentityProvider.class);
+
   public OzoneIdentityProvider() {
   }
 
   @Override
   public String makeIdentity(Schedulable schedulable) {
     UserGroupInformation ugi = schedulable.getUserGroupInformation();
+    LOG.info("xbis444: Identity: " + ugi);
     return ugi == null ? null : ugi.getShortUserName();
   }
 }
