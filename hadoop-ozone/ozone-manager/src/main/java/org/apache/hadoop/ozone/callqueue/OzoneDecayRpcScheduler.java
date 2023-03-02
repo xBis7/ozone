@@ -35,6 +35,7 @@ import javax.management.ObjectName;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import org.apache.hadoop.ipc.UserIdentityProvider;
 import org.apache.hadoop.thirdparty.com.google.common.base.Preconditions;
 import org.apache.hadoop.thirdparty.com.google.common.util.concurrent.AtomicDoubleArray;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -292,8 +293,8 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
 
     if (providers.size() < 1) {
       LOG.info("IdentityProvider not specified, " +
-          "defaulting to OzoneIdentityProvider");
-      return new OzoneIdentityProvider();
+          "defaulting to UserIdentityProvider");
+      return new UserIdentityProvider();
     }
 
     return providers.get(0); // use the first
@@ -613,6 +614,7 @@ public class OzoneDecayRpcScheduler implements RpcScheduler,
   public int getPriorityLevel(Schedulable obj) {
     // First get the identity
     String identity = getIdentity(obj);
+    LOG.info("xbis: From OzoneDecayRpc: " + identity);
     // highest priority users may have a negative priority but their
     // calls will be priority 0.
     return Math.max(0, cachedOrComputedPriorityLevel(identity));

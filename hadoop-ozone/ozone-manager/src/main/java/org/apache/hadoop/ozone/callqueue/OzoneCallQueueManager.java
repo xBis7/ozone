@@ -90,7 +90,7 @@ public class OzoneCallQueueManager<E extends Schedulable>
         CommonConfigurationKeys.IPC_CALLQUEUE_SERVER_FAILOVER_ENABLE_DEFAULT);
     this.putRef = new AtomicReference<>(bq);
     this.takeRef = new AtomicReference<>(bq);
-    LOG.info("Using callQueue: {}, queueCapacity: {}, " +
+    LOG.info("Using OzoneCallQueue: {}, queueCapacity: {}, " +
             "scheduler: {}, ipcBackoff: {}.",
         backingClass, maxQueueSize, schedulerClass, clientBackOffEnabled);
   }
@@ -342,20 +342,9 @@ public class OzoneCallQueueManager<E extends Schedulable>
    */
   @SuppressWarnings("deprecation")
   private static int parseNumLevels(String ns, Configuration conf) {
-    // Fair call queue levels (IPC_CALLQUEUE_PRIORITY_LEVELS_KEY)
-    // takes priority over the scheduler level key
-    // (IPC_SCHEDULER_PRIORITY_LEVELS_KEY)
     int retval = conf.getInt(ns + "." +
-        OzoneFairCallQueue.IPC_CALLQUEUE_PRIORITY_LEVELS_KEY, 0);
-    if (retval == 0) { // No FCQ priority level configured
-      retval = conf.getInt(ns + "." +
-              CommonConfigurationKeys.IPC_SCHEDULER_PRIORITY_LEVELS_KEY,
-          CommonConfigurationKeys.IPC_SCHEDULER_PRIORITY_LEVELS_DEFAULT_KEY);
-    } else {
-      LOG.warn(ns + "." + OzoneFairCallQueue.IPC_CALLQUEUE_PRIORITY_LEVELS_KEY +
-          " is deprecated. Please use " + ns + "." +
-          CommonConfigurationKeys.IPC_SCHEDULER_PRIORITY_LEVELS_KEY + ".");
-    }
+            CommonConfigurationKeys.IPC_SCHEDULER_PRIORITY_LEVELS_KEY,
+        CommonConfigurationKeys.IPC_SCHEDULER_PRIORITY_LEVELS_DEFAULT_KEY);
     if (retval < 1) {
       throw new IllegalArgumentException("numLevels must be at least 1");
     }

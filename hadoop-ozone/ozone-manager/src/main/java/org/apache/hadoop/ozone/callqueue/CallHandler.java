@@ -17,6 +17,11 @@
 package org.apache.hadoop.ozone.callqueue;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.ipc.DecayRpcScheduler;
+import org.apache.hadoop.ipc.DefaultRpcScheduler;
+import org.apache.hadoop.ipc.FairCallQueue;
 import org.apache.hadoop.ipc.RpcScheduler;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
@@ -27,6 +32,7 @@ import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,21 +49,60 @@ public class CallHandler {
 
   private final OzoneCallQueueManager<OMQueueCall> callQueueManager;
 
-  public CallHandler() {
+  public CallHandler(Configuration conf) {
+    String namespace = "ozone.om";
     Class<? extends BlockingQueue<OMQueueCall>>
-        queueClass = OzoneCallQueueManager
-        .convertQueueClass(OzoneFairCallQueue.class, OMQueueCall.class);
-    Class<? extends RpcScheduler> schedulerClass = OzoneCallQueueManager
-        .convertSchedulerClass(OzoneDecayRpcScheduler.class);
+        queueClass = getQueueClass(namespace, conf);
+    Class<? extends RpcScheduler> schedulerClass = getSchedulerClass(namespace, conf);
 
     this.callQueueManager = new OzoneCallQueueManager<>(
         queueClass,
         schedulerClass,
-        false, 100, "ipc.9862", new Configuration());
+        getClientBackoffEnable(namespace, conf), 100, namespace, conf);
 
     // Start the thread that takes calls from the queue
     QueueHandler queueHandler = new QueueHandler();
     queueHandler.start();
+  }
+
+  static Class<? extends BlockingQueue<OMQueueCall>> getQueueClass(
+      String prefix, Configuration conf) {
+    String name = prefix + "." + CommonConfigurationKeys.IPC_CALLQUEUE_IMPL_KEY;
+    Class<?> queueClass = conf.getClass(name, LinkedBlockingQueue.class);
+    return OzoneCallQueueManager.convertQueueClass(queueClass, OMQueueCall.class);
+  }
+
+  static Class<? extends RpcScheduler> getSchedulerClass(
+      String prefix, Configuration conf) {
+//    String schedulerKeyname = prefix + "." + CommonConfigurationKeys
+//        .IPC_SCHEDULER_IMPL_KEY;
+//    Class<?> schedulerClass = conf.getClass(schedulerKeyname, null);
+//    // Patch the configuration for legacy fcq configuration that does not have
+//    // a separate scheduler setting
+//    if (schedulerClass == null) {
+//      String queueKeyName = prefix + "." + CommonConfigurationKeys
+//          .IPC_CALLQUEUE_IMPL_KEY;
+//      Class<?> queueClass = conf.getClass(queueKeyName, null);
+//      if (queueClass != null) {
+//        if (queueClass.getCanonicalName().equals(
+//            FairCallQueue.class.getCanonicalName())) {
+//          conf.setClass(schedulerKeyname, DecayRpcScheduler.class,
+//              RpcScheduler.class);
+//        }
+//      }
+//    }
+//    schedulerClass = conf.getClass(schedulerKeyname,
+//        DefaultRpcScheduler.class);
+    Class<?> schedulerClass = OzoneDecayRpcScheduler.class;
+    return OzoneCallQueueManager.convertSchedulerClass(schedulerClass);
+  }
+
+  static boolean getClientBackoffEnable(
+      String prefix, Configuration conf) {
+    String name = prefix + "." +
+        CommonConfigurationKeys.IPC_BACKOFF_ENABLE;
+    return conf.getBoolean(name,
+        CommonConfigurationKeys.IPC_BACKOFF_ENABLE_DEFAULT);
   }
 
   public void addRequestToQueue(OMQueueCall omRequestCall) {

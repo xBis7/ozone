@@ -17,6 +17,13 @@
 CORE-SITE.XML_fs.defaultFS=ofs://om
 CORE-SITE.XML_fs.trash.interval=1
 
+OZONE-SITE.XML_ozone.om.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
+OZONE-SITE.XML_ozone.om.scheduler.impl=org.apache.hadoop.ozone.callqueue.OzoneDecayRpcScheduler
+OZONE-SITE.XML_ozone.om.scheduler.priority.levels=2
+OZONE-SITE.XML_ozone.om.backoff.enable=true
+OZONE-SITE.XML_ozone.om.faircallqueue.multiplexer.weights=99,1
+OZONE-SITE.XML_ozone.om.decay-scheduler.thresholds=90
+
 OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.GrpcOmTransportFactory
 
 OZONE-SITE.XML_ozone.om.address=om

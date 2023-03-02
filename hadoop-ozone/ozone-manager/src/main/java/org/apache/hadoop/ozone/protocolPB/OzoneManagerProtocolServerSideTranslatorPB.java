@@ -28,6 +28,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.server.OzoneProtocolMessageDispatcher;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
 import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
@@ -99,7 +100,7 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       boolean enableRatis,
       long lastTransactionIndexForNonRatis) {
     this.ozoneManager = impl;
-    callHandler = new CallHandler();
+    callHandler = new CallHandler(ozoneManager.getConf());
     this.isRatisEnabled = enableRatis;
     // Update the transactionIndex with the last TransactionIndex read from DB.
     // New requests should have transactionIndex incremented from this index
