@@ -18,10 +18,6 @@ package org.apache.hadoop.ozone.callqueue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.ipc.DecayRpcScheduler;
-import org.apache.hadoop.ipc.DefaultRpcScheduler;
-import org.apache.hadoop.ipc.FairCallQueue;
 import org.apache.hadoop.ipc.RpcScheduler;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
@@ -58,7 +54,7 @@ public class CallHandler {
     this.callQueueManager = new OzoneCallQueueManager<>(
         queueClass,
         schedulerClass,
-        getClientBackoffEnable(namespace, conf), 100, namespace, conf);
+        getClientBackoffEnable(namespace, conf), 10000, namespace, conf);
 
     // Start the thread that takes calls from the queue
     QueueHandler queueHandler = new QueueHandler();
@@ -74,26 +70,10 @@ public class CallHandler {
 
   static Class<? extends RpcScheduler> getSchedulerClass(
       String prefix, Configuration conf) {
-//    String schedulerKeyname = prefix + "." + CommonConfigurationKeys
-//        .IPC_SCHEDULER_IMPL_KEY;
-//    Class<?> schedulerClass = conf.getClass(schedulerKeyname, null);
-//    // Patch the configuration for legacy fcq configuration that does not have
-//    // a separate scheduler setting
-//    if (schedulerClass == null) {
-//      String queueKeyName = prefix + "." + CommonConfigurationKeys
-//          .IPC_CALLQUEUE_IMPL_KEY;
-//      Class<?> queueClass = conf.getClass(queueKeyName, null);
-//      if (queueClass != null) {
-//        if (queueClass.getCanonicalName().equals(
-//            FairCallQueue.class.getCanonicalName())) {
-//          conf.setClass(schedulerKeyname, DecayRpcScheduler.class,
-//              RpcScheduler.class);
-//        }
-//      }
-//    }
-//    schedulerClass = conf.getClass(schedulerKeyname,
-//        DefaultRpcScheduler.class);
-    Class<?> schedulerClass = OzoneDecayRpcScheduler.class;
+    String schedulerKeyname = prefix + "." + CommonConfigurationKeys
+        .IPC_SCHEDULER_IMPL_KEY;
+    Class<?> schedulerClass = conf.getClass(schedulerKeyname,
+        OzoneDecayRpcScheduler.class);
     return OzoneCallQueueManager.convertSchedulerClass(schedulerClass);
   }
 
