@@ -71,6 +71,10 @@ for i in $(seq 1 ${ITERATIONS}); do
   fi
 done
 
+if [[ ${ITERATIONS} -gt 1 ]]; then
+  grep -c "exit code: [^0]" "${REPORT_DIR}/summary.txt" > "${REPORT_DIR}/failures"
+fi
+
 #Archive combined jacoco records
 mvn -B -N jacoco:merge -Djacoco.destFile=$REPORT_DIR/jacoco-combined.exec
 
