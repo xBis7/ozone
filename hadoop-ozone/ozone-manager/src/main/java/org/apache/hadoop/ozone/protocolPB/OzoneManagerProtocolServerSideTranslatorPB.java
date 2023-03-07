@@ -33,6 +33,7 @@ import org.apache.hadoop.hdds.server.OzoneProtocolMessageDispatcher;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
 import org.apache.hadoop.hdds.utils.ProtocolMessageMetrics;
 import org.apache.hadoop.ipc.ClientId;
+import org.apache.hadoop.ipc.ProcessingDetails;
 import org.apache.hadoop.ipc.ProtobufRpcEngine;
 import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ipc.Server;
@@ -177,6 +178,11 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       LOG.info("xbis222: non-S3 before queue: cmdType: " +
           request.getCmdType() + " / ugi: " + ugi);
     }
+
+    ProcessingDetails details = ProtobufRpcEngine.Server
+        .getCurCall().get().getProcessingDetails();
+
+    LOG.info("xbis777: " + details.toString());
 
     FutureOMResponseTask futureResponseTask =
         new FutureOMResponseTask(request, ugi);

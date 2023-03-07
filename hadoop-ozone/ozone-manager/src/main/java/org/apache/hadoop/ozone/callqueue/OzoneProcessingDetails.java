@@ -16,6 +16,7 @@
  */
 package org.apache.hadoop.ozone.callqueue;
 
+import org.apache.hadoop.ipc.ProcessingDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,7 +18,10 @@ package org.apache.hadoop.ozone.callqueue;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.CommonConfigurationKeys;
+import org.apache.hadoop.ipc.DecayRpcScheduler;
+import org.apache.hadoop.ipc.ProcessingDetails;
 import org.apache.hadoop.ipc.RpcScheduler;
+import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
@@ -73,7 +76,7 @@ public class CallHandler {
     String schedulerKeyname = prefix + "." + CommonConfigurationKeys
         .IPC_SCHEDULER_IMPL_KEY;
     Class<?> schedulerClass = conf.getClass(schedulerKeyname,
-        OzoneDecayRpcScheduler.class);
+        DecayRpcScheduler.class);
     return OzoneCallQueueManager.convertSchedulerClass(schedulerClass);
   }
 
@@ -136,7 +139,45 @@ public class CallHandler {
       LOG.error("Error while entering call back to queue: " + ex);
     }
   }
+/*
+  void updateMetrics(OMQueueCall omQueueCall, long startTime) {
+    // delta = handler + processing + response
+    long deltaNanos = Time.monotonicNowNanos() - startTime;
+    long timestampNanos = omQueueCall.timestampNanos;
 
+    ProcessingDetails details = omQueueCall.getProcessingDetails();
+    // queue time is the delta between when the call first arrived and when it
+    // began being serviced, minus the time it took to be put into the queue
+    details.set(ProcessingDetails.Timing.QUEUE,
+        startTime - timestampNanos - details.get(ProcessingDetails.Timing.ENQUEUE));
+    deltaNanos -= details.get(ProcessingDetails.Timing.PROCESSING);
+    deltaNanos -= details.get(ProcessingDetails.Timing.RESPONSE);
+    details.set(ProcessingDetails.Timing.HANDLER, deltaNanos);
+
+//    long queueTime = details.get(ProcessingDetails.Timing.QUEUE, rpcMetrics.getMetricsTimeUnit());
+//    rpcMetrics.addRpcQueueTime(queueTime);
+
+//    if (call.isResponseDeferred()) {
+      // call was skipped; don't include it in processing metrics
+//      return;
+//    }
+
+//    long processingTime =
+//        details.get(ProcessingDetails.Timing.PROCESSING, rpcMetrics.getMetricsTimeUnit());
+//    long waitTime =
+//        details.get(ProcessingDetails.Timing.LOCKWAIT, rpcMetrics.getMetricsTimeUnit());
+//    rpcMetrics.addRpcLockWaitTime(waitTime);
+//    rpcMetrics.addRpcProcessingTime(processingTime);
+    // don't include lock wait for detailed metrics.
+//    processingTime -= waitTime;
+    String name = omQueueCall.getDetailedMetricsName();
+//    rpcDetailedMetrics.addProcessingTime(name, processingTime);
+    callQueueManager.addResponseTime(name, omQueueCall, details);
+//    if (isLogSlowRPC()) {
+//      logSlowRpcCalls(name, call, details);
+//    }
+  }
+*/
   /**
    * Background daemon thread to pick requests
    * from the queue and process them.
@@ -153,13 +194,17 @@ public class CallHandler {
     @Override
     public void run() {
       while (true) {
+        long startTimeNanos = 0;
         OMQueueCall omQueueCall;
         try {
           omQueueCall = callQueueManager.take();
+          startTimeNanos = Time.monotonicNowNanos();
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
         executorPoolService.execute(omQueueCall.getOmResponseFuture());
+
+//        updateMetrics(omQueueCall, startTimeNanos);
       }
     }
   }

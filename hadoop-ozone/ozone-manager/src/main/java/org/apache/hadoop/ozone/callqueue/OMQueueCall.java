@@ -16,6 +16,7 @@
  */
 package org.apache.hadoop.ozone.callqueue;
 
+import org.apache.hadoop.ipc.ProcessingDetails;
 import org.apache.hadoop.ipc.Schedulable;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
