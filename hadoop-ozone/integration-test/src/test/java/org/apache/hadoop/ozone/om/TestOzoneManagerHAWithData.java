@@ -34,6 +34,7 @@ import org.apache.hadoop.ozone.om.helpers.OmMultipartUploadCompleteInfo;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -107,6 +108,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
   }
 
   @Test
+  @RepeatedTest(100)
   public void testOMHAMetrics() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
