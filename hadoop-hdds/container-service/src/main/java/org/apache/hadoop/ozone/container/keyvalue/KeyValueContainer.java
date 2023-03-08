@@ -60,6 +60,7 @@ import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerLocat
 import org.apache.hadoop.ozone.container.keyvalue.helpers.KeyValueContainerUtil;
 import org.apache.hadoop.ozone.container.replication.ContainerImporter;
 import org.apache.hadoop.ozone.container.upgrade.VersionedDatanodeFeatures;
+import org.apache.hadoop.ozone.lock.ActiveLock;
 import org.apache.hadoop.util.DiskChecker.DiskOutOfSpaceException;
 
 import com.google.common.base.Preconditions;
@@ -653,6 +654,11 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
     this.lock.readLock().unlock();
   }
 
+  @Override
+  public void readUnlock(String s) {
+
+  }
+
   /**
    * Check if the current thread holds read lock.
    */
@@ -677,6 +683,11 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
   @Override
   public void writeUnlock() {
     this.lock.writeLock().unlock();
+
+  }
+
+  @Override
+  public void writeUnlock(String s) {
 
   }
 
