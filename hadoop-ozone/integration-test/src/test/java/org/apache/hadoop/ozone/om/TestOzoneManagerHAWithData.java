@@ -107,7 +107,6 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     testMultipartUploadWithOneOmNodeDown();
   }
 
-  @Test
   @RepeatedTest(100)
   public void testOMHAMetrics() throws InterruptedException,
       TimeoutException, IOException {
