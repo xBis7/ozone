@@ -660,6 +660,11 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
     this.lock.readLock().unlock();
   }
 
+  @Override
+  public void readUnlock(String s) {
+    this.lock.readLock().unlock();
+  }
+
   /**
    * Check if the current thread holds read lock.
    */
@@ -685,6 +690,11 @@ public class KeyValueContainer implements Container<KeyValueContainerData> {
   public void writeUnlock() {
     this.lock.writeLock().unlock();
 
+  }
+
+  @Override
+  public void writeUnlock(String s) {
+    this.lock.writeLock().unlock();
   }
 
   /**
