@@ -25,8 +25,8 @@ CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
 CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.client.OzoneIdentityProvider
 CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
 CORE-SITE.XML_ipc.9862.backoff.enable=true
-CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=99,1
-CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=90
+CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=2,1
+CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=50
 
 OZONE-SITE.XML_ozone.om.address=om:9862
 OZONE-SITE.XML_ozone.om.http-address=om:9874
