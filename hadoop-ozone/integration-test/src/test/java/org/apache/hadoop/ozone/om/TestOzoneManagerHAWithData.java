@@ -180,7 +180,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
       throws InterruptedException, TimeoutException {
     // Wait for Leader Election timeout
     int timeout = OZONE_OM_RATIS_SERVER_FAILURE_TIMEOUT_DURATION_DEFAULT
-        .toIntExact(TimeUnit.SECONDS);
+        .toIntExact(TimeUnit.MILLISECONDS);
     GenericTestUtils.waitFor(() ->
         getCluster().getOMLeader() != null, 500, timeout);
   }
