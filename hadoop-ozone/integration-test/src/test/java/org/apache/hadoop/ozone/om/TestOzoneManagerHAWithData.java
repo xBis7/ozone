@@ -33,12 +33,18 @@ import org.apache.hadoop.ozone.om.helpers.OmMultipartInfo;
 import org.apache.hadoop.ozone.om.helpers.OmMultipartUploadCompleteInfo;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
+import org.apache.ratis.proto.RaftProtos;
+import org.apache.ratis.protocol.RaftPeerId;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -108,6 +114,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     testMultipartUploadWithOneOmNodeDown();
   }
 
+  Logger log = LoggerFactory.getLogger(TestOzoneManagerHAWithData.class);
   @Test
   public void testOMHAMetrics() throws InterruptedException,
       TimeoutException, IOException {
@@ -120,22 +127,24 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     String leaderOMId = leaderOM.getOMNodeId();
     // Get a list of all OMs
     List<OzoneManager> omList = getCluster().getOzoneManagersList();
-
+log.info("xbis: oldLeaderID: " + leaderOMId);
     // Check metrics for all OMs
     checkOMHAMetricsForAllOMs(omList, leaderOMId);
 
     // Restart current leader OM
-    leaderOM.stop();
-    leaderOM.restart();
+    getCluster().restartOzoneManager();
+//    leaderOM.stop();
+//    leaderOM.restart();
 
     waitForLeaderToBeReady();
 
     // Get the new leader
     OzoneManager newLeaderOM = getCluster().getOMLeader();
     String newLeaderOMId = newLeaderOM.getOMNodeId();
+    Assertions.assertNotEquals(leaderOMId, newLeaderOMId);
     // Get a list of all OMs again
     omList = getCluster().getOzoneManagersList();
-
+    log.info("xbis: newLeaderID: " + newLeaderOMId);
     // New state for the old leader
     int newState = leaderOMId.equals(newLeaderOMId) ? 1 : 0;
 
@@ -161,7 +170,8 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
       // If current OM is leader, state should be 1
       int expectedState = nodeId
           .equals(leaderOMId) ? 1 : 0;
-
+      log.info("xbis: " + om.getOMNodeId() + " /exp: " + expectedState +
+          " /act: " + omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
       Assertions.assertEquals(expectedState,
           omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
 
