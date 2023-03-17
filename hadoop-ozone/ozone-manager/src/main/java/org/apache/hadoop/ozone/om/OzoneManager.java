@@ -1910,6 +1910,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       // Unregister, to get rid of stale metrics
       OMHAMetrics.unRegister();
     }
+    LOG.info("xbis: updating list");
   }
 
   /**

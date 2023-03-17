@@ -33,18 +33,15 @@ import org.apache.hadoop.ozone.om.helpers.OmMultipartInfo;
 import org.apache.hadoop.ozone.om.helpers.OmMultipartUploadCompleteInfo;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
-import org.apache.ratis.proto.RaftProtos;
-import org.apache.ratis.protocol.RaftPeerId;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -115,7 +112,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
   }
 
   Logger log = LoggerFactory.getLogger(TestOzoneManagerHAWithData.class);
-  @Test
+  @RepeatedTest(10)
   public void testOMHAMetrics() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -131,8 +128,11 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     // Check metrics for all OMs
     checkOMHAMetricsForAllOMs(omList, leaderOMId);
 
-    // Restart current leader OM
-    getCluster().restartOzoneManager();
+    // Restart all OMs
+    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+      getCluster().shutdownOzoneManager(om);
+      getCluster().restartOzoneManager(om, true);
+    }
 //    leaderOM.stop();
 //    leaderOM.restart();
 
@@ -141,7 +141,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     // Get the new leader
     OzoneManager newLeaderOM = getCluster().getOMLeader();
     String newLeaderOMId = newLeaderOM.getOMNodeId();
-    Assertions.assertNotEquals(leaderOMId, newLeaderOMId);
+//    Assertions.assertNotEquals(leaderOMId, newLeaderOMId);
     // Get a list of all OMs again
     omList = getCluster().getOzoneManagersList();
     log.info("xbis: newLeaderID: " + newLeaderOMId);
@@ -194,6 +194,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
         .toIntExact(TimeUnit.MILLISECONDS);
     GenericTestUtils.waitFor(() ->
         getCluster().getOMLeader() != null, 500, timeout);
+    log.info("xbis: waiting for leader success");
   }
 
   @Test
