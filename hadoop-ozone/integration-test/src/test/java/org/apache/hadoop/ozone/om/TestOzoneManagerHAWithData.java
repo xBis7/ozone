@@ -129,14 +129,16 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     checkOMHAMetricsForAllOMs(omList, leaderOMId);
 
     // Restart all OMs
-    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-      getCluster().shutdownOzoneManager(om);
-      getCluster().restartOzoneManager(om, true);
-    }
-//    leaderOM.stop();
-//    leaderOM.restart();
-
+//    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+//      getCluster().shutdownOzoneManager(om);
+//      getCluster().restartOzoneManager(om, true);
+//    }
+    getCluster().shutdownOzoneManager(leaderOM);
+    getCluster().restartOzoneManager(leaderOM, true);
+    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
     waitForLeaderToBeReady();
+
+    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
 
     // Get the new leader
     OzoneManager newLeaderOM = getCluster().getOMLeader();
