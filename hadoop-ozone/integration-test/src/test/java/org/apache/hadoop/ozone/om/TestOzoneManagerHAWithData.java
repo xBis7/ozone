@@ -112,7 +112,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
   }
 
   Logger log = LoggerFactory.getLogger(TestOzoneManagerHAWithData.class);
-  @RepeatedTest(10)
+  @Test
   public void testOMHAMetrics() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
