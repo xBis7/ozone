@@ -128,11 +128,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     // Check metrics for all OMs
     checkOMHAMetricsForAllOMs(omList, leaderOMId);
 
-    // Restart all OMs
-//    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-//      getCluster().shutdownOzoneManager(om);
-//      getCluster().restartOzoneManager(om, true);
-//    }
+    // Restart leader OM
     getCluster().shutdownOzoneManager(leaderOM);
     getCluster().restartOzoneManager(leaderOM, true);
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
@@ -191,12 +187,15 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
       throws InterruptedException, TimeoutException {
     // Check number of nodes
     Assertions.assertEquals(3, getCluster().getOzoneManagersList().size());
+    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+      Assertions.assertTrue(om.isRunning());
+    }
     // Wait for Leader Election timeout
     int timeout = OZONE_OM_RATIS_SERVER_FAILURE_TIMEOUT_DURATION_DEFAULT
         .toIntExact(TimeUnit.MILLISECONDS);
     GenericTestUtils.waitFor(() ->
         getCluster().getOMLeader() != null, 500, timeout);
-    log.info("xbis: waiting for leader success");
+    log.info("xbis: waiting for leader success, " + timeout);
   }
 
   @Test
