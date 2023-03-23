@@ -19,7 +19,7 @@ Library             OperatingSystem
 Library             String
 Library             BuiltIn
 Resource            ./commonawslib.robot
-Suite Setup         Setup secure v4 headers
+# Suite Setup         Setup secure v4 headers
 
 
 *** Variables ***
@@ -27,6 +27,11 @@ ${ENDPOINT_URL}         http://s3g:9878
 
 *** Keywords ***
 #   Export access key and secret to the environment
+
+Setup headers
+    Kinit test user    testuser    testuser.keytab
+    Setup secure v4 headers
+
 Setup aws credentials
     ${accessKey} =      Execute     aws configure get aws_access_key_id
     ${secret} =         Execute     aws configure get aws_secret_access_key
@@ -42,13 +47,14 @@ Freon s3kg
                        Should contain   ${result}       Successful executions: ${n}
 
 *** Test Cases ***
-Setup credentials and bucket 1
-    [Setup]    Setup aws credentials
+Setup headers, credentials and bucket 1
+    Setup headers
+    Setup aws credentials
     Setup bucket1
 
 Run freon on repeat
     FOR    ${index}     IN RANGE    0    3
         Sleep           2s
         Freon s3kg
-        Log             success ${index}
+        Log to console      success ${index}
     END
