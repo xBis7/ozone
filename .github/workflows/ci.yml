@@ -108,7 +108,7 @@ jobs:
         run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc
         env:
           USER_NAME: ${{ secrets.USER_NAME }}
-          GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
       - name: Store binaries for tests
         uses: actions/upload-artifact@v3
         with:
