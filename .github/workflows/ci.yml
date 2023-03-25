@@ -92,11 +92,11 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
-      - name: maven-settings
-        uses: s4u/maven-settings-action@v2
-        with:
-          servers: '[{"id": "github", "username": "dummy", "password": "${GITHUB_TOKEN}"}]'
-          githubServer: false
+#      - name: maven-settings
+#        uses: s4u/maven-settings-action@v2
+#        with:
+#          servers: '[{"id": "github", "username": "dummy", "password": "${GITHUB_TOKEN}"}]'
+#          githubServer: false
       - name: Run a full build
         run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc
         env:
