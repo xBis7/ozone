@@ -69,7 +69,7 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout project
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Cache for npm dependencies
         uses: actions/cache@v3
         with:
@@ -95,11 +95,12 @@ jobs:
       - name: maven-settings
         uses: s4u/maven-settings-action@v2
         with:
-          servers: '[{"id": "github", "username": "dummy", "password": "${GITHUB_TOKEN}"}]'
+          servers: '[{"id": "github", "username": "${USER_NAME}", "password": "${GITHUB_TOKEN}"}]'
           githubServer: false
       - name: Run a full build
         run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc
         env:
+          USER_NAME: ${{ secrets.USER_NAME }}
           GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
       - name: Store binaries for tests
         uses: actions/upload-artifact@v3
