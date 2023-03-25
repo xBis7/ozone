@@ -93,7 +93,7 @@ jobs:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
       - name: maven-settings
-        uses: s4u/maven-settings-action@v2
+        uses: s4u/maven-settings-action@v3
         with:
           servers: '[{"id": "github", "username": "dummy", "password": "${GITHUB_TOKEN}"}]'
           githubServer: false
