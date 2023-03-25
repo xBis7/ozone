@@ -94,6 +94,8 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: Run a full build
         run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc
+        env:
+          GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
       - name: Store binaries for tests
         uses: actions/upload-artifact@v3
         with:
