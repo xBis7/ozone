@@ -228,7 +228,7 @@ import static org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.
 public final class OzoneManagerProtocolClientSideTranslatorPB
     implements OzoneManagerClientProtocol {
 
-  Logger LOG = LoggerFactory
+  private static final Logger LOG = LoggerFactory
       .getLogger(OzoneManagerProtocolClientSideTranslatorPB.class);
   private final String clientID;
   private OmTransport transport;

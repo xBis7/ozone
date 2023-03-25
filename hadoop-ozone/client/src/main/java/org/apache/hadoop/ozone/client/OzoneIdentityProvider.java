@@ -42,12 +42,13 @@ public class OzoneIdentityProvider implements IdentityProvider {
     UserGroupInformation ugi = schedulable.getUserGroupInformation();
     CallerContext callerContext = schedulable.getCallerContext();
     if (callerContext != null) {
-      if (!StringUtil.isNullOrEmpty( callerContext.getContext())) {
+      if (!StringUtil.isNullOrEmpty(callerContext.getContext())) {
         LOG.info("xbis: context is: " + callerContext.getContext());
         return callerContext.getContext();
       }
     }
-    LOG.info("xbis: ugi: " + ugi.getShortUserName() + " / Thread: " + Thread.currentThread().getName());
+    LOG.info("xbis: ugi: " + ugi.getShortUserName() +
+        " / Thread: " + Thread.currentThread().getName());
     return ugi.getShortUserName() == null ? null : ugi.getShortUserName();
   }
 }
