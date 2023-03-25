@@ -34,21 +34,21 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
       <name>GitHub Packages</name>
       <url>https://maven.pkg.github.com/xBis7/hadoop</url>
     </repository>
-    <snapshotRepository>
-      <id>github</id>
-      <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/xBis7/hadoop</url>
-    </snapshotRepository>
+<!--    <snapshotRepository>-->
+<!--      <id>github</id>-->
+<!--      <name>GitHub Packages</name>-->
+<!--      <url>https://maven.pkg.github.com/xBis7/hadoop</url>-->
+<!--    </snapshotRepository>-->
 <!--    <repository>-->
 <!--      <id>${distMgmtStagingId}</id>-->
 <!--      <name>${distMgmtStagingName}</name>-->
 <!--      <url>${distMgmtStagingUrl}</url>-->
 <!--    </repository>-->
-<!--    <snapshotRepository>-->
-<!--      <id>${distMgmtSnapshotsId}</id>-->
-<!--      <name>${distMgmtSnapshotsName}</name>-->
-<!--      <url>${distMgmtSnapshotsUrl}</url>-->
-<!--    </snapshotRepository>-->
+    <snapshotRepository>
+      <id>${distMgmtSnapshotsId}</id>
+      <name>${distMgmtSnapshotsName}</name>
+      <url>${distMgmtSnapshotsUrl}</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <repositories>
