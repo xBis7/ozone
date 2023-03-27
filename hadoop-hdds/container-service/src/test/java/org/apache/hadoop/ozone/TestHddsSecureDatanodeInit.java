@@ -55,12 +55,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -274,25 +274,7 @@ public class TestHddsSecureDatanodeInit {
   }
 
   @Test
-  public void testGetCSR() throws Exception {
-    keyCodec.writePublicKey(publicKey);
-    keyCodec.writePrivateKey(privateKey);
-    service.setCertificateClient(client);
-    PKCS10CertificationRequest csr =
-        client.getCSRBuilder().build();
-    Assertions.assertNotNull(csr);
-
-    csr = client.getCSRBuilder().build();
-    Assertions.assertNotNull(csr);
-
-    csr = client.getCSRBuilder().build();
-    Assertions.assertNotNull(csr);
-
-    csr = client.getCSRBuilder().build();
-    Assertions.assertNotNull(csr);
-  }
-
-  @Test
+  @Disabled("HDDS-7874")
   public void testCertificateRotation() throws Exception {
     // save the certificate on dn
     certCodec.writeCertificate(certHolder);
@@ -369,6 +351,7 @@ public class TestHddsSecureDatanodeInit {
    * Test unexpected SCMGetCertResponseProto returned from SCM.
    */
   @Test
+  @Disabled("HDDS-7874")
   public void testCertificateRotationRecoverableFailure() throws Exception {
     // save the certificate on dn
     certCodec.writeCertificate(certHolder);

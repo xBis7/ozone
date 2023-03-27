@@ -58,7 +58,6 @@ import org.apache.hadoop.ozone.container.common.statemachine.commandhandler.Repl
 import org.apache.hadoop.ozone.container.common.statemachine.commandhandler.SetNodeOperationalStateCommandHandler;
 import org.apache.hadoop.ozone.container.ec.reconstruction.ECReconstructionCoordinator;
 import org.apache.hadoop.ozone.container.ec.reconstruction.ECReconstructionMetrics;
-import org.apache.hadoop.ozone.container.keyvalue.TarContainerPacker;
 import org.apache.hadoop.ozone.container.ozoneimpl.OzoneContainer;
 import org.apache.hadoop.ozone.container.replication.ContainerImporter;
 import org.apache.hadoop.ozone.container.replication.ContainerReplicator;
@@ -95,6 +94,7 @@ public class DatanodeStateMachine implements Closeable {
   private final ExecutorService executorService;
   private final ConfigurationSource conf;
   private final SCMConnectionManager connectionManager;
+  private final ECReconstructionCoordinator ecReconstructionCoordinator;
   private StateContext context;
   private final OzoneContainer container;
   private final DatanodeCRLStore dnCRLStore;
@@ -181,12 +181,12 @@ public class DatanodeStateMachine implements Closeable {
     ContainerImporter importer = new ContainerImporter(conf,
         container.getContainerSet(),
         container.getController(),
-        new TarContainerPacker(), container.getVolumeSet());
+        container.getVolumeSet());
     ContainerReplicator pullReplicator = new DownloadAndImportReplicator(
-        container.getContainerSet(),
+        conf, container.getContainerSet(),
         importer,
         new SimpleContainerDownloader(conf, dnCertClient));
-    ContainerReplicator pushReplicator = new PushReplicator(
+    ContainerReplicator pushReplicator = new PushReplicator(conf,
         new OnDemandContainerReplicationSource(container.getController()),
         new GrpcContainerUploader(conf, dnCertClient)
     );
@@ -203,9 +203,8 @@ public class DatanodeStateMachine implements Closeable {
 
     ecReconstructionMetrics = ECReconstructionMetrics.create();
 
-    ECReconstructionCoordinator ecReconstructionCoordinator =
-        new ECReconstructionCoordinator(conf, certClient, context,
-            ecReconstructionMetrics);
+    ecReconstructionCoordinator = new ECReconstructionCoordinator(
+        conf, certClient, context, ecReconstructionMetrics);
 
     // This is created as an instance variable as Mockito needs to access it in
     // a test. The test mocks it in a running mini-cluster.
@@ -391,6 +390,7 @@ public class DatanodeStateMachine implements Closeable {
    */
   @Override
   public void close() throws IOException {
+    IOUtils.close(LOG, ecReconstructionCoordinator);
     if (stateMachineThread != null) {
       stateMachineThread.interrupt();
     }
