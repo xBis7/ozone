@@ -95,6 +95,7 @@ jobs:
           server-id: github
           server-username: ${USER_NAME}
           server-password: ${GITHUB_TOKEN}
+          settings-path: ${{ github.workspace }}
 #      - name: maven-settings
 #        uses: s4u/maven-settings-action@v2
 #        with:
