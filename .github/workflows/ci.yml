@@ -111,7 +111,7 @@ jobs:
               "id": "github",
               "name": "GitHub Packages",
               "mirrorOf": "*",
-              "url": "https://maven.pkg.github.com/xBis7/hadoop"
+              "url": "https://maven.pkg.github.com/xBis7/hadoop",
               "blocked": "false"
             }]
       - name: Run a full build
