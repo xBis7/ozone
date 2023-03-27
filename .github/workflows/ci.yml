@@ -106,7 +106,7 @@ jobs:
 #              "password": "${{ secrets.PACKAGE_TOKEN }}"
 #            }]
       - name: Run a full build
-        run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc
+        run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc -s settings.xml
         env:
           USER_NAME: ${{ secrets.USER_NAME }}
           GITHUB_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
