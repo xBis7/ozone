@@ -92,25 +92,25 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
-          server-id: github
-          server-username: ${USER_NAME}
-          server-password: ${GITHUB_TOKEN}
-          overwrite-settings: false
-          settings-path: ./settings.xml
-#      - name: maven-settings
-#        uses: s4u/maven-settings-action@v2
-#        with:
-#          servers: |
-#            [{
-#              "id": "github",
-#              "username": "${{ secrets.USER_NAME }}",
-#              "password": "${{ secrets.PACKAGE_TOKEN }}"
-#            }]
+#          server-id: github
+#          server-username: ${USER_NAME}
+#          server-password: ${GITHUB_TOKEN}
+#          overwrite-settings: false
+#          settings-path: ./settings.xml
+      - name: maven-settings
+        uses: s4u/maven-settings-action@v2.3.0
+        with:
+          servers: |
+            [{
+              "id": "github",
+              "username": "${{ secrets.USER_NAME }}",
+              "password": "${{ secrets.PACKAGE_TOKEN }}"
+            }]
       - name: Run a full build
-        run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc -s $GITHUB_WORKSPACE/settings.xml
-        env:
-          USER_NAME: ${{ secrets.USER_NAME }}
-          GITHUB_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
+        run: hadoop-ozone/dev-support/checks/build.sh -Pcoverage -Pdist -Psrc
+#        env:
+#          USER_NAME: ${{ secrets.USER_NAME }}
+#          GITHUB_TOKEN: ${{ secrets.PACKAGE_TOKEN }}
       - name: Store binaries for tests
         uses: actions/upload-artifact@v3
         with:
