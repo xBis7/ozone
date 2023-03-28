@@ -33,7 +33,6 @@ import org.apache.hadoop.ozone.om.helpers.OmMultipartInfo;
 import org.apache.hadoop.ozone.om.helpers.OmMultipartUploadCompleteInfo;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
-import org.junit.Ignore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -195,7 +194,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
   }
 
-//  @Test
+  @Test
   public void test2() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -241,7 +240,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
   }
 
-//  @Test
+  @Test
   public void testFileQ3() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -287,7 +286,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
   }
 
-//  @Test
+  @Test
   public void testListHA4() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -751,7 +750,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
         followerOM1LastAppliedIndexNew > leaderOMSnaphsotIndex);
   }
 
-//  @Test
+  @Test
   public void testListParts() throws Exception {
 
     OzoneBucket ozoneBucket = setupBucket();
