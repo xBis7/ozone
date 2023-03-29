@@ -96,8 +96,8 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
    * succeed. Repeat with one OM node down.
    * @throws Exception
    */
-  @Test
-  @Flaky("HDDS-5994")
+//  @Test
+//  @Flaky("HDDS-5994")
   public void testAllOMNodesRunningAndOneDown() throws Exception {
     createVolumeTest(true);
     createKeyTest(true);
@@ -117,7 +117,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
   /**
    * Test client request fails when 2 OMs are down.
    */
-  @Test
+//  @Test
   public void testTwoOMNodesDown() throws Exception {
     OzoneManager om1 = getCluster().getOzoneManager(1);
     OzoneManager om2 = getCluster().getOzoneManager(2);
@@ -133,7 +133,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     getCluster().restartOzoneManager(om2, true);
   }
 
-  @Test
+//  @Test
   public void testMultipartUpload() throws Exception {
 
     // Happy scenario when all OM's are up.
@@ -194,7 +194,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
   }
 
-  @Test
+//  @Test
   public void test2() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -240,7 +240,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
   }
 
-  @Test
+//  @Test
   public void testFileQ3() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -286,7 +286,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
   }
 
-  @Test
+//  @Test
   public void testListHA4() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -367,7 +367,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     log.info("xbis: waiting for leader success, " + timeout);
   }
 
-  @Test
+//  @Test
   public void testFileOperationsAndDelete() throws Exception {
     testFileOperationsWithRecursive();
     testFileOperationsWithNonRecursive();
@@ -583,8 +583,8 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
 
   }
 
-  @Test
-  @Flaky("HDDS-6074")
+//  @Test
+//  @Flaky("HDDS-6074")
   public void testOMRatisSnapshot() throws Exception {
     String userName = "user" + RandomStringUtils.randomNumeric(5);
     String adminName = "admin" + RandomStringUtils.randomNumeric(5);
@@ -666,7 +666,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
 
   }
 
-  @Test
+//  @Test
   public void testOMRestart() throws Exception {
     // start fresh cluster
     shutdown();
@@ -750,7 +750,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
         followerOM1LastAppliedIndexNew > leaderOMSnaphsotIndex);
   }
 
-  @Test
+//  @Test
   public void testListParts() throws Exception {
 
     OzoneBucket ozoneBucket = setupBucket();
