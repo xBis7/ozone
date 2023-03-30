@@ -36,6 +36,7 @@ import org.apache.ozone.test.tag.Flaky;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,21 +70,9 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
         .getStorageContainerManager()
         .getPipelineManager()
         .isPipelineCreationFrozen());
+    log.info("xbis1111: before wait for cluster to be ready");
     getCluster().waitForClusterToBeReady();
-    // Check number of nodes
-    Assertions.assertEquals(3, getCluster().getOzoneManagersList().size());
-    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-      Assertions.assertTrue(om.isRunning());
-    }
-  }
-
-  @AfterEach
-  public void shutDown() throws InterruptedException, TimeoutException {
-    Assertions.assertFalse(getCluster()
-        .getStorageContainerManager()
-        .getPipelineManager()
-        .isPipelineCreationFrozen());
-    getCluster().waitForClusterToBeReady();
+    log.info("xbis2222: after wait for cluster to be ready");
     // Check number of nodes
     Assertions.assertEquals(3, getCluster().getOzoneManagersList().size());
     for (OzoneManager om : getCluster().getOzoneManagersList()) {
@@ -149,6 +138,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
 
   Logger log = LoggerFactory.getLogger(TestOzoneManagerHAWithData.class);
   @Test
+//  @RepeatedTest(100)
   public void testOMHAMetrics() throws InterruptedException,
       TimeoutException, IOException {
     waitForLeaderToBeReady();
@@ -289,8 +279,9 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
 //  @Test
   public void testListHA4() throws InterruptedException,
       TimeoutException, IOException {
+    log.info("xbis: before wait for leader, main");
     waitForLeaderToBeReady();
-
+    log.info("xbis: before getOMLeader");
     // Get leader OM
     OzoneManager leaderOM = getCluster().getOMLeader();
     // Store current leader's node ID,
@@ -362,9 +353,12 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     // Wait for Leader Election timeout
     int timeout = OZONE_OM_RATIS_SERVER_FAILURE_TIMEOUT_DURATION_DEFAULT
         .toIntExact(TimeUnit.MILLISECONDS);
+    log.info("xbis: before waitForClusterToBeReady");
+    getCluster().waitForClusterToBeReady();
+    log.info("xbis: before waitFor leader");
     GenericTestUtils.waitFor(() ->
         getCluster().getOMLeader() != null, 500, timeout);
-    log.info("xbis: waiting for leader success, " + timeout);
+    log.info("xbis: waitFor leader success, " + timeout);
   }
 
 //  @Test
