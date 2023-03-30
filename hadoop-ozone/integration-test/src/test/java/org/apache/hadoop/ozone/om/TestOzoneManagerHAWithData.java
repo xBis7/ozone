@@ -36,8 +36,6 @@ import org.apache.ozone.test.tag.Flaky;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -121,7 +119,6 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     testMultipartUploadWithOneOmNodeDown();
   }
 
-  Logger log = LoggerFactory.getLogger(TestOzoneManagerHAWithData.class);
   @Test
   public void testOMHAMetrics() throws Exception {
     shutdown();
@@ -136,25 +133,19 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     String leaderOMId = leaderOM.getOMNodeId();
     // Get a list of all OMs
     List<OzoneManager> omList = getCluster().getOzoneManagersList();
-    log.info("xbis: oldLeaderID: " + leaderOMId);
     // Check metrics for all OMs
     checkOMHAMetricsForAllOMs(omList, leaderOMId);
 
     // Restart leader OM
     getCluster().shutdownOzoneManager(leaderOM);
     getCluster().restartOzoneManager(leaderOM, true);
-    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
     waitForLeaderToBeReady();
-
-    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
 
     // Get the new leader
     OzoneManager newLeaderOM = getCluster().getOMLeader();
     String newLeaderOMId = newLeaderOM.getOMNodeId();
-//    Assertions.assertNotEquals(leaderOMId, newLeaderOMId);
     // Get a list of all OMs again
     omList = getCluster().getOzoneManagersList();
-    log.info("xbis: newLeaderID: " + newLeaderOMId);
     // New state for the old leader
     int newState = leaderOMId.equals(newLeaderOMId) ? 1 : 0;
 
@@ -180,8 +171,6 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
       // If current OM is leader, state should be 1
       int expectedState = nodeId
           .equals(leaderOMId) ? 1 : 0;
-      log.info("xbis: " + om.getOMNodeId() + " /exp: " + expectedState +
-          " /act: " + omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
       Assertions.assertEquals(expectedState,
           omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
 
@@ -199,7 +188,6 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
       throws InterruptedException, TimeoutException, IOException {
     for (OzoneManager om : getCluster().getOzoneManagersList()) {
       if (!getCluster().isOMActive(om.getOMNodeId())) {
-        log.info("xbis: OM is inactive: " + om.getOMNodeId());
         getCluster().stopOzoneManager(om.getOMNodeId());
         getCluster().restartOzoneManager(om, true);
       }
@@ -207,11 +195,8 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     // Wait for Leader Election timeout
     int timeout = OZONE_OM_RATIS_SERVER_FAILURE_TIMEOUT_DURATION_DEFAULT
         .toIntExact(TimeUnit.MILLISECONDS);
-    log.info("xbis: before waitForClusterToBeReady");
-    log.info("xbis: before waitFor leader");
     GenericTestUtils.waitFor(() ->
         getCluster().getOMLeader() != null, 500, timeout);
-    log.info("xbis: waitFor leader success, " + timeout);
   }
 
   @Test
@@ -557,7 +542,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     followerOM1.stop();
 
     // Do more transactions. Stopped OM should miss these transactions and
-    // the logs corresponding to atleast some of the missed transactions
+    // the logs corresponding to at least some missed transactions
     // should be purged. This will force the OM to install snapshot when
     // restarted.
     long minNewTxIndex = followerOM1LastAppliedIndex + getLogPurgeGap() * 10L;

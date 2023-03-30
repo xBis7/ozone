@@ -193,22 +193,17 @@ public class MiniOzoneHAClusterImpl extends MiniOzoneClusterImpl {
    */
   public OzoneManager getOMLeader() {
     OzoneManager res = null;
-    LOG.info("xbis: getCluster.getOMLeader / size: " + omhaService.getActiveServices().size());
     for (OzoneManager ozoneManager : this.omhaService.getActiveServices()) {
-      LOG.info("xbis: inside for loop");
       if (ozoneManager.isLeaderReady()) {
         if (res != null) {
           // Found more than one leader
           // Return null, expect the caller to retry in a while
-          LOG.info("xbis: " + ozoneManager.getOMNodeId() + " / leader is null");
           return null;
         }
         // Found a leader
         res = ozoneManager;
-        LOG.info("xbis: " + ozoneManager.getOMNodeId() + " / leader");
       }
     }
-    LOG.info("xbis: " + res + " / return res");
     return res;
   }
 

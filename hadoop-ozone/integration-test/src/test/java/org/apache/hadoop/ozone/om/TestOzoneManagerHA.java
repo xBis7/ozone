@@ -40,18 +40,14 @@ import org.apache.ozone.test.GenericTestUtils;
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Timeout;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ConnectException;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.HashMap;
-import java.util.concurrent.TimeoutException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.IPC_CLIENT_CONNECT_MAX_RETRIES_KEY;
@@ -187,7 +183,6 @@ public abstract class TestOzoneManagerHA {
         .getObjectStore();
   }
 
-  Logger log = LoggerFactory.getLogger(TestOzoneManagerHA.class);
 
   /**
    * Reset cluster between tests.
