@@ -180,9 +180,8 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
 
 
   /**
-   * Some tests are stopping or restarting OMs.
-   * There are test cases where we might need to
-   * wait for a leader to be elected and ready.
+   * After restarting OMs we need to wait
+   * for a leader to be elected and ready.
    */
   private void waitForLeaderToBeReady()
       throws InterruptedException, TimeoutException, IOException {
