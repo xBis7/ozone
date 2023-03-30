@@ -106,7 +106,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
   /**
    * Test client request fails when 2 OMs are down.
    */
-//  @Test
+  @Test
   public void testTwoOMNodesDown() throws Exception {
     OzoneManager om1 = getCluster().getOzoneManager(1);
     OzoneManager om2 = getCluster().getOzoneManager(2);
@@ -122,7 +122,7 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     getCluster().restartOzoneManager(om2, true);
   }
 
-//  @Test
+  @Test
   public void testMultipartUpload() throws Exception {
 
     // Happy scenario when all OM's are up.
@@ -361,7 +361,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     log.info("xbis: waitFor leader success, " + timeout);
   }
 
-//  @Test
+  @Test
   public void testFileOperationsAndDelete() throws Exception {
     testFileOperationsWithRecursive();
     testFileOperationsWithNonRecursive();
@@ -660,7 +660,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
 
   }
 
-//  @Test
+  @Test
   public void testOMRestart() throws Exception {
     // start fresh cluster
     shutdown();
@@ -744,7 +744,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
         followerOM1LastAppliedIndexNew > leaderOMSnaphsotIndex);
   }
 
-//  @Test
+  @Test
   public void testListParts() throws Exception {
 
     OzoneBucket ozoneBucket = setupBucket();
