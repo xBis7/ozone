@@ -194,10 +194,9 @@ public abstract class TestOzoneManagerHA {
    */
   @AfterEach
   public void resetCluster()
-      throws IOException, InterruptedException, TimeoutException {
+      throws IOException {
     if (cluster != null) {
       cluster.restartOzoneManager();
-      cluster.waitForClusterToBeReady();
     }
   }
 

@@ -33,10 +33,8 @@ import org.apache.hadoop.ozone.om.helpers.OmMultipartInfo;
 import org.apache.hadoop.ozone.om.helpers.OmMultipartUploadCompleteInfo;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,9 +63,13 @@ import static org.junit.Assert.fail;
 public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
 
   @BeforeEach
-  public void setUp() throws InterruptedException, TimeoutException, IOException {
+  public void setUp() throws Exception {
     getCluster().restartOzoneManager();
     getCluster().waitForClusterToBeReady();
+    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+      getCluster().shutdownOzoneManager(om);
+      getCluster().restartOzoneManager(om, true);
+    }
   }
 
   /**
@@ -75,8 +77,8 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
    * succeed. Repeat with one OM node down.
    * @throws Exception
    */
-//  @Test
-//  @Flaky("HDDS-5994")
+  @Test
+  @Flaky("HDDS-5994")
   public void testAllOMNodesRunningAndOneDown() throws Exception {
     createVolumeTest(true);
     createKeyTest(true);
@@ -103,10 +105,6 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
 
     createKeyTest(false);
 
-    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-      getCluster().shutdownOzoneManager(om);
-      getCluster().restartOzoneManager(om, true);
-    }
   }
 
   @Test
@@ -125,56 +123,10 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
 
   Logger log = LoggerFactory.getLogger(TestOzoneManagerHAWithData.class);
   @Test
-//  @RepeatedTest(100)
-  public void testOMHAMetrics() throws InterruptedException,
-      TimeoutException, IOException {
-    waitForLeaderToBeReady();
-
-    // Get leader OM
-    OzoneManager leaderOM = getCluster().getOMLeader();
-    // Store current leader's node ID,
-    // to use it after restarting the OM
-    String leaderOMId = leaderOM.getOMNodeId();
-    // Get a list of all OMs
-    List<OzoneManager> omList = getCluster().getOzoneManagersList();
-log.info("xbis: oldLeaderID: " + leaderOMId);
-    // Check metrics for all OMs
-    checkOMHAMetricsForAllOMs(omList, leaderOMId);
-
-    // Restart leader OM
-    getCluster().shutdownOzoneManager(leaderOM);
-    getCluster().restartOzoneManager(leaderOM, true);
-    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
+  public void testOMHAMetrics() throws Exception {
+    shutdown();
+    init();
     getCluster().waitForClusterToBeReady();
-    waitForLeaderToBeReady();
-
-    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
-
-    // Get the new leader
-    OzoneManager newLeaderOM = getCluster().getOMLeader();
-    String newLeaderOMId = newLeaderOM.getOMNodeId();
-//    Assertions.assertNotEquals(leaderOMId, newLeaderOMId);
-    // Get a list of all OMs again
-    omList = getCluster().getOzoneManagersList();
-    log.info("xbis: newLeaderID: " + newLeaderOMId);
-    // New state for the old leader
-    int newState = leaderOMId.equals(newLeaderOMId) ? 1 : 0;
-
-    // Get old leader
-    OzoneManager oldLeader = getCluster().getOzoneManager(leaderOMId);
-    // Get old leader's metrics
-    OMHAMetrics omhaMetrics = oldLeader.getOmhaMetrics();
-
-    Assertions.assertEquals(newState,
-        omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
-
-    // Check that metrics for all OMs have been updated
-    checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
-  }
-
-//  @Test
-  public void test2() throws InterruptedException,
-      TimeoutException, IOException {
     waitForLeaderToBeReady();
 
     // Get leader OM
@@ -220,8 +172,10 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
   }
 
 //  @Test
-  public void testFileQ3() throws InterruptedException,
-      TimeoutException, IOException {
+  public void test2() throws Exception {
+    shutdown();
+    init();
+    getCluster().waitForClusterToBeReady();
     waitForLeaderToBeReady();
 
     // Get leader OM
@@ -267,11 +221,12 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
   }
 
 //  @Test
-  public void testListHA4() throws InterruptedException,
-      TimeoutException, IOException {
-    log.info("xbis: before wait for leader, main");
+  public void testFileQ3() throws Exception {
+    shutdown();
+    init();
+    getCluster().waitForClusterToBeReady();
     waitForLeaderToBeReady();
-    log.info("xbis: before getOMLeader");
+
     // Get leader OM
     OzoneManager leaderOM = getCluster().getOMLeader();
     // Store current leader's node ID,
@@ -288,7 +243,55 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     getCluster().restartOzoneManager(leaderOM, true);
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
     getCluster().waitForClusterToBeReady();
+    waitForLeaderToBeReady();
 
+    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
+
+    // Get the new leader
+    OzoneManager newLeaderOM = getCluster().getOMLeader();
+    String newLeaderOMId = newLeaderOM.getOMNodeId();
+//    Assertions.assertNotEquals(leaderOMId, newLeaderOMId);
+    // Get a list of all OMs again
+    omList = getCluster().getOzoneManagersList();
+    log.info("xbis: newLeaderID: " + newLeaderOMId);
+    // New state for the old leader
+    int newState = leaderOMId.equals(newLeaderOMId) ? 1 : 0;
+
+    // Get old leader
+    OzoneManager oldLeader = getCluster().getOzoneManager(leaderOMId);
+    // Get old leader's metrics
+    OMHAMetrics omhaMetrics = oldLeader.getOmhaMetrics();
+
+    Assertions.assertEquals(newState,
+        omhaMetrics.getOmhaInfoOzoneManagerHALeaderState());
+
+    // Check that metrics for all OMs have been updated
+    checkOMHAMetricsForAllOMs(omList, newLeaderOMId);
+  }
+
+//  @Test
+  public void testListHA4() throws Exception {
+    shutdown();
+    init();
+    getCluster().waitForClusterToBeReady();
+    waitForLeaderToBeReady();
+
+    // Get leader OM
+    OzoneManager leaderOM = getCluster().getOMLeader();
+    // Store current leader's node ID,
+    // to use it after restarting the OM
+    String leaderOMId = leaderOM.getOMNodeId();
+    // Get a list of all OMs
+    List<OzoneManager> omList = getCluster().getOzoneManagersList();
+    log.info("xbis: oldLeaderID: " + leaderOMId);
+    // Check metrics for all OMs
+    checkOMHAMetricsForAllOMs(omList, leaderOMId);
+
+    // Restart leader OM
+    getCluster().shutdownOzoneManager(leaderOM);
+    getCluster().restartOzoneManager(leaderOM, true);
+    log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
+    getCluster().waitForClusterToBeReady();
     waitForLeaderToBeReady();
 
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
@@ -564,16 +567,15 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     Assertions.assertTrue(omMultipartUploadCompleteInfo.getHash() != null);
 
 
-    try (OzoneInputStream ozoneInputStream = ozoneBucket.readKey(keyName)) {
-//    OzoneInputStream ozoneInputStream = ozoneBucket.readKey(keyName);
-      byte[] fileContent = new byte[value.getBytes(UTF_8).length];
-      ozoneInputStream.read(fileContent);
-      Assertions.assertEquals(value, new String(fileContent, UTF_8));
-    }
+    OzoneInputStream ozoneInputStream = ozoneBucket.readKey(keyName);
+
+    byte[] fileContent = new byte[value.getBytes(UTF_8).length];
+    ozoneInputStream.read(fileContent);
+    Assertions.assertEquals(value, new String(fileContent, UTF_8));
   }
 
-//  @Test
-//  @Flaky("HDDS-6074")
+  @Test
+  @Flaky("HDDS-6074")
   public void testOMRatisSnapshot() throws Exception {
     String userName = "user" + RandomStringUtils.randomNumeric(5);
     String adminName = "admin" + RandomStringUtils.randomNumeric(5);
