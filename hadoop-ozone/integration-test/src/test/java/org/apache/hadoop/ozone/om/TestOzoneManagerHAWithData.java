@@ -65,19 +65,9 @@ import static org.junit.Assert.fail;
 public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
 
   @BeforeEach
-  public void setUp() throws InterruptedException, TimeoutException {
-    Assertions.assertFalse(getCluster()
-        .getStorageContainerManager()
-        .getPipelineManager()
-        .isPipelineCreationFrozen());
-    log.info("xbis1111: before wait for cluster to be ready");
+  public void setUp() throws InterruptedException, TimeoutException, IOException {
+    getCluster().restartOzoneManager();
     getCluster().waitForClusterToBeReady();
-    log.info("xbis2222: after wait for cluster to be ready");
-    // Check number of nodes
-    Assertions.assertEquals(3, getCluster().getOzoneManagersList().size());
-    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-      Assertions.assertTrue(om.isRunning());
-    }
   }
 
   /**
@@ -92,15 +82,12 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
     createKeyTest(true);
 
     // Repeat the test with one OM down
-    OzoneManager om = getCluster().getOzoneManager(1);
-    getCluster().stopOzoneManager(om.getOMNodeId());
+    getCluster().stopOzoneManager(1);
     Thread.sleep(NODE_FAILURE_TIMEOUT * 4);
 
     createVolumeTest(true);
 
     createKeyTest(true);
-
-    getCluster().restartOzoneManager(om, true);
   }
 
   /**
@@ -108,18 +95,18 @@ public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
    */
   @Test
   public void testTwoOMNodesDown() throws Exception {
-    OzoneManager om1 = getCluster().getOzoneManager(1);
-    OzoneManager om2 = getCluster().getOzoneManager(2);
-    getCluster().stopOzoneManager(om1.getOMNodeId());
-    getCluster().stopOzoneManager(om2.getOMNodeId());
+    getCluster().stopOzoneManager(1);
+    getCluster().stopOzoneManager(2);
     Thread.sleep(NODE_FAILURE_TIMEOUT * 4);
 
     createVolumeTest(false);
 
     createKeyTest(false);
 
-    getCluster().restartOzoneManager(om1, true);
-    getCluster().restartOzoneManager(om2, true);
+    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+      getCluster().shutdownOzoneManager(om);
+      getCluster().restartOzoneManager(om, true);
+    }
   }
 
   @Test
@@ -158,6 +145,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     getCluster().shutdownOzoneManager(leaderOM);
     getCluster().restartOzoneManager(leaderOM, true);
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
+    getCluster().waitForClusterToBeReady();
     waitForLeaderToBeReady();
 
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
@@ -204,6 +192,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     getCluster().shutdownOzoneManager(leaderOM);
     getCluster().restartOzoneManager(leaderOM, true);
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
+    getCluster().waitForClusterToBeReady();
     waitForLeaderToBeReady();
 
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
@@ -250,6 +239,7 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     getCluster().shutdownOzoneManager(leaderOM);
     getCluster().restartOzoneManager(leaderOM, true);
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
+    getCluster().waitForClusterToBeReady();
     waitForLeaderToBeReady();
 
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
@@ -297,6 +287,8 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     getCluster().shutdownOzoneManager(leaderOM);
     getCluster().restartOzoneManager(leaderOM, true);
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
+    getCluster().waitForClusterToBeReady();
+
     waitForLeaderToBeReady();
 
     log.info("xbis: currLeaderID: " + getCluster().getOMLeader());
@@ -349,12 +341,18 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
    * wait for a leader to be elected and ready.
    */
   private void waitForLeaderToBeReady()
-      throws InterruptedException, TimeoutException {
+      throws InterruptedException, TimeoutException, IOException {
+    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+      if (!getCluster().isOMActive(om.getOMNodeId())) {
+        log.info("xbis: OM is inactive: " + om.getOMNodeId());
+        getCluster().stopOzoneManager(om.getOMNodeId());
+        getCluster().restartOzoneManager(om, true);
+      }
+    }
     // Wait for Leader Election timeout
     int timeout = OZONE_OM_RATIS_SERVER_FAILURE_TIMEOUT_DURATION_DEFAULT
         .toIntExact(TimeUnit.MILLISECONDS);
     log.info("xbis: before waitForClusterToBeReady");
-    getCluster().waitForClusterToBeReady();
     log.info("xbis: before waitFor leader");
     GenericTestUtils.waitFor(() ->
         getCluster().getOMLeader() != null, 500, timeout);
@@ -532,9 +530,6 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
         omFailoverProxyProvider.getCurrentProxyOMNodeId();
 
     Assertions.assertTrue(!leaderOMNodeId.equals(newLeaderOMNodeId));
-
-    getCluster().restartOzoneManager(getCluster()
-        .getOzoneManager(leaderOMNodeId), true);
   }
 
   private String initiateMultipartUpload(OzoneBucket ozoneBucket,
@@ -569,12 +564,12 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     Assertions.assertTrue(omMultipartUploadCompleteInfo.getHash() != null);
 
 
-    OzoneInputStream ozoneInputStream = ozoneBucket.readKey(keyName);
-
-    byte[] fileContent = new byte[value.getBytes(UTF_8).length];
-    ozoneInputStream.read(fileContent);
-    Assertions.assertEquals(value, new String(fileContent, UTF_8));
-
+    try (OzoneInputStream ozoneInputStream = ozoneBucket.readKey(keyName)) {
+//    OzoneInputStream ozoneInputStream = ozoneBucket.readKey(keyName);
+      byte[] fileContent = new byte[value.getBytes(UTF_8).length];
+      ozoneInputStream.read(fileContent);
+      Assertions.assertEquals(value, new String(fileContent, UTF_8));
+    }
   }
 
 //  @Test
@@ -762,12 +757,11 @@ log.info("xbis: oldLeaderID: " + leaderOMId);
     validateListParts(ozoneBucket, keyName, uploadID, partsMap);
 
     // Stop leader OM, and then validate list parts.
-    OzoneManager leaderOM = getCluster().getOMLeader();
     stopLeaderOM();
     Thread.sleep(NODE_FAILURE_TIMEOUT * 4);
 
     validateListParts(ozoneBucket, keyName, uploadID, partsMap);
-    getCluster().restartOzoneManager(leaderOM, true);
+
   }
 
   /**

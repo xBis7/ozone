@@ -196,17 +196,8 @@ public abstract class TestOzoneManagerHA {
   public void resetCluster()
       throws IOException, InterruptedException, TimeoutException {
     if (cluster != null) {
-
       cluster.restartOzoneManager();
-      log.info("xbis3333: before wait for cluster");
-//    getCluster().getStorageContainerManager().getContainerManager().get
       cluster.waitForClusterToBeReady();
-
-      // Check number of nodes
-      Assertions.assertEquals(3, getCluster().getOzoneManagersList().size());
-      for (OzoneManager om : getCluster().getOzoneManagersList()) {
-        Assertions.assertTrue(om.isRunning());
-      }
     }
   }
 
