@@ -46,12 +46,6 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
       <id>github</id>
       <name>GitHub Packages</name>
       <url>https://maven.pkg.github.com/xBis7/hadoop</url>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
     </repository>
     <repository>
       <id>${distMgmtSnapshotsId}</id>
@@ -1556,6 +1550,12 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
         <groupId>org.apache.curator</groupId>
         <artifactId>curator-client</artifactId>
         <version>${curator.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.codehaus.jettison</groupId>
+        <artifactId>jettison</artifactId>
+        <version>1.5.3</version>
+        <scope>compile</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
