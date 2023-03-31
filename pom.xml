@@ -29,6 +29,17 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
   </modules>
 
   <distributionManagement>
+<!--    <repository>-->
+<!--      <id>github</id>-->
+<!--      <name>GitHub Packages</name>-->
+<!--      <url>https://maven.pkg.github.com/xBis7/hadoop</url>-->
+<!--      <snapshots>-->
+<!--        <enabled>true</enabled>-->
+<!--      </snapshots>-->
+<!--      <releases>-->
+<!--        <enabled>true</enabled>-->
+<!--      </releases>-->
+<!--    </repository>-->
     <repository>
       <id>${distMgmtStagingId}</id>
       <name>${distMgmtStagingName}</name>
@@ -44,7 +55,8 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
   <repositories>
     <repository>
       <id>github</id>
-      <url>https://public:&#103;hp_zkH6UEJXD0Qq6sWAjEYNdX490aXZl03SX3r5@maven.pkg.github.com/xBis7/*</url>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/xBis7/hadoop</url>
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
@@ -73,7 +85,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
 
   <properties>
     <hadoop2.version>2.7.3</hadoop2.version>
-    <hadoop.version>3.4.0</hadoop.version>
+    <hadoop.version>3.4.0-SNAPSHOT</hadoop.version>
 
     <!-- version for hdds/ozone components -->
     <hdds.version>${ozone.version}</hdds.version>

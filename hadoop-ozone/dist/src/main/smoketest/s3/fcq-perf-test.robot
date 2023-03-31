@@ -53,6 +53,7 @@ Setup headers, credentials and bucket1
 *** Test Cases ***
 Run freon s3kg
     Setup headers, credentials and bucket1
+    # Create 100.000 keys under /s3v through s3g
     Freon s3kg
 
 Get metrics samples
@@ -61,6 +62,6 @@ Get metrics samples
             Wait Until Keyword Succeeds         90sec           3sec        Execute         curl --negotiate -u : -LSs ${OM_JMX_ENDPOINT} | sed -n '/${DECAY_RPC_SCHED_METRICS}/,/}/p' | grep 'Caller(' >> xbis-logs2.txt
                                                                             Execute         curl --negotiate -u : -LSs ${OM_JMX_ENDPOINT} | sed -n '/${DECAY_RPC_SCHED_METRICS}/,/}/p' | grep 'Priority.0.AvgResponseTime' >> xbis-logs2.txt
                                                                             Execute         curl --negotiate -u : -LSs ${OM_JMX_ENDPOINT} | sed -n '/${DECAY_RPC_SCHED_METRICS}/,/}/p' | grep 'Priority.1.AvgResponseTime' >> xbis-logs2.txt
-                                                                            Execute         echo "-----" >> xbis-logs2.txt
+                                                                            Execute         echo "--- ${${index} + 1} ---" >> xbis-logs2.txt
     END
     Execute         echo "-----end-----" >> xbis-logs2.txt
