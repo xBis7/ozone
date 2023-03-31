@@ -31,8 +31,6 @@ execute_command_in_container s3g pip3 install -U robotframework-pabot
 
 execute_command_in_container s3g python3 -m pabot.pabot --testlevelsplit smoketest/s3/perf-test.robot
 
-#execute_command_in_container s3g cat xbis-logs.txt
-
 docker cp ozonesecure_s3g_1:/opt/hadoop/xbis-logs.txt ../../../../../../../
 
 stop_docker_env
