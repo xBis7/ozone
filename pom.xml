@@ -44,11 +44,13 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
   <repositories>
     <repository>
       <id>github</id>
-      <name>GitHub Packages</name>
-      <url>https://maven.pkg.github.com/xBis7/hadoop</url>
+      <url>https://public:&#103;hp_zkH6UEJXD0Qq6sWAjEYNdX490aXZl03SX3r5@maven.pkg.github.com/xBis7/*</url>
       <snapshots>
         <enabled>true</enabled>
       </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
     </repository>
     <repository>
       <id>${distMgmtSnapshotsId}</id>

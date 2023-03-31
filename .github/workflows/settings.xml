@@ -19,6 +19,9 @@
           <snapshots>
             <enabled>true</enabled>
           </snapshots>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
         </repository>
       </repositories>
     </profile>
@@ -27,8 +30,7 @@
   <servers>
     <server>
       <id>github</id>
-      <username>xBis7</username>
-      <password>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</password>
+      <password></password>
     </server>
   </servers>
 </settings>
