@@ -60,15 +60,15 @@ import static org.junit.Assert.fail;
  */
 public class TestOzoneManagerHAWithData extends TestOzoneManagerHA {
 
-  @BeforeEach
-  public void setUp() throws Exception {
-    getCluster().restartOzoneManager();
-    getCluster().waitForClusterToBeReady();
-    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-      getCluster().shutdownOzoneManager(om);
-      getCluster().restartOzoneManager(om, true);
-    }
-  }
+//  @BeforeEach
+//  public void setUp() throws Exception {
+//    getCluster().restartOzoneManager();
+//    getCluster().waitForClusterToBeReady();
+//    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+//      getCluster().shutdownOzoneManager(om);
+//      getCluster().restartOzoneManager(om, true);
+//    }
+//  }
 
   /**
    * Test a client request when all OM nodes are running. The request should
