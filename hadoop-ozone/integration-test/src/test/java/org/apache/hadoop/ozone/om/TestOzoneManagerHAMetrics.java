@@ -34,15 +34,15 @@ import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_RATIS_SERVER_FAIL
  */
 public class TestOzoneManagerHAMetrics extends TestOzoneManagerHA {
 
-  @BeforeEach
-  public void setUp() throws Exception {
-    getCluster().restartOzoneManager();
-    getCluster().waitForClusterToBeReady();
-    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-      getCluster().shutdownOzoneManager(om);
-      getCluster().restartOzoneManager(om, true);
-    }
-  }
+//  @BeforeEach
+//  public void setUp() throws Exception {
+//    getCluster().restartOzoneManager();
+//    getCluster().waitForClusterToBeReady();
+//    for (OzoneManager om : getCluster().getOzoneManagersList()) {
+//      getCluster().shutdownOzoneManager(om);
+//      getCluster().restartOzoneManager(om, true);
+//    }
+//  }
 
   @Test
   public void testOMHAMetrics() throws Exception {
