@@ -2208,6 +2208,10 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       if (certClient != null) {
         certClient.close();
       }
+
+      if (omhaMetrics != null) {
+        OMHAMetrics.unRegister();
+      }
     } catch (Exception e) {
       LOG.error("OzoneManager stop failed.", e);
     }
