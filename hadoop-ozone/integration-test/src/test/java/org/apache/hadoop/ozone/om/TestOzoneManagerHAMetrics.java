@@ -19,10 +19,8 @@ package org.apache.hadoop.ozone.om;
 import org.apache.hadoop.ozone.om.ha.OMHAMetrics;
 import org.apache.ozone.test.GenericTestUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -33,16 +31,6 @@ import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_RATIS_SERVER_FAIL
  * Test Ozone Manager HA Metrics.
  */
 public class TestOzoneManagerHAMetrics extends TestOzoneManagerHA {
-
-//  @BeforeEach
-//  public void setUp() throws Exception {
-//    getCluster().restartOzoneManager();
-//    getCluster().waitForClusterToBeReady();
-//    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-//      getCluster().shutdownOzoneManager(om);
-//      getCluster().restartOzoneManager(om, true);
-//    }
-//  }
 
   @Test
   public void testOMHAMetrics() throws Exception {
@@ -106,13 +94,8 @@ public class TestOzoneManagerHAMetrics extends TestOzoneManagerHA {
    * for a leader to be elected and ready.
    */
   private void waitForLeaderToBeReady()
-      throws InterruptedException, TimeoutException, IOException {
-    for (OzoneManager om : getCluster().getOzoneManagersList()) {
-      if (!getCluster().isOMActive(om.getOMNodeId())) {
-        getCluster().stopOzoneManager(om.getOMNodeId());
-        getCluster().restartOzoneManager(om, true);
-      }
-    }
+      throws InterruptedException, TimeoutException {
+
     // Wait for Leader Election timeout
     int timeout = OZONE_OM_RATIS_SERVER_FAILURE_TIMEOUT_DURATION_DEFAULT
         .toIntExact(TimeUnit.MILLISECONDS);
