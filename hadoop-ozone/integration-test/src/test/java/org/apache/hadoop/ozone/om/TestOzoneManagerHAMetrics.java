@@ -19,7 +19,6 @@ package org.apache.hadoop.ozone.om;
 import org.apache.hadoop.ozone.om.ha.OMHAMetrics;
 import org.apache.ozone.test.GenericTestUtils;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -33,19 +32,10 @@ import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_RATIS_SERVER_FAIL
  */
 public class TestOzoneManagerHAMetrics extends TestOzoneManagerHA {
 
-  @BeforeEach
-  public void setUp() throws Exception {
-    // Start with a fresh cluster
-    shutdown();
-    init();
-    // Wait for the cluster to be ready
-    getCluster().waitForClusterToBeReady();
-    // Wait for a leader to be elected
-    waitForLeaderToBeReady();
-  }
-
   @Test
   public void testOMHAMetrics() throws Exception {
+    waitForLeaderToBeReady();
+
     // Get leader OM
     OzoneManager leaderOM = getCluster().getOMLeader();
     // Store current leader's node ID,
@@ -105,7 +95,6 @@ public class TestOzoneManagerHAMetrics extends TestOzoneManagerHA {
    */
   private void waitForLeaderToBeReady()
       throws InterruptedException, TimeoutException {
-
     // Wait for Leader Election timeout
     int timeout = OZONE_OM_RATIS_SERVER_FAILURE_TIMEOUT_DURATION_DEFAULT
         .toIntExact(TimeUnit.MILLISECONDS);
