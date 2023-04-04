@@ -158,9 +158,10 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void notifyLeaderChanged(RaftGroupMemberId groupMemberId, RaftPeerId newLeaderId) {
-      LOG.info("xbis: leader change / newLeader: " + newLeaderId);
-      ozoneManager.omHAMetricsInit(newLeaderId.toString());
+  public void notifyLeaderChanged(RaftGroupMemberId groupMemberId,
+                                  RaftPeerId newLeaderId) {
+    // Initialize OMHAMetrics
+    ozoneManager.omHAMetricsInit(newLeaderId.toString());
   }
 
   /**
