@@ -35,7 +35,10 @@ public final class ScmConfigKeys {
   // metadata dir but in future we may support multiple for redundancy or
   // performance.
   public static final String OZONE_SCM_DB_DIRS = "ozone.scm.db.dirs";
-
+//  public static final String OZONE_SCM_LOST_FOUND_CONTAINER_DIRS =
+//      "ozone.scm.lost.found.container.dirs";
+//  public static final String OZONE_SCM_LOST_FOUND_CONTAINER_DIRS_DEFAULT =
+//      "/data/scm/lost_and_found";
   public static final String DFS_CONTAINER_RATIS_ENABLED_KEY
       = "dfs.container.ratis.enabled";
   public static final boolean DFS_CONTAINER_RATIS_ENABLED_DEFAULT

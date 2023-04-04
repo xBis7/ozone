@@ -28,6 +28,7 @@ import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ReadContai
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.DeletedBlocksTransactionInfo;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.StartContainerBalancerResponseProto;
+import org.apache.hadoop.hdds.recon.ReconConfig;
 import org.apache.hadoop.hdds.scm.DatanodeAdminError;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.XceiverClientManager;
@@ -313,6 +314,15 @@ public class ContainerOperationClient implements ScmClient {
       throws IOException {
     ContainerWithPipeline info = getContainerWithPipeline(containerID);
     deleteContainer(containerID, info.getPipeline(), force);
+  }
+
+  @Override
+  public void cleanupContainer(long containerID,
+                               boolean force) throws IOException {
+    // check the dir or volume with the lost+found data
+    // delete the data
+    // delete the container
+    deleteContainer(containerID, true);
   }
 
   @Override
