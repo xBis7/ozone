@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.ozone.client;
+package org.apache.hadoop.ozone.om.helpers;
 
 import io.netty.util.internal.StringUtil;
 import org.apache.hadoop.ipc.CallerContext;
