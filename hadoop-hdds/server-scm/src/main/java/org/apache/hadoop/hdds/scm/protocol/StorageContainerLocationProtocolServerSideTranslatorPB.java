@@ -136,6 +136,7 @@ import static org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProt
 import static org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.Type.GetPipeline;
 import static org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.Type.ListContainer;
 import static org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.Type.ListPipelines;
+import static org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.Type.DeleteContainer;
 import static org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol.ADMIN_COMMAND_TYPE;
 
 /**
@@ -206,6 +207,7 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
         ClientVersion.ERASURE_CODING_SUPPORT.toProtoValue()) {
       if (request.getCmdType() == GetContainer
           || request.getCmdType() == ListContainer
+          || request.getCmdType() == DeleteContainer
           || request.getCmdType() == GetContainerWithPipeline
           || request.getCmdType() == GetContainerWithPipelineBatch
           || request.getCmdType() == GetExistContainerWithPipelinesInBatch
@@ -213,6 +215,9 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
           || request.getCmdType() == GetPipeline) {
 
         checkResponseForECRepConfig = true;
+        if (request.getCmdType() == DeleteContainer) {
+          LOG.info("xbis: delete request type server side");
+        }
       }
     }
     ScmContainerLocationResponse response = dispatcher
@@ -448,6 +453,13 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
             .setStatus(Status.OK)
             .setScmListContainerResponse(listContainer(
                 request.getScmListContainerRequest()))
+            .build();
+      case DeleteContainer:
+        return ScmContainerLocationResponse.newBuilder()
+            .setCmdType(request.getCmdType())
+            .setStatus(Status.OK)
+            .setScmDeleteContainerResponse(deleteContainer(
+                request.getScmDeleteContainerRequest()))
             .build();
       case QueryNode:
         return ScmContainerLocationResponse.newBuilder()

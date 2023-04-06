@@ -39,12 +39,14 @@ import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.container.ContainerReplicaInfo;
 import org.apache.hadoop.hdds.scm.container.ReplicationManagerReport;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
+import org.apache.hadoop.hdds.scm.container.replication.ReplicationManager;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
 import org.apache.hadoop.hdds.scm.storage.ContainerProtocolCalls;
 import org.apache.hadoop.hdds.utils.HAUtils;
 import org.apache.hadoop.ozone.ClientVersion;
 import org.apache.hadoop.ozone.OzoneSecurityUtil;
+import org.apache.hadoop.ozone.protocol.commands.DeleteContainerCommand;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -319,10 +321,20 @@ public class ContainerOperationClient implements ScmClient {
   @Override
   public void cleanupContainer(long containerID,
                                boolean force) throws IOException {
-    // check the dir or volume with the lost+found data
-    // delete the data
-    // delete the container
-    deleteContainer(containerID, true);
+    storageContainerLocationClient
+        .deleteContainer(containerID);
+
+    // Check if ReplicationManager is running
+    if (storageContainerLocationClient.getReplicationManagerStatus()) {
+      // Get ReplicationManager
+      // replicationManager.sendDeleteCommand()
+
+      final DeleteContainerCommand deleteCommand =
+          new DeleteContainerCommand(containerID, force);
+//      deleteCommand.setReplicaIndex(replicaIndex);
+//      ReplicationManager replicationManager = new ReplicationManager();
+//      sendDatanodeCommand(deleteCommand, container, datanode);
+    }
   }
 
   @Override

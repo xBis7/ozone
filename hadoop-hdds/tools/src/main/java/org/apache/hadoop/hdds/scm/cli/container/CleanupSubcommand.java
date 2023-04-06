@@ -17,22 +17,26 @@
  */
 package org.apache.hadoop.hdds.scm.cli.container;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 import org.apache.hadoop.hdds.cli.OzoneAdmin;
+import org.apache.hadoop.hdds.cli.SubcommandWithParent;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.cli.ScmSubcommand;
 import org.apache.hadoop.hdds.scm.client.ScmClient;
+import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine.ParentCommand;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.concurrent.Callable;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 import static org.apache.hadoop.hdds.scm.cli.container.ContainerCommands.checkContainerExists;
 import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.getResponseMap;
@@ -46,12 +50,11 @@ import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.getRes
     description = "Cleanup a missing or unhealthy container",
     mixinStandardHelpOptions = true,
     versionProvider = HddsVersionProvider.class)
-public class CleanupSubcommand extends ScmSubcommand {
+@MetaInfServices(SubcommandWithParent.class)
+public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithParent {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(CleanupSubcommand.class);
-  @ParentCommand
-  private OzoneAdmin parent;
 
   @Option(names = { "--force" },
       defaultValue = "false",
@@ -70,9 +73,10 @@ public class CleanupSubcommand extends ScmSubcommand {
 
   @Override
   public void execute(ScmClient scmClient) throws IOException {
+    // Check if container exists
 //    checkContainerExists(scmClient, containerId);
-//    scmClient.cleanupContainer(containerId, force);
-    OzoneConfiguration conf = parent.getOzoneConf();
+
+    OzoneConfiguration conf =  new OzoneAdmin().getOzoneConf();
     url.append(ReconEndpointUtils.getReconWebAddress(conf)).append(MISSING_CONTAINERS_ENDPOINT);
     String response = "";
     try {
@@ -86,7 +90,40 @@ public class CleanupSubcommand extends ScmSubcommand {
       LOG.info("No response from Recon");
     }
 
+    List<Long> missingContainerIDs = new LinkedList<>();
+
+
     HashMap<String, Object> responseMap = getResponseMap(response);
 
+    // Get all the containers and split the values by ','
+    String[] values = responseMap.get("containers").toString().split(",");
+
+    for (String s : values) {
+      // Get only the lines that contain 'containerID'
+      if (s.contains("containerID")) {
+        // Split the lines by '='
+        String[] ids = s.split("=");
+        for (String id : ids) {
+          // If it doesn't contain 'containerID' then it's the ID
+          if (!id.contains("containerID")) {
+            double doubleNum = Double.parseDouble(id);
+            // Add the ID to the list
+            missingContainerIDs.add(Double.valueOf(doubleNum).longValue());
+          }
+        }
+      }
+    }
+
+    if (missingContainerIDs.contains(containerId)) {
+      scmClient.cleanupContainer(containerId, true);
+      ReconEndpointUtils.printWithUnderline(missingContainerIDs.toString(), true);
+    } else {
+      LOG.error("Provided ID doesn't belong to a missing container");
+    }
+  }
+
+  @Override
+  public Class<?> getParentType() {
+    return OzoneAdmin.class;
   }
 }

@@ -199,4 +199,8 @@ public final class ReconEndpointUtils {
   public static boolean isHTTPSEnabled(OzoneConfiguration conf) {
     return getHttpPolicy(conf) == HttpConfig.Policy.HTTPS_ONLY;
   }
+
+  public final class missingContainerJSON {
+
+  }
 }
