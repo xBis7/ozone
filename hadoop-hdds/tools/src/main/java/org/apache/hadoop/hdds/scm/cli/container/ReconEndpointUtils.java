@@ -58,7 +58,7 @@ public final class ReconEndpointUtils {
 
   private static final String OFS_PREFIX = "ofs://";
 
-  public static String makeHttpCall(StringBuffer url,
+  public static String makeHttpCall(StringBuilder url,
                                     boolean isSpnegoEnabled,
                                     ConfigurationSource conf)
       throws Exception {

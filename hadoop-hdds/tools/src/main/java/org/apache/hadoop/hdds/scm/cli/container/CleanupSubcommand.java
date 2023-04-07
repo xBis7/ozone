@@ -17,6 +17,10 @@
  */
 package org.apache.hadoop.hdds.scm.cli.container;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
@@ -36,9 +40,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.ArrayList;
 
-import static org.apache.hadoop.hdds.scm.cli.container.ContainerCommands.checkContainerExists;
 import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.getResponseMap;
 
 /**
@@ -69,16 +72,40 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
   private static final String MISSING_CONTAINERS_ENDPOINT =
       CONTAINERS_ENDPOINT + "/unhealthy/MISSING";
 
-  private final StringBuffer url = new StringBuffer();
-
   @Override
   public void execute(ScmClient scmClient) throws IOException {
     OzoneConfiguration conf =  new OzoneAdmin().getOzoneConf();
-    url.append(ReconEndpointUtils.getReconWebAddress(conf))
+    List<Long> missingContainerIDs =
+        getMissingContainersFromRecon(conf);
+
+    if (missingContainerIDs.contains(containerId)) {
+      List<ContainerKeyInfo> containerKeyList =
+          getContainerKeysFromRecon(conf);
+
+      for (ContainerKeyInfo info : containerKeyList) {
+        String keyPath = "/" +
+            info.getVolume() + "/" +
+            info.getBucket() + "/" +
+            info.getKey();
+        ReconEndpointUtils.printWithUnderline(keyPath, true);
+      }
+
+      // try and delete the keys
+
+//      scmClient.cleanupContainer(containerId, true);
+      ReconEndpointUtils.printWithUnderline(missingContainerIDs.toString(), true);
+    } else {
+      LOG.error("Provided ID doesn't belong to a missing container");
+    }
+  }
+
+  private List<Long> getMissingContainersFromRecon(OzoneConfiguration conf) {
+    StringBuilder urlBuilder = new StringBuilder();
+    urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
         .append(MISSING_CONTAINERS_ENDPOINT);
     String missingContainerResponse = "";
     try {
-      missingContainerResponse = ReconEndpointUtils.makeHttpCall(url,
+      missingContainerResponse = ReconEndpointUtils.makeHttpCall(urlBuilder,
           ReconEndpointUtils.isHTTPSEnabled(conf), conf);
     } catch (Exception e) {
       LOG.error("Error getting a missing container response from Recon");
@@ -94,14 +121,14 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
         getResponseMap(missingContainerResponse);
 
     // Get all the containers and split the values by ','
-    String[] values = missingContainersResponseMap
+    String[] containerValues = missingContainersResponseMap
         .get("containers").toString().split(",");
 
-    for (String s : values) {
+    for (String entry : containerValues) {
       // Get only the lines that contain 'containerID'
-      if (s.contains("containerID")) {
+      if (entry.contains("containerID")) {
         // Split the lines by '='
-        String[] ids = s.split("=");
+        String[] ids = entry.split("=");
         for (String id : ids) {
           // If it doesn't contain 'containerID' then it's the ID
           if (!id.contains("containerID")) {
@@ -113,41 +140,103 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
       }
     }
 
-    if (missingContainerIDs.contains(containerId)) {
+    return missingContainerIDs;
+  }
 
-      // Clean the StringBuilder
-      url.setLength(0);
-      url.append(ReconEndpointUtils.getReconWebAddress(conf))
-          .append(CONTAINERS_ENDPOINT)
-          .append("/")
-          .append(containerId)
-          .append("/keys");
-      String containerKeysResponse = "";
-      try {
-        containerKeysResponse = ReconEndpointUtils.makeHttpCall(url,
-            ReconEndpointUtils.isHTTPSEnabled(conf), conf);
-      } catch (Exception e) {
-        LOG.error("Error getting a container keys response from Recon");
-      }
-
-      if (Strings.isNullOrEmpty(containerKeysResponse)) {
-        LOG.info("Container keys response from Recon is empty");
-      }
-
-      HashMap<String, Object> containerKeysResponseMap =
-          getResponseMap(containerKeysResponse);
-      ReconEndpointUtils.printWithUnderline(containerKeysResponseMap.toString(), true);
-
-
-//      scmClient.cleanupContainer(containerId, true);
-      ReconEndpointUtils.printWithUnderline(missingContainerIDs.toString(), true);
-    } else {
-      LOG.error("Provided ID doesn't belong to a missing container");
+  private List<ContainerKeyInfo> getContainerKeysFromRecon(
+      OzoneConfiguration conf) throws JsonProcessingException {
+    StringBuilder urlBuilder = new StringBuilder();
+    urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
+        .append(CONTAINERS_ENDPOINT)
+        .append("/")
+        .append(containerId)
+        .append("/keys");
+    String containerKeysResponse = "";
+    try {
+      containerKeysResponse = ReconEndpointUtils.makeHttpCall(urlBuilder,
+          ReconEndpointUtils.isHTTPSEnabled(conf), conf);
+    } catch (Exception e) {
+      LOG.error("Error getting a container keys response from Recon");
     }
+
+    if (Strings.isNullOrEmpty(containerKeysResponse)) {
+      LOG.info("Container keys response from Recon is empty");
+      // Return empty list
+      return new LinkedList<>();
+    }
+
+    // Get the keys JSON array
+    String keysJsonArray = containerKeysResponse.substring(
+        containerKeysResponse.indexOf("keys\":") + 6,
+        containerKeysResponse.length() - 1);
+
+    final ObjectMapper objectMapper = new ObjectMapper();
+
+    return objectMapper.readValue(keysJsonArray,
+        new TypeReference<List<ContainerKeyInfo>>(){});
+
   }
 
   @Override
   public Class<?> getParentType() {
     return OzoneAdmin.class;
+  }
+
+  private static class ContainerKeyInfo {
+
+    private String volume;
+    private String bucket;
+    private String key;
+
+    // Maybe redundant
+    private long dataSize;
+    private ArrayList<Integer> versions;
+    private HashMap<Long, Object> blocks;
+    private String creationTime;
+    private String modificationTime;
+
+    @JsonCreator
+    private ContainerKeyInfo(
+        @JsonProperty("Volume") String volume,
+        @JsonProperty("Bucket") String bucket,
+        @JsonProperty("Key") String key,
+        @JsonProperty("DataSize") long dataSize,
+        @JsonProperty("Versions") ArrayList<Integer> versions,
+        @JsonProperty("Blocks") HashMap<Long, Object> blocks,
+        @JsonProperty("CreationTime") String creationTime,
+        @JsonProperty("ModificationTime") String modificationTime) {
+      this.volume = volume;
+      this.bucket = bucket;
+      this.key = key;
+      this.dataSize = dataSize;
+      this.versions = versions;
+      this.blocks = blocks;
+      this.creationTime = creationTime;
+      this.modificationTime = modificationTime;
+    }
+
+    public String getVolume() {
+      return volume;
+    }
+
+    public void setVolume(String volume) {
+      this.volume = volume;
+    }
+
+    public String getBucket() {
+      return bucket;
+    }
+
+    public void setBucket(String bucket) {
+      this.bucket = bucket;
+    }
+
+    public String getKey() {
+      return key;
+    }
+
+    public void setKey(String key) {
+      this.key = key;
+    }
   }
 }
