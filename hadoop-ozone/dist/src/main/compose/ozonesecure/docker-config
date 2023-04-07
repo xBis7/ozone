@@ -22,7 +22,7 @@ CORE-SITE.XML_hadoop.proxyuser.httpfs.groups=*
 
 CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
 CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
-CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.client.OzoneIdentityProvider
+CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider
 CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
 CORE-SITE.XML_ipc.9862.backoff.enable=true
 CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=2,1
