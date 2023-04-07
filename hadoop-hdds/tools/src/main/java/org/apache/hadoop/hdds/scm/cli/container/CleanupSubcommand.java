@@ -64,39 +64,38 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
   @Parameters(description = "Id of the container to cleanup")
   private long containerId;
 
-  private static final String UNHEALTHY_CONTAINERS_ENDPOINT =
-      "/api/v1/containers/unhealthy";
+  private static final String CONTAINERS_ENDPOINT =
+      "/api/v1/containers";
   private static final String MISSING_CONTAINERS_ENDPOINT =
-      UNHEALTHY_CONTAINERS_ENDPOINT + "/MISSING";
+      CONTAINERS_ENDPOINT + "/unhealthy/MISSING";
 
-  private StringBuffer url = new StringBuffer();
+  private final StringBuffer url = new StringBuffer();
 
   @Override
   public void execute(ScmClient scmClient) throws IOException {
-    // Check if container exists
-//    checkContainerExists(scmClient, containerId);
-
     OzoneConfiguration conf =  new OzoneAdmin().getOzoneConf();
-    url.append(ReconEndpointUtils.getReconWebAddress(conf)).append(MISSING_CONTAINERS_ENDPOINT);
-    String response = "";
+    url.append(ReconEndpointUtils.getReconWebAddress(conf))
+        .append(MISSING_CONTAINERS_ENDPOINT);
+    String missingContainerResponse = "";
     try {
-      response = ReconEndpointUtils.makeHttpCall(url,
+      missingContainerResponse = ReconEndpointUtils.makeHttpCall(url,
           ReconEndpointUtils.isHTTPSEnabled(conf), conf);
     } catch (Exception e) {
-      LOG.error("Error getting a response from Recon");
+      LOG.error("Error getting a missing container response from Recon");
     }
 
-    if (Strings.isNullOrEmpty(response)) {
-      LOG.info("No response from Recon");
+    if (Strings.isNullOrEmpty(missingContainerResponse)) {
+      LOG.info("Missing container response from Recon is empty");
     }
 
     List<Long> missingContainerIDs = new LinkedList<>();
 
-
-    HashMap<String, Object> responseMap = getResponseMap(response);
+    HashMap<String, Object> missingContainersResponseMap =
+        getResponseMap(missingContainerResponse);
 
     // Get all the containers and split the values by ','
-    String[] values = responseMap.get("containers").toString().split(",");
+    String[] values = missingContainersResponseMap
+        .get("containers").toString().split(",");
 
     for (String s : values) {
       // Get only the lines that contain 'containerID'
@@ -115,7 +114,32 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
     }
 
     if (missingContainerIDs.contains(containerId)) {
-      scmClient.cleanupContainer(containerId, true);
+
+      // Clean the StringBuilder
+      url.setLength(0);
+      url.append(ReconEndpointUtils.getReconWebAddress(conf))
+          .append(CONTAINERS_ENDPOINT)
+          .append("/")
+          .append(containerId)
+          .append("/keys");
+      String containerKeysResponse = "";
+      try {
+        containerKeysResponse = ReconEndpointUtils.makeHttpCall(url,
+            ReconEndpointUtils.isHTTPSEnabled(conf), conf);
+      } catch (Exception e) {
+        LOG.error("Error getting a container keys response from Recon");
+      }
+
+      if (Strings.isNullOrEmpty(containerKeysResponse)) {
+        LOG.info("Container keys response from Recon is empty");
+      }
+
+      HashMap<String, Object> containerKeysResponseMap =
+          getResponseMap(containerKeysResponse);
+      ReconEndpointUtils.printWithUnderline(containerKeysResponseMap.toString(), true);
+
+
+//      scmClient.cleanupContainer(containerId, true);
       ReconEndpointUtils.printWithUnderline(missingContainerIDs.toString(), true);
     } else {
       LOG.error("Provided ID doesn't belong to a missing container");
