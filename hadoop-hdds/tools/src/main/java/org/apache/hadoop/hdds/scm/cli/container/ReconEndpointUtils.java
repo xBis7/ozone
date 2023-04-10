@@ -18,6 +18,8 @@
 package org.apache.hadoop.hdds.scm.cli.container;
 
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.gson.Gson;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -25,7 +27,6 @@ import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.server.http.HttpConfig;
 import org.apache.hadoop.hdfs.web.URLConnectionFactory;
-import picocli.CommandLine;
 
 import javax.security.sasl.AuthenticationException;
 import java.io.InputStream;
@@ -33,7 +34,9 @@ import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import static java.net.HttpURLConnection.HTTP_CREATED;
 import static java.net.HttpURLConnection.HTTP_OK;
@@ -53,10 +56,7 @@ import static org.apache.hadoop.http.HttpServer2.HTTP_SCHEME;
 public final class ReconEndpointUtils {
 
   private ReconEndpointUtils() {
-
   }
-
-  private static final String OFS_PREFIX = "ofs://";
 
   public static String makeHttpCall(StringBuilder url,
                                     boolean isSpnegoEnabled,
@@ -111,52 +111,6 @@ public final class ReconEndpointUtils {
     }
   }
 
-  public static void printSpaces(int cnt) {
-    for (int i = 0; i < cnt; ++i) {
-      System.out.print(" ");
-    }
-  }
-
-  public static void printTypeNA(String requestType) {
-    String markUp = "@|underline " + requestType + "|@";
-    System.err.println("Path found in the system.\nBut the entity type " +
-        "is not applicable to the " + CommandLine.Help.Ansi.AUTO.string(markUp) + " request");
-  }
-
-  public static void printKVSeparator() {
-    System.out.print(" : ");
-  }
-
-  public static void printWithUnderline(String str, boolean newLine) {
-    String markupStr = "@|underline " + str + "|@";
-    if (newLine) {
-      System.out.println(CommandLine.Help.Ansi.AUTO.string(markupStr));
-    } else {
-      System.out.print(CommandLine.Help.Ansi.AUTO.string(markupStr));
-    }
-  }
-
-  public static void printBucketReminder() {
-    printNewLines(1);
-    System.out.println(
-        "[Warning] Namespace CLI is not designed for OBS bucket layout.\n" +
-            "Bucket being accessed must be of type FILE_SYSTEM_OPTIMIZED " +
-            "bucket layout or \nLEGACY bucket layout with " +
-            "'ozone.om.enable.filesystem.paths' set to true.");
-    printNewLines(1);
-  }
-
-  public static String parseInputPath(String path) {
-    if (!path.startsWith("ofs://")) {
-      return path;
-    }
-    int idx = path.indexOf("/", OFS_PREFIX.length());
-    if (idx == -1) {
-      return path.substring(OFS_PREFIX.length());
-    }
-    return path.substring(idx);
-  }
-
   public static String getReconWebAddress(OzoneConfiguration conf) {
     final String protocol;
     final HttpConfig.Policy webPolicy = getHttpPolicy(conf);
@@ -200,7 +154,140 @@ public final class ReconEndpointUtils {
     return getHttpPolicy(conf) == HttpConfig.Policy.HTTPS_ONLY;
   }
 
-  public final class missingContainerJSON {
 
+  /**
+   * Nested class to map the missing containers
+   * json array from endpoint
+   * /api/v1/containers/unhealthy/MISSING.
+   */
+  public static class MissingContainerJson {
+
+    private long containerID;
+    private String containerState;
+    private long unhealthySince;
+    private long expectedReplicaCount;
+    private long actualReplicaCount;
+    private long replicaDeltaCount;
+    private String reason;
+    private long keys;
+    private String pipelineID;
+    private ArrayList<ContainerReplicasJson> replicas;
+
+    @JsonCreator
+    public MissingContainerJson(
+        @JsonProperty("containerID") long containerID,
+        @JsonProperty("containerState") String containerState,
+        @JsonProperty("unhealthySince") long unhealthySince,
+        @JsonProperty("expectedReplicaCount") long expectedReplicaCount,
+        @JsonProperty("actualReplicaCount") long actualReplicaCount,
+        @JsonProperty("replicaDeltaCount") long replicaDeltaCount,
+        @JsonProperty("reason") String reason,
+        @JsonProperty("keys") long keys,
+        @JsonProperty("pipelineID") String pipelineID,
+        @JsonProperty("replicas") ArrayList<ContainerReplicasJson> replicas) {
+      this.containerID = containerID;
+      this.containerState = containerState;
+      this.unhealthySince = unhealthySince;
+      this.expectedReplicaCount = expectedReplicaCount;
+      this.replicaDeltaCount = replicaDeltaCount;
+      this.reason = reason;
+      this.keys = keys;
+      this.pipelineID = pipelineID;
+      this.replicas = replicas;
+    }
+
+  }
+
+  /**
+   * Nested class to map missing container replicas
+   * json array from endpoint
+   * /api/v1/containers/unhealthy/MISSING.
+   */
+  public static class ContainerReplicasJson {
+
+    private long containerId;
+    private String datanodeUuid;
+    private String datanodeHost;
+    private long firstSeenTime;
+    private long lastSeenTime;
+    private long lastBcsId;
+
+    @JsonCreator
+    public ContainerReplicasJson(
+        @JsonProperty("containerId") long containerId,
+        @JsonProperty("datanodeUuid") String datanodeUuid,
+        @JsonProperty("datanodeHost") String datanodeHost,
+        @JsonProperty("firstSeenTime") long firstSeenTime,
+        @JsonProperty("lastSeenTime") long lastSeenTime,
+        @JsonProperty("lastBcsId") long lastBcsId) {
+      this.containerId = containerId;
+      this.datanodeUuid = datanodeUuid;
+      this.datanodeHost = datanodeHost;
+      this.firstSeenTime = firstSeenTime;
+      this.lastSeenTime = lastSeenTime;
+      this.lastBcsId = lastBcsId;
+    }
+  }
+
+  /**
+   * Nested class to map the container keys json array
+   * from endpoint /api/v1/containers/ID/keys.
+   */
+  public static class ContainerKeyJson {
+
+    private String volume;
+    private String bucket;
+    private String key;
+
+    // Maybe redundant
+    private long dataSize;
+    private ArrayList<Integer> versions;
+    private HashMap<Long, Object> blocks;
+    private String creationTime;
+    private String modificationTime;
+
+    @JsonCreator
+    private ContainerKeyJson(
+        @JsonProperty("Volume") String volume,
+        @JsonProperty("Bucket") String bucket,
+        @JsonProperty("Key") String key,
+        @JsonProperty("DataSize") long dataSize,
+        @JsonProperty("Versions") ArrayList<Integer> versions,
+        @JsonProperty("Blocks") HashMap<Long, Object> blocks,
+        @JsonProperty("CreationTime") String creationTime,
+        @JsonProperty("ModificationTime") String modificationTime) {
+      this.volume = volume;
+      this.bucket = bucket;
+      this.key = key;
+      this.dataSize = dataSize;
+      this.versions = versions;
+      this.blocks = blocks;
+      this.creationTime = creationTime;
+      this.modificationTime = modificationTime;
+    }
+
+    public String getVolume() {
+      return volume;
+    }
+
+    public void setVolume(String volume) {
+      this.volume = volume;
+    }
+
+    public String getBucket() {
+      return bucket;
+    }
+
+    public void setBucket(String bucket) {
+      this.bucket = bucket;
+    }
+
+    public String getKey() {
+      return key;
+    }
+
+    public void setKey(String key) {
+      this.key = key;
+    }
   }
 }

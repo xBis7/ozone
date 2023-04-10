@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.hdds.scm.cli.container;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,20 +27,24 @@ import org.apache.hadoop.hdds.cli.SubcommandWithParent;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.cli.ScmSubcommand;
 import org.apache.hadoop.hdds.scm.client.ScmClient;
+import org.apache.hadoop.ozone.client.OzoneBucket;
+import org.apache.hadoop.ozone.client.OzoneClient;
+import org.apache.hadoop.ozone.client.OzoneVolume;
+import org.apache.hadoop.ozone.client.rpc.RpcClient;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ArrayList;
 
 import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.getResponseMap;
+import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.ContainerKeyJson;
+
 
 /**
  * The handler of cleanup container command,
@@ -59,10 +61,7 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
   private static final Logger LOG =
       LoggerFactory.getLogger(CleanupSubcommand.class);
 
-  @Option(names = { "--force" },
-      defaultValue = "false",
-      description = "Use force to cleanup the container")
-  private boolean force;
+  private OzoneConfiguration conf;
 
   @Parameters(description = "Id of the container to cleanup")
   private long containerId;
@@ -74,32 +73,40 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
 
   @Override
   public void execute(ScmClient scmClient) throws IOException {
-    OzoneConfiguration conf =  new OzoneAdmin().getOzoneConf();
+    OzoneAdmin ozoneAdmin = new OzoneAdmin();
+    conf =  ozoneAdmin.getOzoneConf();
+
+    // Get missing container list
     List<Long> missingContainerIDs =
-        getMissingContainersFromRecon(conf);
+        getMissingContainersFromRecon();
 
+    // If containerID belongs to a missing container
     if (missingContainerIDs.contains(containerId)) {
-      List<ContainerKeyInfo> containerKeyList =
-          getContainerKeysFromRecon(conf);
+      // Get container keys list
+      List<ContainerKeyJson> containerKeyList =
+          getContainerKeysFromRecon();
 
-      for (ContainerKeyInfo info : containerKeyList) {
-        String keyPath = "/" +
-            info.getVolume() + "/" +
-            info.getBucket() + "/" +
-            info.getKey();
-        ReconEndpointUtils.printWithUnderline(keyPath, true);
+      if (containerKeyList.size() > 0) {
+        for (ContainerKeyJson info : containerKeyList) {
+          try (OzoneClient client = new OzoneClient(conf, new RpcClient(conf, null))) {
+            OzoneVolume volume = client.getObjectStore().getVolume(info.getVolume());
+            OzoneBucket bucket = volume.getBucket(info.getBucket());
+            bucket.deleteKey(info.getKey());
+            System.out.println("Successfully deleted key: " +
+                "/" + info.getVolume() +
+                "/" + info.getBucket() +
+                "/" + info.getKey());
+          }
+        }
+      } else {
+        LOG.info("Container " + containerId + " has no keys");
       }
-
-      // try and delete the keys
-
-//      scmClient.cleanupContainer(containerId, true);
-      ReconEndpointUtils.printWithUnderline(missingContainerIDs.toString(), true);
     } else {
       LOG.error("Provided ID doesn't belong to a missing container");
     }
   }
 
-  private List<Long> getMissingContainersFromRecon(OzoneConfiguration conf) {
+  private List<Long> getMissingContainersFromRecon() {
     StringBuilder urlBuilder = new StringBuilder();
     urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
         .append(MISSING_CONTAINERS_ENDPOINT);
@@ -143,8 +150,8 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
     return missingContainerIDs;
   }
 
-  private List<ContainerKeyInfo> getContainerKeysFromRecon(
-      OzoneConfiguration conf) throws JsonProcessingException {
+  private List<ContainerKeyJson> getContainerKeysFromRecon()
+      throws JsonProcessingException {
     StringBuilder urlBuilder = new StringBuilder();
     urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
         .append(CONTAINERS_ENDPOINT)
@@ -173,70 +180,12 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
     final ObjectMapper objectMapper = new ObjectMapper();
 
     return objectMapper.readValue(keysJsonArray,
-        new TypeReference<List<ContainerKeyInfo>>(){});
+        new TypeReference<List<ContainerKeyJson>>(){});
 
   }
 
   @Override
   public Class<?> getParentType() {
     return OzoneAdmin.class;
-  }
-
-  private static class ContainerKeyInfo {
-
-    private String volume;
-    private String bucket;
-    private String key;
-
-    // Maybe redundant
-    private long dataSize;
-    private ArrayList<Integer> versions;
-    private HashMap<Long, Object> blocks;
-    private String creationTime;
-    private String modificationTime;
-
-    @JsonCreator
-    private ContainerKeyInfo(
-        @JsonProperty("Volume") String volume,
-        @JsonProperty("Bucket") String bucket,
-        @JsonProperty("Key") String key,
-        @JsonProperty("DataSize") long dataSize,
-        @JsonProperty("Versions") ArrayList<Integer> versions,
-        @JsonProperty("Blocks") HashMap<Long, Object> blocks,
-        @JsonProperty("CreationTime") String creationTime,
-        @JsonProperty("ModificationTime") String modificationTime) {
-      this.volume = volume;
-      this.bucket = bucket;
-      this.key = key;
-      this.dataSize = dataSize;
-      this.versions = versions;
-      this.blocks = blocks;
-      this.creationTime = creationTime;
-      this.modificationTime = modificationTime;
-    }
-
-    public String getVolume() {
-      return volume;
-    }
-
-    public void setVolume(String volume) {
-      this.volume = volume;
-    }
-
-    public String getBucket() {
-      return bucket;
-    }
-
-    public void setBucket(String bucket) {
-      this.bucket = bucket;
-    }
-
-    public String getKey() {
-      return key;
-    }
-
-    public void setKey(String key) {
-      this.key = key;
-    }
   }
 }
