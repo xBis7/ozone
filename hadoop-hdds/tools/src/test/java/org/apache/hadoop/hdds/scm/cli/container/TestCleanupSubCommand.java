@@ -36,7 +36,7 @@ public class TestCleanupSubCommand {
     ScmClient scmClient = mock(ScmClient.class);
     CleanupSubcommand cmd = new CleanupSubcommand();
     CommandLine c = new CommandLine(cmd);
-    c.parseArgs("2");
+    c.parseArgs("--container-id=2");
     // Execute the command to check the output
     cmd.execute(scmClient);
   }

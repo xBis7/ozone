@@ -25,12 +25,14 @@ import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 import org.apache.hadoop.hdds.cli.OzoneAdmin;
 import org.apache.hadoop.hdds.cli.SubcommandWithParent;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.cli.ScmSubcommand;
 import org.apache.hadoop.hdds.scm.cli.container.utils.ReconEndpointUtils;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerKey;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerReplica;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.MissingContainer;
 import org.apache.hadoop.hdds.scm.client.ScmClient;
+import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneVolume;
@@ -117,6 +119,10 @@ public class CleanupSubcommand extends ScmSubcommand
 
       if (belongsToMissing) {
         deleteContainerKeys(filterOptions.containerId);
+
+        ContainerInfo containerInfo = scmClient
+            .getContainer(filterOptions.containerId);
+        containerInfo.setState(HddsProtos.LifeCycleState.DELETED);
       } else {
         LOG.error("Provided ID doesn't belong to a missing container");
       }
