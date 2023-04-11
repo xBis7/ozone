@@ -15,11 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hadoop.hdds.scm.cli.container;
+package org.apache.hadoop.hdds.scm.cli.container.utils;
 
-
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.gson.Gson;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -34,9 +31,7 @@ import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 import static java.net.HttpURLConnection.HTTP_CREATED;
 import static java.net.HttpURLConnection.HTTP_OK;
@@ -152,142 +147,5 @@ public final class ReconEndpointUtils {
 
   public static boolean isHTTPSEnabled(OzoneConfiguration conf) {
     return getHttpPolicy(conf) == HttpConfig.Policy.HTTPS_ONLY;
-  }
-
-
-  /**
-   * Nested class to map the missing containers
-   * json array from endpoint
-   * /api/v1/containers/unhealthy/MISSING.
-   */
-  public static class MissingContainerJson {
-
-    private long containerID;
-    private String containerState;
-    private long unhealthySince;
-    private long expectedReplicaCount;
-    private long actualReplicaCount;
-    private long replicaDeltaCount;
-    private String reason;
-    private long keys;
-    private String pipelineID;
-    private ArrayList<ContainerReplicasJson> replicas;
-
-    @JsonCreator
-    public MissingContainerJson(
-        @JsonProperty("containerID") long containerID,
-        @JsonProperty("containerState") String containerState,
-        @JsonProperty("unhealthySince") long unhealthySince,
-        @JsonProperty("expectedReplicaCount") long expectedReplicaCount,
-        @JsonProperty("actualReplicaCount") long actualReplicaCount,
-        @JsonProperty("replicaDeltaCount") long replicaDeltaCount,
-        @JsonProperty("reason") String reason,
-        @JsonProperty("keys") long keys,
-        @JsonProperty("pipelineID") String pipelineID,
-        @JsonProperty("replicas") ArrayList<ContainerReplicasJson> replicas) {
-      this.containerID = containerID;
-      this.containerState = containerState;
-      this.unhealthySince = unhealthySince;
-      this.expectedReplicaCount = expectedReplicaCount;
-      this.replicaDeltaCount = replicaDeltaCount;
-      this.reason = reason;
-      this.keys = keys;
-      this.pipelineID = pipelineID;
-      this.replicas = replicas;
-    }
-
-  }
-
-  /**
-   * Nested class to map missing container replicas
-   * json array from endpoint
-   * /api/v1/containers/unhealthy/MISSING.
-   */
-  public static class ContainerReplicasJson {
-
-    private long containerId;
-    private String datanodeUuid;
-    private String datanodeHost;
-    private long firstSeenTime;
-    private long lastSeenTime;
-    private long lastBcsId;
-
-    @JsonCreator
-    public ContainerReplicasJson(
-        @JsonProperty("containerId") long containerId,
-        @JsonProperty("datanodeUuid") String datanodeUuid,
-        @JsonProperty("datanodeHost") String datanodeHost,
-        @JsonProperty("firstSeenTime") long firstSeenTime,
-        @JsonProperty("lastSeenTime") long lastSeenTime,
-        @JsonProperty("lastBcsId") long lastBcsId) {
-      this.containerId = containerId;
-      this.datanodeUuid = datanodeUuid;
-      this.datanodeHost = datanodeHost;
-      this.firstSeenTime = firstSeenTime;
-      this.lastSeenTime = lastSeenTime;
-      this.lastBcsId = lastBcsId;
-    }
-  }
-
-  /**
-   * Nested class to map the container keys json array
-   * from endpoint /api/v1/containers/ID/keys.
-   */
-  public static class ContainerKeyJson {
-
-    private String volume;
-    private String bucket;
-    private String key;
-
-    // Maybe redundant
-    private long dataSize;
-    private ArrayList<Integer> versions;
-    private HashMap<Long, Object> blocks;
-    private String creationTime;
-    private String modificationTime;
-
-    @JsonCreator
-    private ContainerKeyJson(
-        @JsonProperty("Volume") String volume,
-        @JsonProperty("Bucket") String bucket,
-        @JsonProperty("Key") String key,
-        @JsonProperty("DataSize") long dataSize,
-        @JsonProperty("Versions") ArrayList<Integer> versions,
-        @JsonProperty("Blocks") HashMap<Long, Object> blocks,
-        @JsonProperty("CreationTime") String creationTime,
-        @JsonProperty("ModificationTime") String modificationTime) {
-      this.volume = volume;
-      this.bucket = bucket;
-      this.key = key;
-      this.dataSize = dataSize;
-      this.versions = versions;
-      this.blocks = blocks;
-      this.creationTime = creationTime;
-      this.modificationTime = modificationTime;
-    }
-
-    public String getVolume() {
-      return volume;
-    }
-
-    public void setVolume(String volume) {
-      this.volume = volume;
-    }
-
-    public String getBucket() {
-      return bucket;
-    }
-
-    public void setBucket(String bucket) {
-      this.bucket = bucket;
-    }
-
-    public String getKey() {
-      return key;
-    }
-
-    public void setKey(String key) {
-      this.key = key;
-    }
   }
 }

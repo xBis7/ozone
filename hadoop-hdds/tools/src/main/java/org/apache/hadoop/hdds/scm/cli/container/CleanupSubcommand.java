@@ -26,6 +26,10 @@ import org.apache.hadoop.hdds.cli.OzoneAdmin;
 import org.apache.hadoop.hdds.cli.SubcommandWithParent;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.scm.cli.ScmSubcommand;
+import org.apache.hadoop.hdds.scm.cli.container.utils.ReconEndpointUtils;
+import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerKey;
+import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerReplica;
+import org.apache.hadoop.hdds.scm.cli.container.utils.types.MissingContainer;
 import org.apache.hadoop.hdds.scm.client.ScmClient;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
@@ -34,17 +38,13 @@ import org.apache.hadoop.ozone.client.rpc.RpcClient;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine.ArgGroup;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Parameters;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-
-import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.getResponseMap;
-import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.ContainerKeyJson;
-
 
 /**
  * The handler of cleanup container command,
@@ -56,15 +56,45 @@ import static org.apache.hadoop.hdds.scm.cli.container.ReconEndpointUtils.Contai
     mixinStandardHelpOptions = true,
     versionProvider = HddsVersionProvider.class)
 @MetaInfServices(SubcommandWithParent.class)
-public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithParent {
+public class CleanupSubcommand extends ScmSubcommand
+    implements SubcommandWithParent {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(CleanupSubcommand.class);
 
   private OzoneConfiguration conf;
 
-  @Parameters(description = "Id of the container to cleanup")
-  private long containerId;
+  @ArgGroup(multiplicity = "1")
+  private FilterOptions filterOptions;
+
+  /**
+   * Nested class to define exclusive filtering options.
+   */
+  private static class FilterOptions {
+    @Option(names = {"--container-id"},
+        paramLabel = "CONTAINER_ID",
+        description = "Cleanup container based on container ID.",
+        defaultValue = "0")
+    private long containerId;
+
+    @Option(names = {"--datanode-uuid"},
+        paramLabel = "DATANODE_UUID",
+        description = "Cleanup containers based on datanode UUID.",
+        defaultValue = "")
+    private String datanodeUuid;
+
+    @Option(names = {"--datanode-host"},
+        paramLabel = "DATANODE_HOST",
+        description = "Cleanup containers based on datanode Hostname.",
+        defaultValue = "")
+    private String datanodeHost;
+
+    @Option(names = {"--pipeline-id"},
+        paramLabel = "PIPELINE_ID",
+        description = "Cleanup containers based on pipeline ID.",
+        defaultValue = "")
+    private String pipelineId;
+  }
 
   private static final String CONTAINERS_ENDPOINT =
       "/api/v1/containers";
@@ -74,39 +104,147 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
   @Override
   public void execute(ScmClient scmClient) throws IOException {
     OzoneAdmin ozoneAdmin = new OzoneAdmin();
-    conf =  ozoneAdmin.getOzoneConf();
+    conf = ozoneAdmin.getOzoneConf();
 
     // Get missing container list
-    List<Long> missingContainerIDs =
+    List<MissingContainer> missingContainers =
         getMissingContainersFromRecon();
 
-    // If containerID belongs to a missing container
-    if (missingContainerIDs.contains(containerId)) {
-      // Get container keys list
-      List<ContainerKeyJson> containerKeyList =
-          getContainerKeysFromRecon();
+    if (filterOptions.containerId != 0) {
+      // Check if provided containerID belongs to a missing container
+      boolean belongsToMissing = checkContainerID(missingContainers,
+          filterOptions.containerId);
 
-      if (containerKeyList.size() > 0) {
-        for (ContainerKeyJson info : containerKeyList) {
-          try (OzoneClient client = new OzoneClient(conf, new RpcClient(conf, null))) {
-            OzoneVolume volume = client.getObjectStore().getVolume(info.getVolume());
-            OzoneBucket bucket = volume.getBucket(info.getBucket());
-            bucket.deleteKey(info.getKey());
-            System.out.println("Successfully deleted key: " +
-                "/" + info.getVolume() +
-                "/" + info.getBucket() +
-                "/" + info.getKey());
+      if (belongsToMissing) {
+        deleteContainerKeys(filterOptions.containerId);
+      } else {
+        LOG.error("Provided ID doesn't belong to a missing container");
+      }
+    } else if (!Strings.isNullOrEmpty(filterOptions.pipelineId)) {
+      // Check if provided pipelineID has any missing containers
+      boolean hasMissing = checkPipelineID(missingContainers,
+          filterOptions.pipelineId);
+
+      if (hasMissing) {
+        for (MissingContainer container : missingContainers) {
+          if (container.getPipelineID()
+              .equals(filterOptions.pipelineId)) {
+            deleteContainerKeys(container.getContainerID());
           }
         }
       } else {
-        LOG.info("Container " + containerId + " has no keys");
+        LOG.error("There are no missing containers " +
+            "associated with the provided Pipeline ID");
+      }
+    } else if (!Strings.isNullOrEmpty(filterOptions.datanodeUuid)) {
+      // Check if provided datanode UUID has any missing containers
+      boolean hasMissing = checkDatanodeUuid(missingContainers,
+          filterOptions.datanodeUuid);
+
+      if (hasMissing) {
+        for (MissingContainer container : missingContainers) {
+          for (ContainerReplica replica : container.getReplicas()) {
+            if (replica.getDatanodeUuid()
+                .equals(filterOptions.datanodeUuid)) {
+              deleteContainerKeys(container.getContainerID());
+            }
+          }
+        }
+      } else {
+        LOG.error("There are no missing containers " +
+            "associated with the provided Datanode UUID");
       }
     } else {
-      LOG.error("Provided ID doesn't belong to a missing container");
+      // Check if provided datanode Host has any missing containers
+      boolean hasMissing = checkDatanodeHost(missingContainers,
+          filterOptions.datanodeHost);
+
+      if (hasMissing) {
+        for (MissingContainer container : missingContainers) {
+          for (ContainerReplica replica : container.getReplicas()) {
+            if (replica.getDatanodeHost().equals(filterOptions.datanodeHost)) {
+              deleteContainerKeys(container.getContainerID());
+            }
+          }
+        }
+      } else {
+        LOG.error("There are no missing containers " +
+            "associated with the provided Datanode Host");
+      }
     }
   }
 
-  private List<Long> getMissingContainersFromRecon() {
+  private boolean checkContainerID(List<MissingContainer> missingContainers,
+                                   long containerID) {
+    List<Long> containerIDs = new LinkedList<>();
+
+    for (MissingContainer container : missingContainers) {
+      containerIDs.add(container.getContainerID());
+    }
+
+    return containerIDs.contains(containerID);
+  }
+
+  private boolean checkPipelineID(List<MissingContainer> missingContainers,
+                                   String pipelineID) {
+    List<String> pipelineIDs = new LinkedList<>();
+
+    for (MissingContainer container : missingContainers) {
+      pipelineIDs.add(container.getPipelineID());
+    }
+
+    return pipelineIDs.contains(pipelineID);
+  }
+
+  private boolean checkDatanodeUuid(List<MissingContainer> missingContainers,
+                                   String datanodeUuid) {
+    List<String> datanodeUuids = new LinkedList<>();
+
+    for (MissingContainer container : missingContainers) {
+      for (ContainerReplica replica : container.getReplicas()) {
+        datanodeUuids.add(replica.getDatanodeUuid());
+      }
+    }
+    return datanodeUuids.contains(datanodeUuid);
+  }
+
+  private boolean checkDatanodeHost(List<MissingContainer> missingContainers,
+                                   String datanodeHost) {
+    List<String> datanodeHosts = new LinkedList<>();
+
+    for (MissingContainer container : missingContainers) {
+      for (ContainerReplica replica : container.getReplicas()) {
+        datanodeHosts.add(replica.getDatanodeHost());
+      }
+    }
+
+    return datanodeHosts.contains(datanodeHost);
+  }
+
+  private void deleteContainerKeys(long containerID)
+      throws IOException {
+    // Get container keys list
+    List<ContainerKey> containerKeyList =
+        getContainerKeysFromRecon(containerID);
+
+    if (containerKeyList.size() > 0) {
+      for (ContainerKey info : containerKeyList) {
+        try (OzoneClient client = new OzoneClient(conf,
+            new RpcClient(conf, null))) {
+          OzoneVolume volume = client.getObjectStore()
+              .getVolume(info.getVolume());
+          OzoneBucket bucket = volume.getBucket(info.getBucket());
+          bucket.deleteKey(info.getKey());
+        }
+      }
+      LOG.info("Successfully deleted all keys for Container " + containerID);
+    } else {
+      LOG.info("Container " + containerID + " has no keys");
+    }
+  }
+
+  private List<MissingContainer> getMissingContainersFromRecon()
+      throws JsonProcessingException {
     StringBuilder urlBuilder = new StringBuilder();
     urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
         .append(MISSING_CONTAINERS_ENDPOINT);
@@ -115,55 +253,39 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
       missingContainerResponse = ReconEndpointUtils.makeHttpCall(urlBuilder,
           ReconEndpointUtils.isHTTPSEnabled(conf), conf);
     } catch (Exception e) {
-      LOG.error("Error getting a missing container response from Recon");
+      LOG.error("Error getting missing container response from Recon");
     }
 
     if (Strings.isNullOrEmpty(missingContainerResponse)) {
       LOG.info("Missing container response from Recon is empty");
+      return new LinkedList<>();
     }
 
-    List<Long> missingContainerIDs = new LinkedList<>();
+    // Get the containers JSON array
+    String containersJsonArray = missingContainerResponse.substring(
+        missingContainerResponse.indexOf("containers\":") + 12,
+        missingContainerResponse.length() - 1);
 
-    HashMap<String, Object> missingContainersResponseMap =
-        getResponseMap(missingContainerResponse);
+    final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Get all the containers and split the values by ','
-    String[] containerValues = missingContainersResponseMap
-        .get("containers").toString().split(",");
-
-    for (String entry : containerValues) {
-      // Get only the lines that contain 'containerID'
-      if (entry.contains("containerID")) {
-        // Split the lines by '='
-        String[] ids = entry.split("=");
-        for (String id : ids) {
-          // If it doesn't contain 'containerID' then it's the ID
-          if (!id.contains("containerID")) {
-            double doubleNum = Double.parseDouble(id);
-            // Add the ID to the list
-            missingContainerIDs.add(Double.valueOf(doubleNum).longValue());
-          }
-        }
-      }
-    }
-
-    return missingContainerIDs;
+    return objectMapper.readValue(containersJsonArray,
+        new TypeReference<List<MissingContainer>>() { });
   }
 
-  private List<ContainerKeyJson> getContainerKeysFromRecon()
+  private List<ContainerKey> getContainerKeysFromRecon(long containerID)
       throws JsonProcessingException {
     StringBuilder urlBuilder = new StringBuilder();
     urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
         .append(CONTAINERS_ENDPOINT)
         .append("/")
-        .append(containerId)
+        .append(containerID)
         .append("/keys");
     String containerKeysResponse = "";
     try {
       containerKeysResponse = ReconEndpointUtils.makeHttpCall(urlBuilder,
           ReconEndpointUtils.isHTTPSEnabled(conf), conf);
     } catch (Exception e) {
-      LOG.error("Error getting a container keys response from Recon");
+      LOG.error("Error getting container keys response from Recon");
     }
 
     if (Strings.isNullOrEmpty(containerKeysResponse)) {
@@ -180,7 +302,7 @@ public class CleanupSubcommand extends ScmSubcommand implements SubcommandWithPa
     final ObjectMapper objectMapper = new ObjectMapper();
 
     return objectMapper.readValue(keysJsonArray,
-        new TypeReference<List<ContainerKeyJson>>(){});
+        new TypeReference<List<ContainerKey>>() { });
 
   }
 
