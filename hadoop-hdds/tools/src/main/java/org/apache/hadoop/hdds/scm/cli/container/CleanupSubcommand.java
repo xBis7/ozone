@@ -73,25 +73,25 @@ public class CleanupSubcommand extends ScmSubcommand
    * Nested class to define exclusive filtering options.
    */
   private static class FilterOptions {
-    @Option(names = {"--container-id"},
+    @Option(names = {"--container-id", "--cid"},
         paramLabel = "CONTAINER_ID",
         description = "Cleanup container based on container ID.",
         defaultValue = "0")
     private long containerId;
 
-    @Option(names = {"--datanode-uuid"},
+    @Option(names = {"--datanode-uuid", "--duuid"},
         paramLabel = "DATANODE_UUID",
         description = "Cleanup containers based on datanode UUID.",
         defaultValue = "")
     private String datanodeUuid;
 
-    @Option(names = {"--datanode-host"},
+    @Option(names = {"--datanode-host", "--dhost"},
         paramLabel = "DATANODE_HOST",
         description = "Cleanup containers based on datanode Hostname.",
         defaultValue = "")
     private String datanodeHost;
 
-    @Option(names = {"--pipeline-id"},
+    @Option(names = {"--pipeline-id", "--pid"},
         paramLabel = "PIPELINE_ID",
         description = "Cleanup containers based on pipeline ID.",
         defaultValue = "")
@@ -122,6 +122,7 @@ public class CleanupSubcommand extends ScmSubcommand
 
         ContainerInfo containerInfo = scmClient
             .getContainer(filterOptions.containerId);
+        containerInfo.setNumberOfKeys(0L);
         containerInfo.setState(HddsProtos.LifeCycleState.DELETED);
       } else {
         LOG.error("Provided ID doesn't belong to a missing container");
