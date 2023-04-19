@@ -46,6 +46,7 @@ import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
 import org.apache.hadoop.hdds.utils.db.DBStore;
 import org.apache.hadoop.hdds.utils.db.DBStoreBuilder;
+import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.util.Time;
 import org.apache.ozone.test.GenericTestUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -152,6 +153,27 @@ public class TestContainerStateManager {
 
     Assertions.assertEquals(2, replicas.size());
     Assertions.assertEquals(3, c1.getReplicationConfig().getRequiredNodes());
+  }
+
+  @Test
+  public void testSCMRDBContainersTable()
+      throws IOException, TimeoutException {
+    Assertions.assertNotNull(dbStore);
+    Table<ContainerID, ContainerInfo> containersTable =
+        SCMDBDefinition.CONTAINERS.getTable(dbStore);
+
+
+    ContainerInfo c1 = allocateContainer();
+
+    // Container should exist in SCM Containers table.
+    Assertions.assertNotNull(containersTable
+        .getIfExist(ContainerID.valueOf(c1.getContainerID())));
+
+    ContainerInfo c2 = allocateContainer();
+
+    // Container should exist in SCM Containers table.
+    Assertions.assertNotNull(containersTable
+        .getIfExist(ContainerID.valueOf(c2.getContainerID())));
   }
 
   private void addReplica(ContainerInfo cont, DatanodeDetails node) {
