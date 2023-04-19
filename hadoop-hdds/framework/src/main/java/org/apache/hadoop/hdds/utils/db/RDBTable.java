@@ -75,6 +75,7 @@ class RDBTable implements Table<byte[], byte[]> {
       throws IOException {
     if (batch instanceof RDBBatchOperation) {
       ((RDBBatchOperation) batch).put(family, key, value);
+      ((RDBBatchOperation) batch).commit(db);
     } else {
       throw new IllegalArgumentException("batch should be RDBBatchOperation");
     }

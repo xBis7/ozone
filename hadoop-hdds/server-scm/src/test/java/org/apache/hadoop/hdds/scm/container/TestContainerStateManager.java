@@ -166,8 +166,8 @@ public class TestContainerStateManager {
     ContainerInfo c1 = allocateContainer();
 
     // Container should exist in SCM Containers table.
-//    Assertions.assertNotNull(containersTable
-//        .getIfExist(ContainerID.valueOf(c1.getContainerID())));
+    Assertions.assertNotNull(containersTable
+        .getIfExist(ContainerID.valueOf(c1.getContainerID())));
 
     ContainerInfo c2 = allocateContainer();
 
