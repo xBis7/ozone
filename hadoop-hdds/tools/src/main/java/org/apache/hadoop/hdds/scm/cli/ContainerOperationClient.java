@@ -44,6 +44,7 @@ import org.apache.hadoop.hdds.scm.storage.ContainerProtocolCalls;
 import org.apache.hadoop.hdds.utils.HAUtils;
 import org.apache.hadoop.ozone.ClientVersion;
 import org.apache.hadoop.ozone.OzoneSecurityUtil;
+import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.protocol.commands.DeleteContainerCommand;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 import org.slf4j.Logger;
@@ -55,6 +56,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_TOKEN_ENABLED;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_CONTAINER_TOKEN_ENABLED_DEFAULT;
@@ -317,22 +319,10 @@ public class ContainerOperationClient implements ScmClient {
   }
 
   @Override
-  public void cleanupContainer(long containerID,
-                               boolean force) throws IOException {
+  public void cleanupContainer(long containerID)
+      throws IOException, InvalidStateTransitionException, TimeoutException {
     storageContainerLocationClient
-        .deleteContainer(containerID);
-
-    // Check if ReplicationManager is running
-    if (storageContainerLocationClient.getReplicationManagerStatus()) {
-      // Get ReplicationManager
-      // replicationManager.sendDeleteCommand()
-
-      final DeleteContainerCommand deleteCommand =
-          new DeleteContainerCommand(containerID, force);
-//      deleteCommand.setReplicaIndex(replicaIndex);
-//      ReplicationManager replicationManager = new ReplicationManager();
-//      sendDatanodeCommand(deleteCommand, container, datanode);
-    }
+        .cleanupContainer(containerID);
   }
 
   @Override

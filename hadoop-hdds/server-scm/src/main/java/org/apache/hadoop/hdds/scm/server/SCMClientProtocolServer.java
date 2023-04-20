@@ -87,6 +87,7 @@ import org.apache.hadoop.ozone.audit.AuditLoggerType;
 import org.apache.hadoop.ozone.audit.AuditMessage;
 import org.apache.hadoop.ozone.audit.Auditor;
 import org.apache.hadoop.ozone.audit.SCMAction;
+import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
@@ -597,6 +598,25 @@ public class SCMClientProtocolServer implements
           SCMAction.DELETE_CONTAINER, auditMap, ex));
       throw ex;
     }
+  }
+
+  @Override
+  public void cleanupContainer(long containerID)
+      throws IOException, InvalidStateTransitionException, TimeoutException {
+    ContainerInfo containerInfo = getContainer(containerID);
+    if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSING) {
+      scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
+          HddsProtos.LifeCycleEvent.QUASI_CLOSE);
+      scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
+          HddsProtos.LifeCycleEvent.FORCE_CLOSE);
+    }
+
+    scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
+        HddsProtos.LifeCycleEvent.DELETE);
+    scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
+        HddsProtos.LifeCycleEvent.CLEANUP);
+
+    deleteContainer(containerID);
   }
 
   @Override

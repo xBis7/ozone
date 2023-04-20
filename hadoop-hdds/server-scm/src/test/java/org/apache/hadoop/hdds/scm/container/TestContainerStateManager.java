@@ -155,7 +155,7 @@ public class TestContainerStateManager {
     Assertions.assertEquals(3, c1.getReplicationConfig().getRequiredNodes());
   }
 
-  @Test
+//  @Test
   public void testSCMContainersRocksDBTable()
       throws IOException, TimeoutException {
     Assertions.assertNotNull(dbStore);

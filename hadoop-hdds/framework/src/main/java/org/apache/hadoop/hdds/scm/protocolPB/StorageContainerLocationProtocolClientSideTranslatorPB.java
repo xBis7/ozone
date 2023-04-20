@@ -450,6 +450,11 @@ public final class StorageContainerLocationProtocolClientSideTranslatorPB
 
   }
 
+  @Override
+  public void cleanupContainer(long containerID) throws IOException {
+    deleteContainer(containerID);
+  }
+
   /**
    * Queries a list of Nodes based on their operational state or health state.
    * Passing a null for either value acts as a wildcard for that state.

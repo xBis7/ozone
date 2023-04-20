@@ -31,6 +31,7 @@ import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos
     .ContainerDataProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
+import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 
 import java.io.Closeable;
@@ -38,6 +39,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 /**
  * The interface to call into underlying container layer.
@@ -117,8 +119,8 @@ public interface ScmClient extends Closeable {
    * @param force
    * @throws IOException
    */
-  void cleanupContainer(long containerID, boolean force)
-      throws IOException;
+  void cleanupContainer(long containerID)
+      throws IOException, InvalidStateTransitionException, TimeoutException;
 
   /**
    * Lists a range of containers and get their info.

@@ -37,6 +37,8 @@ import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.ozone.client.rpc.RpcClient;
+import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
+import org.bouncycastle.mime.MimeIOException;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +49,7 @@ import picocli.CommandLine.Command;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 /**
  * The handler of cleanup container command,
@@ -104,7 +107,8 @@ public class CleanupSubcommand extends ScmSubcommand
       CONTAINERS_ENDPOINT + "/unhealthy/MISSING";
 
   @Override
-  public void execute(ScmClient scmClient) throws IOException {
+  public void execute(ScmClient scmClient) throws IOException,
+      InvalidStateTransitionException, TimeoutException {
     OzoneAdmin ozoneAdmin = new OzoneAdmin();
     conf = ozoneAdmin.getOzoneConf();
 
@@ -124,6 +128,10 @@ public class CleanupSubcommand extends ScmSubcommand
             .getContainer(filterOptions.containerId);
         containerInfo.setNumberOfKeys(0L);
         containerInfo.setState(HddsProtos.LifeCycleState.DELETED);
+
+        cleanupMissingContainerOnRecon(filterOptions.containerId);
+
+        scmClient.cleanupContainer(filterOptions.containerId);
       } else {
         LOG.error("Provided ID doesn't belong to a missing container");
       }
@@ -310,7 +318,40 @@ public class CleanupSubcommand extends ScmSubcommand
 
     return objectMapper.readValue(keysJsonArray,
         new TypeReference<List<ContainerKey>>() { });
+  }
 
+
+  private List<MissingContainer> cleanupMissingContainerOnRecon(long containerID)
+      throws JsonProcessingException {
+    StringBuilder urlBuilder = new StringBuilder();
+    urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
+        .append(CONTAINERS_ENDPOINT)
+        .append("/")
+        .append(containerID)
+        .append("/cleanup");
+    String containerResponse = "";
+    try {
+      containerResponse = ReconEndpointUtils.makeHttpCall(urlBuilder,
+          ReconEndpointUtils.isHTTPSEnabled(conf), conf);
+    } catch (Exception e) {
+      LOG.error("Error getting container cleanup response from Recon");
+    }
+
+    if (Strings.isNullOrEmpty(containerResponse)) {
+      LOG.info("Container cleanup response from Recon is empty");
+      // Return empty list
+      return new LinkedList<>();
+    }
+
+    // Get the containers JSON array
+    String containersJsonArray = containerResponse.substring(
+        containerResponse.indexOf("containers\":") + 12,
+        containerResponse.length() - 1);
+
+    final ObjectMapper objectMapper = new ObjectMapper();
+
+    return objectMapper.readValue(containersJsonArray,
+        new TypeReference<List<MissingContainer>>() { });
   }
 
   @Override

@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.DefaultValue;
@@ -39,9 +40,11 @@ import javax.ws.rs.core.Response;
 
 import javax.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
+import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
@@ -260,6 +263,56 @@ public class ContainerEndpoint {
       @PathParam("id") Long containerID) {
     return Response.ok(
         containerManager.getAllContainerHistory(containerID)).build();
+  }
+
+  /**
+   * Remove from Recon's RocksDB tables,
+   * the container identified by the id param.
+   * Return
+   * {@link org.apache.hadoop.ozone.recon.api.types.MissingContainerMetadata}
+   * for all missing containers. The one that got cleaned up should be present.
+   *
+   * @param containerID the given containerID.
+   * @return {@link Response}
+   */
+  @GET
+  @Path("/{id}/cleanup")
+  public Response missingContainerCleanup(
+      @PathParam("id") Long containerID)
+      throws InvalidStateTransitionException, TimeoutException {
+
+    // Delete from Recon's tables.
+
+    // Scm containers
+//    containerManager.getContainers();
+    try {
+      ContainerInfo containerInfo =
+          containerManager.getContainer(ContainerID.valueOf(containerID));
+
+      if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSING) {
+        containerManager.updateContainerState(ContainerID.valueOf(containerID),
+            HddsProtos.LifeCycleEvent.QUASI_CLOSE);
+        containerManager.updateContainerState(ContainerID.valueOf(containerID),
+            HddsProtos.LifeCycleEvent.FORCE_CLOSE);
+      }
+
+      containerManager.updateContainerState(ContainerID.valueOf(containerID),
+          HddsProtos.LifeCycleEvent.DELETE);
+      containerManager.updateContainerState(ContainerID.valueOf(containerID),
+          HddsProtos.LifeCycleEvent.CLEANUP);
+
+      // This is deleting container from Recon's table
+      // Might be undesired
+      containerManager.deleteContainer(ContainerID.valueOf(containerID));
+      // containerManager.removeContainerReplica();
+    } catch (IOException ioEx) {
+      throw new WebApplicationException(ioEx,
+          Response.Status.INTERNAL_SERVER_ERROR);
+    }
+
+    return getUnhealthyContainers("MISSING",
+        Integer.parseInt(DEFAULT_FETCH_COUNT),
+        Integer.parseInt(DEFAULT_BATCH_NUMBER));
   }
 
   /**
