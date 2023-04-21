@@ -116,7 +116,6 @@ public interface ScmClient extends Closeable {
   /**
    * Cleanup an existing unhealthy or missing container.
    * @param containerID
-   * @param force
    * @throws IOException
    */
   void cleanupContainer(long containerID)

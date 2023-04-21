@@ -233,6 +233,8 @@ public class ContainerReportHandler extends AbstractContainerReportHandler
         final ContainerID containerId = ContainerID
             .valueOf(replicaProto.getContainerID());
         deleteReplica(containerId, datanodeDetails, publisher, "unknown");
+        LOG.info("Deleted unknown container {} from datanode {}",
+            replicaProto.getContainerID(), datanodeDetails);
       }
       return;
     }

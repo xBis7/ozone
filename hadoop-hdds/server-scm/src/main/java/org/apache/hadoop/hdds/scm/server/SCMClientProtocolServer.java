@@ -617,6 +617,9 @@ public class SCMClientProtocolServer implements
         HddsProtos.LifeCycleEvent.CLEANUP);
 
     deleteContainer(containerID);
+
+//    scm.getScmNodeManager().getNodeByUuid(containerInfo.get)
+//    scm.getScmNodeManager().removeContainer();
   }
 
   @Override

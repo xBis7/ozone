@@ -39,6 +39,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import javax.inject.Inject;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
@@ -280,11 +284,6 @@ public class ContainerEndpoint {
   public Response missingContainerCleanup(
       @PathParam("id") Long containerID)
       throws InvalidStateTransitionException, TimeoutException {
-
-    // Delete from Recon's tables.
-
-    // Scm containers
-//    containerManager.getContainers();
     try {
       ContainerInfo containerInfo =
           containerManager.getContainer(ContainerID.valueOf(containerID));
@@ -302,17 +301,23 @@ public class ContainerEndpoint {
           HddsProtos.LifeCycleEvent.CLEANUP);
 
       // This is deleting container from Recon's table
-      // Might be undesired
-      containerManager.deleteContainer(ContainerID.valueOf(containerID));
-      // containerManager.removeContainerReplica();
+
+      // This part is crashing recon.
+//      containerManager.deleteContainer(ContainerID.valueOf(containerID));
+
+      // remove container from Recon's table without crashing everything.
     } catch (IOException ioEx) {
       throw new WebApplicationException(ioEx,
           Response.Status.INTERNAL_SERVER_ERROR);
     }
 
-    return getUnhealthyContainers("MISSING",
-        Integer.parseInt(DEFAULT_FETCH_COUNT),
-        Integer.parseInt(DEFAULT_BATCH_NUMBER));
+    ObjectMapper mapper = new ObjectMapper();
+    ObjectNode json = mapper.createObjectNode();
+    json.put("success", "true");
+
+    return Response.ok()
+        .entity(json)
+        .build();
   }
 
   /**

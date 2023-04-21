@@ -25,20 +25,17 @@ import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 import org.apache.hadoop.hdds.cli.OzoneAdmin;
 import org.apache.hadoop.hdds.cli.SubcommandWithParent;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.cli.ScmSubcommand;
 import org.apache.hadoop.hdds.scm.cli.container.utils.ReconEndpointUtils;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerKey;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerReplica;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.MissingContainer;
 import org.apache.hadoop.hdds.scm.client.ScmClient;
-import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.ozone.client.rpc.RpcClient;
 import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
-import org.bouncycastle.mime.MimeIOException;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,16 +119,14 @@ public class CleanupSubcommand extends ScmSubcommand
           filterOptions.containerId);
 
       if (belongsToMissing) {
+        // Delete keys from OM
         deleteContainerKeys(filterOptions.containerId);
 
-        ContainerInfo containerInfo = scmClient
-            .getContainer(filterOptions.containerId);
-        containerInfo.setNumberOfKeys(0L);
-        containerInfo.setState(HddsProtos.LifeCycleState.DELETED);
-
-        cleanupMissingContainerOnRecon(filterOptions.containerId);
-
+        // Delete container from SCM container map
         scmClient.cleanupContainer(filterOptions.containerId);
+
+        // Set container state to DELETED and remove it from Recon's DB
+        cleanupMissingContainerOnRecon(filterOptions.containerId);
       } else {
         LOG.error("Provided ID doesn't belong to a missing container");
       }
@@ -321,8 +316,7 @@ public class CleanupSubcommand extends ScmSubcommand
   }
 
 
-  private List<MissingContainer> cleanupMissingContainerOnRecon(long containerID)
-      throws JsonProcessingException {
+  private void cleanupMissingContainerOnRecon(long containerID) {
     StringBuilder urlBuilder = new StringBuilder();
     urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
         .append(CONTAINERS_ENDPOINT)
@@ -339,19 +333,12 @@ public class CleanupSubcommand extends ScmSubcommand
 
     if (Strings.isNullOrEmpty(containerResponse)) {
       LOG.info("Container cleanup response from Recon is empty");
-      // Return empty list
-      return new LinkedList<>();
+    } else {
+      if (containerResponse.contains("true")) {
+        LOG.info("Missing container " + containerID +
+            " was successfully cleaned up from Recon");
+      }
     }
-
-    // Get the containers JSON array
-    String containersJsonArray = containerResponse.substring(
-        containerResponse.indexOf("containers\":") + 12,
-        containerResponse.length() - 1);
-
-    final ObjectMapper objectMapper = new ObjectMapper();
-
-    return objectMapper.readValue(containersJsonArray,
-        new TypeReference<List<MissingContainer>>() { });
   }
 
   @Override
