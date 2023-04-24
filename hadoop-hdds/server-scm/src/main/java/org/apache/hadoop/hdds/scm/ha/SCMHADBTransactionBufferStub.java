@@ -59,8 +59,6 @@ public class SCMHADBTransactionBufferStub implements SCMHADBTransactionBuffer {
     rwLock.readLock().lock();
     try {
       table.putWithBatch(getCurrentBatchOperation(), key, value);
-//      table.putWithBatch(new RDBBatchOperation(), key, value);
-//      table.put(key, value);
     } finally {
       rwLock.readLock().unlock();
     }
