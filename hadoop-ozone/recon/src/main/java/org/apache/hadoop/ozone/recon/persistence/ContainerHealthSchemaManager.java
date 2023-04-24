@@ -116,4 +116,7 @@ public class ContainerHealthSchemaManager {
     unhealthyContainersDao.insert(recs);
   }
 
+  public void deleteUnhealthyContainerRecord(UnhealthyContainers container) {
+    unhealthyContainersDao.delete(container);
+  }
 }

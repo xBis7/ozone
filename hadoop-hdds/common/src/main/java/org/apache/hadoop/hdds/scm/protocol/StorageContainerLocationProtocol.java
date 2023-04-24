@@ -220,9 +220,6 @@ public interface StorageContainerLocationProtocol extends Closeable {
    */
   void deleteContainer(long containerID) throws IOException;
 
-  void cleanupContainer(long containerID) throws IOException,
-      InvalidStateTransitionException, TimeoutException;
-
   /**
    *  Queries a list of Node Statuses. Passing a null for either opState or
    *  state acts like a wildcard returning all nodes in that state.

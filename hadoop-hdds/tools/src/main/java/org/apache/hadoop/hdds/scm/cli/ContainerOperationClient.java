@@ -317,11 +317,14 @@ public class ContainerOperationClient implements ScmClient {
     deleteContainer(containerID, info.getPipeline(), force);
   }
 
+  /**
+   * Delete container on SCM. We can't delete container from pipeline
+   * since the datanode that contains the container is down.
+   */
   @Override
   public void cleanupContainer(long containerID)
-      throws IOException, InvalidStateTransitionException, TimeoutException {
-    storageContainerLocationClient
-        .cleanupContainer(containerID);
+      throws IOException {
+    storageContainerLocationClient.deleteContainer(containerID);
   }
 
   @Override

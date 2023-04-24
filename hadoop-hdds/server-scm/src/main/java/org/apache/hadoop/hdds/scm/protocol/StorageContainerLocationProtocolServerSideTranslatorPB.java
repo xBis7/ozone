@@ -207,7 +207,6 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
         ClientVersion.ERASURE_CODING_SUPPORT.toProtoValue()) {
       if (request.getCmdType() == GetContainer
           || request.getCmdType() == ListContainer
-          || request.getCmdType() == DeleteContainer
           || request.getCmdType() == GetContainerWithPipeline
           || request.getCmdType() == GetContainerWithPipelineBatch
           || request.getCmdType() == GetExistContainerWithPipelinesInBatch
@@ -215,9 +214,6 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
           || request.getCmdType() == GetPipeline) {
 
         checkResponseForECRepConfig = true;
-        if (request.getCmdType() == DeleteContainer) {
-          LOG.info("xbis: delete request type server side");
-        }
       }
     }
     ScmContainerLocationResponse response = dispatcher

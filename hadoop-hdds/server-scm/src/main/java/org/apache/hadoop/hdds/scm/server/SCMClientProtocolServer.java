@@ -601,32 +601,6 @@ public class SCMClientProtocolServer implements
   }
 
   @Override
-  public void cleanupContainer(long containerID)
-      throws IOException, InvalidStateTransitionException, TimeoutException {
-    ContainerInfo containerInfo = getContainer(containerID);
-    if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSING) {
-      scm.getContainerManager()
-          .updateContainerState(ContainerID.valueOf(containerID),
-              HddsProtos.LifeCycleEvent.QUASI_CLOSE);
-      scm.getContainerManager()
-          .updateContainerState(ContainerID.valueOf(containerID),
-              HddsProtos.LifeCycleEvent.FORCE_CLOSE);
-    }
-
-    scm.getContainerManager()
-        .updateContainerState(ContainerID.valueOf(containerID),
-            HddsProtos.LifeCycleEvent.DELETE);
-    scm.getContainerManager()
-        .updateContainerState(ContainerID.valueOf(containerID),
-            HddsProtos.LifeCycleEvent.CLEANUP);
-
-    deleteContainer(containerID);
-
-//    scm.getScmNodeManager().getNodeByUuid(containerInfo.get)
-//    scm.getScmNodeManager().removeContainer();
-  }
-
-  @Override
   public List<HddsProtos.Node> queryNode(
       HddsProtos.NodeOperationalState opState, HddsProtos.NodeState state,
       HddsProtos.QueryScope queryScope, String poolName, int clientVersion)

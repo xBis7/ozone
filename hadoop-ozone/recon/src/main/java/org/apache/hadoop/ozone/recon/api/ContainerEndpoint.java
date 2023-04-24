@@ -286,20 +286,23 @@ public class ContainerEndpoint {
     try {
       // Check if container is missing.
       boolean isMissing = false;
+      // Set limit to max to get all missing containers.
       int maxInt = 2147483647;
       List<UnhealthyContainers> unhealthyContainers =
           containerHealthSchemaManager.getUnhealthyContainers(
               UnHealthyContainerStates.MISSING, 0, maxInt);
 
+      UnhealthyContainers unhealthyContainerRec = null;
       for (UnhealthyContainers container : unhealthyContainers) {
         if (containerID == container.getContainerId()) {
           isMissing = true;
+          unhealthyContainerRec = container;
           break;
         }
       }
 
       // If the container is not missing
-      // throw an exception and return error response.
+      // throw an exception and return forbidden response.
       if (!isMissing) {
         String errorMessage = "Provided container ID doesn't " +
             "belong to a missing container";
@@ -313,6 +316,8 @@ public class ContainerEndpoint {
       reconContainerMetadataManager
           .removeContainerFromMappingTables(containerID);
 
+      containerHealthSchemaManager
+          .deleteUnhealthyContainerRecord(unhealthyContainerRec);
     } catch (IOException ioEx) {
       throw new WebApplicationException(ioEx,
           Response.Status.INTERNAL_SERVER_ERROR);
