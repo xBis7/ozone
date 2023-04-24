@@ -111,8 +111,6 @@ import org.apache.hadoop.ozone.ClientVersion;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 import org.apache.hadoop.security.token.Token;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -454,9 +452,6 @@ public final class StorageContainerLocationProtocolClientSideTranslatorPB
 
   @Override
   public void cleanupContainer(long containerID) throws IOException {
-    Logger LOG = LoggerFactory.getLogger(
-        StorageContainerLocationProtocolClientSideTranslatorPB.class);
-    LOG.info("xbis: delete container using location protocol client side translator");
     deleteContainer(containerID);
   }
 

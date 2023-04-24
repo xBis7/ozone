@@ -33,7 +33,8 @@ public abstract class ScmSubcommand implements Callable<Void> {
   @CommandLine.Mixin
   private ScmOption scmOption;
 
-  protected abstract void execute(ScmClient client) throws IOException, InvalidStateTransitionException, TimeoutException;
+  protected abstract void execute(ScmClient client) throws IOException,
+      InvalidStateTransitionException, TimeoutException;
 
   @Override
   public final Void call() throws Exception {

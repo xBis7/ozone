@@ -209,6 +209,13 @@ public interface ReconContainerMetadataManager {
       throws IOException;
 
   /**
+   * Delete a container from all tables mapping the container to keys.
+   *
+   * @param containerID ID of the container
+   */
+  void removeContainerFromMappingTables(long containerID) throws IOException;
+
+  /**
    * Get iterator to the entire container DB.
    * @return TableIterator
    */

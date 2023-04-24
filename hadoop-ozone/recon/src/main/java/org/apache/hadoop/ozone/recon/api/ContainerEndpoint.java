@@ -44,7 +44,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
@@ -282,30 +281,38 @@ public class ContainerEndpoint {
   @GET
   @Path("/{id}/cleanup")
   public Response missingContainerCleanup(
-      @PathParam("id") Long containerID)
+      @PathParam("id") long containerID)
       throws InvalidStateTransitionException, TimeoutException {
     try {
-      ContainerInfo containerInfo =
-          containerManager.getContainer(ContainerID.valueOf(containerID));
+      // Check if container is missing.
+      boolean isMissing = false;
+      int maxInt = 2147483647;
+      List<UnhealthyContainers> unhealthyContainers =
+          containerHealthSchemaManager.getUnhealthyContainers(
+              UnHealthyContainerStates.MISSING, 0, maxInt);
 
-      if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSING) {
-        containerManager.updateContainerState(ContainerID.valueOf(containerID),
-            HddsProtos.LifeCycleEvent.QUASI_CLOSE);
-        containerManager.updateContainerState(ContainerID.valueOf(containerID),
-            HddsProtos.LifeCycleEvent.FORCE_CLOSE);
+      for (UnhealthyContainers container : unhealthyContainers) {
+        if (containerID == container.getContainerId()) {
+          isMissing = true;
+          break;
+        }
       }
 
-      containerManager.updateContainerState(ContainerID.valueOf(containerID),
-          HddsProtos.LifeCycleEvent.DELETE);
-      containerManager.updateContainerState(ContainerID.valueOf(containerID),
-          HddsProtos.LifeCycleEvent.CLEANUP);
+      // If the container is not missing
+      // throw an exception and return error response.
+      if (!isMissing) {
+        String errorMessage = "Provided container ID doesn't " +
+            "belong to a missing container";
+        throw new WebApplicationException(errorMessage,
+            Response.Status.FORBIDDEN);
+      }
 
-      // This is deleting container from Recon's table
+      containerManager
+          .removeContainerFromContainersTable(containerID);
 
-      // This part is crashing recon.
-//      containerManager.deleteContainer(ContainerID.valueOf(containerID));
+      reconContainerMetadataManager
+          .removeContainerFromMappingTables(containerID);
 
-      // remove container from Recon's table without crashing everything.
     } catch (IOException ioEx) {
       throw new WebApplicationException(ioEx,
           Response.Status.INTERNAL_SERVER_ERROR);

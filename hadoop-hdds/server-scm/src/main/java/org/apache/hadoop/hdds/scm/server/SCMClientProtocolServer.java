@@ -605,16 +605,20 @@ public class SCMClientProtocolServer implements
       throws IOException, InvalidStateTransitionException, TimeoutException {
     ContainerInfo containerInfo = getContainer(containerID);
     if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSING) {
-      scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
-          HddsProtos.LifeCycleEvent.QUASI_CLOSE);
-      scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
-          HddsProtos.LifeCycleEvent.FORCE_CLOSE);
+      scm.getContainerManager()
+          .updateContainerState(ContainerID.valueOf(containerID),
+              HddsProtos.LifeCycleEvent.QUASI_CLOSE);
+      scm.getContainerManager()
+          .updateContainerState(ContainerID.valueOf(containerID),
+              HddsProtos.LifeCycleEvent.FORCE_CLOSE);
     }
 
-    scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
-        HddsProtos.LifeCycleEvent.DELETE);
-    scm.getContainerManager().updateContainerState(ContainerID.valueOf(containerID),
-        HddsProtos.LifeCycleEvent.CLEANUP);
+    scm.getContainerManager()
+        .updateContainerState(ContainerID.valueOf(containerID),
+            HddsProtos.LifeCycleEvent.DELETE);
+    scm.getContainerManager()
+        .updateContainerState(ContainerID.valueOf(containerID),
+            HddsProtos.LifeCycleEvent.CLEANUP);
 
     deleteContainer(containerID);
 
