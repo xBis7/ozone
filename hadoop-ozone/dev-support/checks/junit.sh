@@ -21,6 +21,7 @@ cd "$DIR/../../.." || exit 1
 
 : ${CHECK:="unit"}
 : ${ITERATIONS:="1"}
+: ${OZONE_WITH_COVERAGE:="false"}
 
 declare -i ITERATIONS
 if [[ ${ITERATIONS} -le 0 ]]; then
@@ -29,6 +30,10 @@ fi
 
 export MAVEN_OPTS="-Xmx4096m $MAVEN_OPTS"
 MAVEN_OPTIONS='-B -Dskip.npx -Dskip.installnpx --no-transfer-progress'
+
+if [[ "${OZONE_WITH_COVERAGE}" != "true" ]]; then
+  MAVEN_OPTIONS="${MAVEN_OPTIONS} -Djacoco.skip"
+fi
 
 if [[ "${FAIL_FAST:-}" == "true" ]]; then
   MAVEN_OPTIONS="${MAVEN_OPTIONS} --fail-fast -Dsurefire.skipAfterFailureCount=1"
