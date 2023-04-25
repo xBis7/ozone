@@ -34,7 +34,8 @@ import java.util.Objects;
  */
 public class OzoneIdentityProvider implements IdentityProvider {
 
-  Logger LOG = LoggerFactory.getLogger(OzoneIdentityProvider.class);
+  private static final Logger LOG = LoggerFactory
+      .getLogger(OzoneIdentityProvider.class);
 
   public OzoneIdentityProvider() {
   }

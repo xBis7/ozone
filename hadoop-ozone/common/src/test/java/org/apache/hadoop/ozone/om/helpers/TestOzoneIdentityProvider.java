@@ -31,6 +31,9 @@ public class TestOzoneIdentityProvider {
   private static OzoneIdentityProvider identityProvider;
   private static final String ACCESS_ID = "testuser";
 
+  /**
+   * Schedulable that doesn't override getCallerContext().
+   */
   private static final Schedulable DEFAULT_SCHEDULABLE = new Schedulable() {
     @Override
     public UserGroupInformation getUserGroupInformation() {
@@ -43,23 +46,26 @@ public class TestOzoneIdentityProvider {
     }
   };
 
+  /**
+   * Schedulable that overrides getCallerContext().
+   */
   private static final Schedulable CALLER_CONTEXT_SCHEDULABLE =
       new Schedulable() {
-    @Override
-    public UserGroupInformation getUserGroupInformation() {
-      return UserGroupInformation.createRemoteUser("s3g");
-    }
+        @Override
+        public UserGroupInformation getUserGroupInformation() {
+          return UserGroupInformation.createRemoteUser("s3g");
+        }
 
-    @Override
-    public CallerContext getCallerContext() {
-      return new CallerContext.Builder(ACCESS_ID).build();
-    }
+        @Override
+        public CallerContext getCallerContext() {
+          return new CallerContext.Builder(ACCESS_ID).build();
+        }
 
-    @Override
-    public int getPriorityLevel() {
-      return 0;
-    }
-  };
+        @Override
+        public int getPriorityLevel() {
+          return 0;
+        }
+      };
 
   @BeforeAll
   public static void setUp() {
