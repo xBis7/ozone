@@ -86,7 +86,7 @@ public class TestOzoneIdentityProvider {
   public void testGetUserFromUGI() {
     String identity = identityProvider.makeIdentity(DEFAULT_SCHEDULABLE);
 
-    // defaultSchedulable doesn't override CallerContext and
+    // DEFAULT_SCHEDULABLE doesn't override CallerContext and
     // accessing it should throw an exception.
     UnsupportedOperationException uoex = Assertions
         .assertThrows(UnsupportedOperationException.class,

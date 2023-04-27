@@ -21,6 +21,10 @@ import java.io.IOException;
 
 import org.apache.hadoop.hdds.conf.MutableConfigurationSource;
 import org.apache.hadoop.hdds.server.http.BaseHttpServer;
+import org.eclipse.jetty.http.HttpParser;
+import org.eclipse.jetty.server.handler.RequestLogHandler;
+import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.servlet.ServletHandler;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -41,6 +45,7 @@ public class S3GatewayHttpServer extends BaseHttpServer {
       String name) throws IOException {
     super(conf, name);
     addServlet("icon", "/favicon.ico", IconServlet.class);
+    getWebAppContext().setHandler();
   }
 
   @Override

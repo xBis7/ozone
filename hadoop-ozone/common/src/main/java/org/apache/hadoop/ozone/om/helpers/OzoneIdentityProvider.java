@@ -55,12 +55,14 @@ public class OzoneIdentityProvider implements IdentityProvider {
       CallerContext callerContext = schedulable.getCallerContext();
       if (Objects.nonNull(callerContext) &&
           !StringUtil.isNullOrEmpty(callerContext.getContext())) {
+        LOG.info("xbis: CC identity: " + callerContext.getContext());
         return callerContext.getContext();
       }
     } catch (UnsupportedOperationException ex) {
       LOG.error("Trying to access CallerContext from a Schedulable " +
           "implementation that's not instance of Server.Call");
     }
+    LOG.info("xbis: UGI identity: " + ugi.getShortUserName());
     return ugi.getShortUserName() == null ? null : ugi.getShortUserName();
   }
 }
