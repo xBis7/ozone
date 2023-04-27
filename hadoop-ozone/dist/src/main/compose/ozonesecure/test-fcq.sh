@@ -25,10 +25,31 @@ source "$COMPOSE_DIR/../testlib.sh"
 
 export SECURITY_ENABLED=true
 
+# Append the FairCallQueue configs to docker-config
+# `ozone.om.transport.class` shouldn't already be defined in docker-config
+# If `OZONE_OM_PORT_DEFAULT = 9862` changes,
+# then the port used below should change as well
+tee -a ./docker-config << END
+
+# FairCallQueue configs
+CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
+CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
+CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider
+CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
+CORE-SITE.XML_ipc.9862.backoff.enable=true
+CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=2,1
+CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=50
+
+OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory
+END
+
 start_docker_env
 
 execute_robot_test s3g fcq/s3_om_fcq.robot
 
 stop_docker_env
+
+# Remove the FairCallQueue configs from docker-config
+head -n -10 ./docker-config > tmp.txt && mv tmp.txt docker-config
 
 generate_report
