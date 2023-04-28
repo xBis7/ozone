@@ -55,33 +55,22 @@ execute_robot_test scm -v container:1 -v count:2 replication/wait.robot
 docker-compose up -d --scale datanode=3
 execute_robot_test scm -v container:1 -v count:3 replication/wait.robot
 
-stop_docker_env
+stop_containers om s3g
 
-# Append the FairCallQueue configs to docker-config
-# `ozone.om.transport.class` shouldn't already be defined in docker-config
-# If `OZONE_OM_PORT_DEFAULT = 9862` changes,
-# then the port used below should change as well
-tee -a ./docker-config << END
+docker-compose run -d \
+-e CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue \
+-e CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider \
+-e OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory om
 
-# FairCallQueue configs
-CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
-CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
-CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider
-CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
-CORE-SITE.XML_ipc.9862.backoff.enable=true
-CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=2,1
-CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=50
+docker-compose run -d \
+-e CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue \
+-e CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider \
+-e OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory s3g
 
-OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory
-END
+s3g_run_container=$(docker ps | grep "_s3g_run_" | head -n 1 | awk '{print $1}')
 
-start_docker_env
-
-execute_robot_test s3g fcq/s3_om_fcq.robot
+docker exec $s3g_run_container robot smoketest/fcq/s3_om_fcq.robot
 
 stop_docker_env
-
-# Remove the FairCallQueue configs from docker-config
-head -n -10 ./docker-config > tmp.txt && mv tmp.txt docker-config
 
 generate_report
