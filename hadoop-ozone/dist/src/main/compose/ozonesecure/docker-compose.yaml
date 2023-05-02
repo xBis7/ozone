@@ -26,9 +26,9 @@ services:
   kms:
     image: apache/hadoop:${HADOOP_VERSION}
     ports:
-      - 9600:9600
+    - 9600:9600
     env_file:
-      - ./docker-config
+    - ./docker-config
     environment:
       HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
     volumes:
