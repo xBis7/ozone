@@ -178,7 +178,7 @@ public class ContainerHealthTask extends ReconScmTask {
               )) {
             // Check if the missing container is deleted in SCM
             if (currentContainer.isMissing() &&
-                containerDeletedInSCM(currentContainer.getContainer())) {
+                missingContainerDeletedInSCM(currentContainer.getContainer())) {
               rec.delete();
             }
             existingRecords.add(rec.getContainerState());
@@ -242,12 +242,30 @@ public class ContainerHealthTask extends ReconScmTask {
         }
         return true;
       }
+
+      try {
+        scmClient.getContainer(containerInfo.getContainerID());
+        return false;
+      } catch (IOException ex) {
+        LOG.info("Container not present in SCM");
+        return true;
+      }
     } catch (InvalidStateTransitionException e) {
       LOG.error("Failed to transition Container state while processing " +
           "container in Container Health task", e);
     } catch (IOException | TimeoutException e) {
       LOG.error("Got exception while processing container in" +
           " Container Health task", e);
+    }
+    return false;
+  }
+
+  private boolean missingContainerDeletedInSCM(ContainerInfo containerInfo) {
+    try {
+      scmClient.getContainer(containerInfo.getContainerID());
+    } catch (IOException ex) {
+      LOG.info("Container not present in SCM");
+      return true;
     }
     return false;
   }
