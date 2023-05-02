@@ -67,7 +67,7 @@ execute_robot_test s3g_fcq fcq/s3_om_fcq.robot
 # stop om and s3g containers with FCQ config
 stop_containers om_fcq s3g_fcq
 
-# restore om and s3g containers to non FCQ config
+# start om and s3g containers with non FCQ config
 start_containers om s3g
 
 stop_docker_env
