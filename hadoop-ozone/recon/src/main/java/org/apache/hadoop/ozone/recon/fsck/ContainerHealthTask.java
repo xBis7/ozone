@@ -190,7 +190,8 @@ public class ContainerHealthTask extends ReconScmTask {
                 containerManager.deleteContainer(currentContainer
                     .getContainer().containerID());
               } catch (IOException | TimeoutException ex) {
-                LOG.error("Unable to delete container during periodic container health task.");
+                LOG.error("Unable to delete container during " +
+                    "periodic container health task.");
               }
             }
             existingRecords.add(rec.getContainerState());

@@ -104,7 +104,8 @@ public class CleanupSubcommand extends ScmSubcommand
         // Set container state to DELETED and remove it from Recon's DB
         triggerContainerHealthCheckOnRecon();
 
-        LOG.info("Successfully cleaned up missing container " + filterOptions.containerId);
+        LOG.info("Successfully cleaned up missing container " +
+            filterOptions.containerId);
       } else {
         LOG.error("Provided ID doesn't belong to a missing container");
       }
