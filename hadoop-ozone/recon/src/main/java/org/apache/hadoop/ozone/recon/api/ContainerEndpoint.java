@@ -25,7 +25,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import javax.ws.rs.DefaultValue;
@@ -39,15 +38,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import javax.inject.Inject;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.server.OzoneStorageContainerManager;
-import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
@@ -63,7 +57,6 @@ import org.apache.hadoop.ozone.recon.api.types.UnhealthyContainerMetadata;
 import org.apache.hadoop.ozone.recon.api.types.UnhealthyContainersSummary;
 import org.apache.hadoop.ozone.recon.api.types.UnhealthyContainersResponse;
 import org.apache.hadoop.ozone.recon.api.types.KeyMetadata.ContainerBlockMetadata;
-import org.apache.hadoop.ozone.recon.fsck.ContainerHealthTask;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHistory;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHealthSchemaManager;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
@@ -271,73 +264,18 @@ public class ContainerEndpoint {
   }
 
   /**
-   * Remove from Recon's RocksDB tables,
-   * the container identified by the id param.
-   * Return
-   * {@link org.apache.hadoop.ozone.recon.api.types.MissingContainerMetadata}
-   * for all missing containers. The one that got cleaned up should be present.
-   *
-   * @param containerID the given containerID.
-   * @return {@link Response}
+   * Trigger a Container Health Check on Recon.
    */
   @GET
-  @Path("/{id}/cleanup")
-  public Response missingContainerCleanup(
-      @PathParam("id") long containerID)
-      throws InvalidStateTransitionException, TimeoutException {
+  @Path("/triggerHealthCheck")
+  public Response triggerContainerHealthCheck(
+      @PathParam("id") long containerID) {
 
     ReconStorageContainerManagerFacade reconSCMFacade =
         (ReconStorageContainerManagerFacade) reconSCM;
     reconSCMFacade.getContainerHealthTask().triggerContainerHealthCheck();
 
-//    healthTask.
-//    try {
-//      // Check if container is missing.
-//      boolean isMissing = false;
-//      // Set limit to max to get all missing containers.
-//      int maxInt = 2147483647;
-//      List<UnhealthyContainers> unhealthyContainers =
-//          containerHealthSchemaManager.getUnhealthyContainers(
-//              UnHealthyContainerStates.MISSING, 0, maxInt);
-//
-//      UnhealthyContainers unhealthyContainerRec = null;
-//      for (UnhealthyContainers container : unhealthyContainers) {
-//        if (containerID == container.getContainerId()) {
-//          isMissing = true;
-//          unhealthyContainerRec = container;
-//          break;
-//        }
-//      }
-//
-//      // If the container is not missing
-//      // throw an exception and return forbidden response.
-//      if (!isMissing) {
-//        String errorMessage = "Provided container ID doesn't " +
-//            "belong to a missing container";
-//        throw new WebApplicationException(errorMessage,
-//            Response.Status.FORBIDDEN);
-//      }
-//
-//      containerManager
-//          .removeContainerFromContainersTable(containerID);
-//
-//      reconContainerMetadataManager
-//          .removeContainerFromMappingTables(containerID);
-//
-//      containerHealthSchemaManager
-//          .deleteUnhealthyContainerRecord(unhealthyContainerRec);
-//    } catch (IOException ioEx) {
-//      throw new WebApplicationException(ioEx,
-//          Response.Status.INTERNAL_SERVER_ERROR);
-//    }
-
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode json = mapper.createObjectNode();
-    json.put("success", "true");
-
-    return Response.ok()
-        .entity(json)
-        .build();
+    return Response.ok(true).build();
   }
 
   /**

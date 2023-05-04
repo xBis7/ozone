@@ -31,6 +31,7 @@ import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerKey;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.ContainerReplica;
 import org.apache.hadoop.hdds.scm.cli.container.utils.types.MissingContainer;
 import org.apache.hadoop.hdds.scm.client.ScmClient;
+import org.apache.hadoop.hdds.scm.container.ContainerReplicaInfo;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.client.OzoneVolume;
@@ -114,11 +115,13 @@ public class CleanupSubcommand extends ScmSubcommand
         getMissingContainersFromRecon();
 
     if (filterOptions.containerId != 0) {
-      // Check if provided containerID belongs to a missing container
-      boolean belongsToMissing = checkContainerID(missingContainers,
-          filterOptions.containerId);
+      // When a datanode dies, all replicas are removed.
+      // If the container is missing then getContainerReplicas
+      // should be empty.
+      List<ContainerReplicaInfo> replicas = scmClient
+          .getContainerReplicas(filterOptions.containerId);
 
-      if (belongsToMissing) {
+      if (replicas.isEmpty()) {
         // Delete keys from OM
         deleteContainerKeys(filterOptions.containerId);
 
@@ -126,7 +129,7 @@ public class CleanupSubcommand extends ScmSubcommand
         scmClient.cleanupContainer(filterOptions.containerId);
 
         // Set container state to DELETED and remove it from Recon's DB
-        cleanupMissingContainerOnRecon(filterOptions.containerId);
+        triggerContainerHealthCheckOnRecon();
       } else {
         LOG.error("Provided ID doesn't belong to a missing container");
       }
@@ -316,27 +319,26 @@ public class CleanupSubcommand extends ScmSubcommand
   }
 
 
-  private void cleanupMissingContainerOnRecon(long containerID) {
+  private void triggerContainerHealthCheckOnRecon() {
     StringBuilder urlBuilder = new StringBuilder();
     urlBuilder.append(ReconEndpointUtils.getReconWebAddress(conf))
         .append(CONTAINERS_ENDPOINT)
-        .append("/")
-        .append(containerID)
-        .append("/cleanup");
+        .append("/triggerHealthCheck");
     String containerResponse = "";
     try {
       containerResponse = ReconEndpointUtils.makeHttpCall(urlBuilder,
           ReconEndpointUtils.isHTTPSEnabled(conf), conf);
     } catch (Exception e) {
-      LOG.error("Error getting container cleanup response from Recon");
+      LOG.error("Error getting response from Recon while " +
+          "triggering a container health check.");
     }
 
     if (Strings.isNullOrEmpty(containerResponse)) {
-      LOG.info("Container cleanup response from Recon is empty");
+      LOG.info("Container health check trigger response from Recon is empty");
     } else {
       if (containerResponse.contains("true")) {
-        LOG.info("Missing container " + containerID +
-            " was successfully cleaned up from Recon");
+        LOG.info("Container health check" +
+            " was successfully triggered on Recon");
       }
     }
   }

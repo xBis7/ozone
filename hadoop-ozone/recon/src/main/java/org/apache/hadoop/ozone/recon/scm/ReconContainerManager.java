@@ -338,32 +338,25 @@ public class ReconContainerManager extends ContainerManagerImpl {
     }
   }
 
-  public void removeContainerFromContainersTable(long containerID)
-      throws IOException, InvalidStateTransitionException, TimeoutException {
-    ContainerInfo containerInfo =
-        getContainer(ContainerID.valueOf(containerID));
+  @Override
+  public void deleteContainer(ContainerID containerID)
+      throws IOException, TimeoutException {
+    // Remove container from Recon's ContainerStateMap.
+    getContainerStateManager()
+        .removeContainer(containerID.getProtobuf());
 
-    if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSING) {
-      updateContainerState(ContainerID.valueOf(containerID),
-          HddsProtos.LifeCycleEvent.QUASI_CLOSE);
-      updateContainerState(ContainerID.valueOf(containerID),
-          HddsProtos.LifeCycleEvent.FORCE_CLOSE);
-    }
-
-    updateContainerState(ContainerID.valueOf(containerID),
-        HddsProtos.LifeCycleEvent.DELETE);
-    updateContainerState(ContainerID.valueOf(containerID),
-        HddsProtos.LifeCycleEvent.CLEANUP);
-
-    // Delete from containers
+    // Delete from containers table
     Table<ContainerID, ContainerInfo> reconContainersTable =
         ReconSCMDBDefinition.CONTAINERS.getTable(dbStore);
 
     ContainerInfo info = reconContainersTable
-        .getIfExist(ContainerID.valueOf(containerID));
+        .getIfExist(containerID);
 
     if (Objects.nonNull(info)) {
-      reconContainersTable.delete(ContainerID.valueOf(containerID));
+      reconContainersTable.delete(containerID);
+      // containerID.getId() is deprecated
+      cdbServiceProvider.removeContainerFromMappingTables(
+          getContainer(containerID).getContainerID());
     }
   }
 

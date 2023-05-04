@@ -178,8 +178,20 @@ public class ContainerHealthTask extends ReconScmTask {
               )) {
             // Check if the missing container is deleted in SCM
             if (currentContainer.isMissing() &&
+                containerDeletedInSCM(currentContainer.getContainer())) {
+              rec.delete();
+            }
+            // Check if the missing container is deleted in SCM,
+            // in case of dead datanode
+            if (currentContainer.isMissing() &&
                 missingContainerDeletedInSCM(currentContainer.getContainer())) {
               rec.delete();
+              try {
+                containerManager.deleteContainer(currentContainer
+                    .getContainer().containerID());
+              } catch (IOException | TimeoutException ex) {
+                LOG.error("Unable to delete container during periodic container health task.");
+              }
             }
             existingRecords.add(rec.getContainerState());
             if (rec.changed()) {
@@ -242,14 +254,6 @@ public class ContainerHealthTask extends ReconScmTask {
         }
         return true;
       }
-
-      try {
-        scmClient.getContainer(containerInfo.getContainerID());
-        return false;
-      } catch (IOException ex) {
-        LOG.info("Container not present in SCM");
-        return true;
-      }
     } catch (InvalidStateTransitionException e) {
       LOG.error("Failed to transition Container state while processing " +
           "container in Container Health task", e);
@@ -263,11 +267,11 @@ public class ContainerHealthTask extends ReconScmTask {
   private boolean missingContainerDeletedInSCM(ContainerInfo containerInfo) {
     try {
       scmClient.getContainer(containerInfo.getContainerID());
+      return false;
     } catch (IOException ex) {
       LOG.info("Container not present in SCM");
       return true;
     }
-    return false;
   }
 
   /**
