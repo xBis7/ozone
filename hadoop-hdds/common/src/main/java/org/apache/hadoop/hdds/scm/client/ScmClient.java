@@ -113,6 +113,15 @@ public interface ScmClient extends Closeable {
   void deleteContainer(long containerId, boolean force) throws IOException;
 
   /**
+   * Deletes the container in the SCM.
+   * Used in case the datanode of the container is dead
+   * and the SCM needs to be cleaned up.
+   * @param containerID - ID of the container.
+   * @throws IOException
+   */
+  void deleteContainerInSCM(long containerID) throws IOException;
+
+  /**
    * Lists a range of containers and get their info.
    *
    * @param startContainerID start containerID.

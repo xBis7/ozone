@@ -56,6 +56,16 @@ public interface StorageContainerServiceProvider {
       throws IOException;
 
   /**
+   * Requests SCM for a container with the given ID
+   * and returns container info or throws an exception
+   * if it doesn't exist.
+   * @param containerId - containerID
+   * @return ContainerInfo
+   * @throws IOException if the container doesn't exist.
+   */
+  ContainerInfo getContainer(long containerId) throws IOException;
+
+  /**
    * Requests SCM for which containers in given ID list.
    * @param containerIDs containerId list
    * @return list of ContainerInfo + Pipeline info exists in SCM

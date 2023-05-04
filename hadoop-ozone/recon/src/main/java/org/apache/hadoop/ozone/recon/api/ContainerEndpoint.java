@@ -42,6 +42,7 @@ import org.apache.hadoop.ozone.recon.persistence.ContainerHealthSchemaManager;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHistory;
 import org.apache.hadoop.ozone.recon.recovery.ReconOMMetadataManager;
 import org.apache.hadoop.ozone.recon.scm.ReconContainerManager;
+import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
 import org.apache.hadoop.ozone.recon.spi.ReconContainerMetadataManager;
 import org.apache.hadoop.ozone.recon.spi.ReconNamespaceSummaryManager;
 import org.hadoop.ozone.recon.schema.ContainerSchemaDefinition.UnHealthyContainerStates;
@@ -261,6 +262,21 @@ public class ContainerEndpoint {
       @PathParam("id") Long containerID) {
     return Response.ok(
         containerManager.getAllContainerHistory(containerID)).build();
+  }
+
+  /**
+   * Trigger a Container Health Check on Recon.
+   */
+  @GET
+  @Path("/triggerHealthCheck")
+  public Response triggerContainerHealthCheck(
+      @PathParam("id") long containerID) {
+
+    ReconStorageContainerManagerFacade reconSCMFacade =
+        (ReconStorageContainerManagerFacade) reconSCM;
+    reconSCMFacade.getContainerHealthTask().triggerContainerHealthCheck();
+
+    return Response.ok(true).build();
   }
 
   /**

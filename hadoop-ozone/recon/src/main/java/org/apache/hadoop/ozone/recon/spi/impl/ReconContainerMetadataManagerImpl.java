@@ -492,6 +492,37 @@ public class ReconContainerMetadataManagerImpl
   }
 
   /**
+   * Remove a container from all mapping tables.
+   */
+  @Override
+  public void removeContainerFromMappingTables(long containerID)
+      throws IOException {
+    try (RDBBatchOperation batchOperation = new RDBBatchOperation()) {
+
+      // Check if container exists in containerKeyCountTable
+      if (doesContainerExists(containerID)) {
+        containerKeyCountTable
+            .deleteWithBatch(batchOperation, containerID);
+      }
+
+      // Might want to keep the container in replica history table.
+      containerReplicaHistoryTable
+          .deleteWithBatch(batchOperation, containerID);
+
+      Map<ContainerKeyPrefix, Integer> keyPrefixesMap =
+          getKeyPrefixesForContainer(containerID);
+      for (ContainerKeyPrefix keyPrefix : keyPrefixesMap.keySet()) {
+        // Deleting from containerKeyTable
+        containerKeyTable.deleteWithBatch(batchOperation, keyPrefix);
+        // Deleting from keyContainerTable
+        keyContainerTable.deleteWithBatch(batchOperation,
+            keyPrefix.toKeyPrefixContainer());
+      }
+      commitBatchOperation(batchOperation);
+    }
+  }
+
+  /**
    * Get total count of containers.
    *
    * @return total count of containers.

@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -75,6 +76,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
   private final Map<Long, Map<UUID, ContainerReplicaHistory>> replicaHistoryMap;
   // Pipeline -> # of open containers
   private final Map<PipelineID, Integer> pipelineToOpenContainer;
+  private final DBStore dbStore;
 
   @SuppressWarnings("parameternumber")
   public ReconContainerManager(
@@ -95,6 +97,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
     this.pipelineManager = pipelineManager;
     this.containerHealthSchemaManager = containerHealthSchemaManager;
     this.cdbServiceProvider = reconContainerMetadataManager;
+    this.dbStore = store;
     this.nodeDB = ReconSCMDBDefinition.NODES.getTable(store);
     this.replicaHistoryMap = new ConcurrentHashMap<>();
     this.pipelineToOpenContainer = new ConcurrentHashMap<>();
@@ -332,6 +335,28 @@ public class ReconContainerManager extends ContainerManagerImpl {
         upsertContainerHistory(id, uuid, ts.getLastSeenTime(), ts.getBcsId());
         replicaLastSeenMap.remove(uuid);
       }
+    }
+  }
+
+  @Override
+  public void deleteContainer(ContainerID containerID)
+      throws IOException, TimeoutException {
+    // Remove container from Recon's ContainerStateMap.
+    getContainerStateManager()
+        .removeContainer(containerID.getProtobuf());
+
+    // Delete from containers table
+    Table<ContainerID, ContainerInfo> reconContainersTable =
+        ReconSCMDBDefinition.CONTAINERS.getTable(dbStore);
+
+    ContainerInfo info = reconContainersTable
+        .getIfExist(containerID);
+
+    if (Objects.nonNull(info)) {
+      reconContainersTable.delete(containerID);
+      // containerID.getId() is deprecated
+      cdbServiceProvider.removeContainerFromMappingTables(
+          getContainer(containerID).getContainerID());
     }
   }
 
