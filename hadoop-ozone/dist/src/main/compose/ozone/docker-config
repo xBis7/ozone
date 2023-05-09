@@ -23,7 +23,10 @@ CORE-SITE.XML_hadoop.proxyuser.hadoop.groups=*
 OZONE-SITE.XML_ozone.om.address=om
 OZONE-SITE.XML_ozone.om.http-address=om:9874
 OZONE-SITE.XML_ozone.scm.http-address=scm:9876
-OZONE-SITE.XML_ozone.scm.container.size=1GB
+OZONE-SITE.XML_ozone.scm.container.size=130MB
+
+OZONE-SITE.XML_hdds.datanode.container.db.dir=/data/container-db
+
 OZONE-SITE.XML_ozone.scm.block.size=1MB
 OZONE-SITE.XML_ozone.scm.datanode.ratis.volume.free-space.min=10MB
 OZONE-SITE.XML_ozone.scm.pipeline.creation.interval=30s

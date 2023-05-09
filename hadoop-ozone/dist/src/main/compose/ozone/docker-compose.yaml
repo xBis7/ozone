@@ -24,6 +24,8 @@ x-common-config:
     - ../..:/opt/hadoop
   env_file:
     - docker-config
+  storage_opt:
+    size: 2G
 
 x-replication:
   &replication
