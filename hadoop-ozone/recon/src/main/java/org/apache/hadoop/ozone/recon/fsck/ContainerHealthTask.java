@@ -184,7 +184,8 @@ public class ContainerHealthTask extends ReconScmTask {
             // Check if the missing container is deleted in SCM,
             // without using a pipeline, in case of dead datanode
             if (currentContainer.isMissing() &&
-                missingContainerDeletedInSCM(currentContainer.getContainer())) {
+                containerDeletedInSCMNoPipelineAvail(currentContainer
+                    .getContainer())) {
               rec.delete();
               try {
                 containerManager.deleteContainer(currentContainer
@@ -269,7 +270,8 @@ public class ContainerHealthTask extends ReconScmTask {
    * In case the datanode is dead,
    * we can't use getContainerWithPipeline.
    */
-  private boolean missingContainerDeletedInSCM(ContainerInfo containerInfo) {
+  private boolean containerDeletedInSCMNoPipelineAvail(
+      ContainerInfo containerInfo) {
     try {
       scmClient.getContainer(containerInfo.getContainerID());
       return false;

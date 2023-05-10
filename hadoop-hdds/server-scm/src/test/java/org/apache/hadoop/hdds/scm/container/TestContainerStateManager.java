@@ -154,6 +154,27 @@ public class TestContainerStateManager {
     Assertions.assertEquals(3, c1.getReplicationConfig().getRequiredNodes());
   }
 
+  @Test
+  public void testRemoveContainer()
+      throws IOException, TimeoutException {
+    ContainerInfo containerInfo = allocateContainer();
+    ContainerID containerID = containerInfo.containerID();
+    HddsProtos.ContainerID protoContainerID =
+        containerInfo.containerID().getProtobuf();
+
+    Set<ContainerID> containerIDSet = containerStateManager.getContainerIDs();
+    Assertions.assertTrue(containerIDSet.contains(containerID));
+
+    // Remove container
+    containerStateManager.removeContainer(protoContainerID);
+
+    // Refresh containerIDSet
+    containerIDSet = containerStateManager.getContainerIDs();
+
+    // Container should not be there
+    Assertions.assertFalse(containerIDSet.contains(containerID));
+  }
+
   private void addReplica(ContainerInfo cont, DatanodeDetails node) {
     ContainerReplica replica = ContainerReplica.newBuilder()
         .setContainerID(cont.containerID())

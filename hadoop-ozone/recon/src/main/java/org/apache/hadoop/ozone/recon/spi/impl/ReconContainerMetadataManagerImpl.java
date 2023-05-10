@@ -493,6 +493,7 @@ public class ReconContainerMetadataManagerImpl
 
   /**
    * Remove a container from all mapping tables.
+   * Keep the container only in "containerReplicaHistoryTable".
    */
   @Override
   public void removeContainerFromMappingTables(long containerID)
@@ -504,10 +505,6 @@ public class ReconContainerMetadataManagerImpl
         containerKeyCountTable
             .deleteWithBatch(batchOperation, containerID);
       }
-
-      // Might want to keep the container in replica history table.
-      containerReplicaHistoryTable
-          .deleteWithBatch(batchOperation, containerID);
 
       Map<ContainerKeyPrefix, Integer> keyPrefixesMap =
           getKeyPrefixesForContainer(containerID);
