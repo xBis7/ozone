@@ -100,10 +100,6 @@ public class CleanupSubcommand extends ScmSubcommand
 
         // Delete container in SCM container map
         scmClient.deleteContainerInSCM(filterOptions.containerId);
-
-        // Set container state to DELETED and remove it from Recon's DB
-        triggerContainerHealthCheckOnRecon();
-
         LOG.info("Successfully cleaned up missing container " +
             filterOptions.containerId);
       } else {

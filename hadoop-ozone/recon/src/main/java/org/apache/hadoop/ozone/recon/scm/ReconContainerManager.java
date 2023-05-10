@@ -341,23 +341,24 @@ public class ReconContainerManager extends ContainerManagerImpl {
   @Override
   public void deleteContainer(ContainerID containerID)
       throws IOException, TimeoutException {
-    // Remove container from Recon's ContainerStateMap.
-    getContainerStateManager()
-        .removeContainer(containerID.getProtobuf());
-
-    // Delete from containers table
+    // Get containers table
     Table<ContainerID, ContainerInfo> reconContainersTable =
         ReconSCMDBDefinition.CONTAINERS.getTable(dbStore);
 
     ContainerInfo info = reconContainersTable
         .getIfExist(containerID);
 
+    // If container exists on the table, delete it.
     if (Objects.nonNull(info)) {
       reconContainersTable.delete(containerID);
-      // containerID.getId() is deprecated
-      cdbServiceProvider.removeContainerFromMappingTables(
-          getContainer(containerID).getContainerID());
     }
+
+    cdbServiceProvider.removeContainerFromMappingTables(
+        containerID.getProtobuf().getId());
+
+    // Remove container from Recon's ContainerStateMap.
+    getContainerStateManager()
+        .removeContainer(containerID.getProtobuf());
   }
 
   @VisibleForTesting

@@ -25,7 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.hadoop.hdds.utils.db.RDBBatchOperation;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
@@ -409,10 +409,11 @@ public class TestReconContainerMetadataManagerImpl {
 
   @Test
   public void testDeleteContainerFromMappingTables() throws Exception {
-    long containerId1 = new Random().nextLong();
-    long containerId2 = new Random().nextLong();
+    long containerId1 = ThreadLocalRandom.current().nextLong(100);
+    long containerId2 = containerId1 + 1;
 
-    // Populate keys and store them in "containerKeyTable" and "KeyContainerTable".
+    // Populate keys and store them in
+    // "containerKeyTable" and "KeyContainerTable".
     // For containerId1, 1 key with keyPrefix1 and 2 keys with keyPrefix2.
     // For containerId2, 3 keys with keyPrefix3.
     // 3 total keys for each container.

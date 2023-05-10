@@ -499,7 +499,6 @@ public class ReconContainerMetadataManagerImpl
   public void removeContainerFromMappingTables(long containerID)
       throws IOException {
     try (RDBBatchOperation batchOperation = new RDBBatchOperation()) {
-
       // Check if container exists in containerKeyCountTable
       if (doesContainerExists(containerID)) {
         containerKeyCountTable
