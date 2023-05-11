@@ -318,7 +318,7 @@ public class TestReconContainerManager
     // Container should exist in the Recon-SCM containers table.
     assertNotNull(reconContainersTable.getIfExist(containerID));
 
-    // Delete container
+    // Delete container.
     containerManager.deleteContainer(containerID);
 
     // Container shouldn't exist in the Recon-SCM containers table.

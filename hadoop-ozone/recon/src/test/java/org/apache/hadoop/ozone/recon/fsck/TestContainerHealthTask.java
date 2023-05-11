@@ -44,10 +44,12 @@ import org.apache.hadoop.hdds.scm.PlacementPolicy;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.container.ContainerManager;
+import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
 import org.apache.hadoop.hdds.scm.container.placement.algorithms.ContainerPlacementStatusDefault;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHealthSchemaManager;
+import org.apache.hadoop.ozone.recon.scm.ReconContainerManager;
 import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
 import org.apache.hadoop.ozone.recon.spi.StorageContainerServiceProvider;
 import org.apache.hadoop.ozone.recon.tasks.ReconTaskConfig;
@@ -296,6 +298,109 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
         reconTaskStatusDao.findById(containerHealthTask.getTaskName());
     Assertions.assertTrue(taskStatus.getLastUpdatedTimestamp() >
         currentTime);
+  }
+
+  /**
+   * Test the case where a container is missing due to
+   * dead datanodes, and it has been deleted in the SCM.
+   * ContainerHealthTask should pick it up and clean up
+   * the container in Recon.
+   * This is only testing the unhealthy containers records,
+   * "containerManager.deleteContainer()" is not tested here.
+   */
+  @Test
+  public void testDeletedMissingContainer() throws IOException {
+    // DAOs
+    UnhealthyContainersDao unHealthyContainersTableHandle =
+        getDao(UnhealthyContainersDao.class);
+    ReconTaskStatusDao reconTaskStatusDao =
+        getDao(ReconTaskStatusDao.class);
+
+    ContainerHealthSchemaManager containerHealthSchemaManager =
+        new ContainerHealthSchemaManager(
+            getSchemaDefinition(ContainerSchemaDefinition.class),
+            unHealthyContainersTableHandle);
+
+    MockPlacementPolicy placementMock = new MockPlacementPolicy();
+    StorageContainerServiceProvider scmClientMock =
+        mock(StorageContainerServiceProvider.class);
+
+    ReconTaskConfig reconTaskConfig = new ReconTaskConfig();
+    reconTaskConfig.setMissingContainerTaskInterval(Duration.ofSeconds(2));
+
+    // Recon mocks
+    ReconStorageContainerManagerFacade reconScmMock =
+        mock(ReconStorageContainerManagerFacade.class);
+    ReconContainerManager reconContainerManagerMock =
+        mock(ReconContainerManager.class);
+
+    // Recon stubs
+    when(reconScmMock.getScmServiceProvider())
+        .thenReturn(scmClientMock);
+    when(reconScmMock.getContainerManager())
+        .thenReturn(reconContainerManagerMock);
+
+    // Create 2 containers.
+    List<ContainerInfo> mockContainers = getMockContainers(2);
+    when(reconScmMock.getContainerManager()
+        .getContainers()).thenReturn(mockContainers);
+
+    // Assume datanodes are dead and both containers are missing.
+    // In that case, both containers are in CLOSING state
+    // and have no replicas. Their pipelines are not available
+    // and getting them throws an exception, but the containers
+    // exist in the SCM and can be accessed without a pipeline.
+    for (ContainerInfo containerInfo : mockContainers) {
+      when(reconContainerManagerMock
+          .getContainer(containerInfo.containerID()))
+          .thenReturn(containerInfo);
+      when(reconContainerManagerMock
+          .getContainer(containerInfo.containerID()).getState())
+          .thenReturn(HddsProtos.LifeCycleState.CLOSING);
+      when(reconContainerManagerMock
+          .getContainerReplicas(containerInfo.containerID()))
+          .thenReturn(Collections.emptySet());
+      when(scmClientMock
+          .getContainerWithPipeline(containerInfo.getContainerID()))
+          .thenThrow(IOException.class);
+      when(scmClientMock
+          .getContainer(containerInfo.getContainerID()))
+          .thenReturn(containerInfo);
+    }
+
+    // Init ContainerHealthTask
+    ContainerHealthTask containerHealthTask =
+        new ContainerHealthTask(reconScmMock.getContainerManager(),
+            reconScmMock.getScmServiceProvider(),
+            reconTaskStatusDao, containerHealthSchemaManager,
+            placementMock, reconTaskConfig);
+
+    // There should be no unhealthy containers yet.
+    Assertions.assertEquals(0,
+        unHealthyContainersTableHandle.findAll().size());
+
+    // Trigger first check.
+    containerHealthTask.triggerContainerHealthCheck();
+
+    // Both containers should be marked as unhealthy.
+    Assertions.assertEquals(2,
+        unHealthyContainersTableHandle.findAll().size());
+
+    // If the container is deleted in the SCM, scmClient.getContainer()
+    // will throw ContainerNotFoundException.
+    when(scmClientMock.getContainer(1L))
+        .thenThrow(ContainerNotFoundException.class);
+
+    // Trigger second check. Container 1 doesn't exist in the SCM
+    // and should be deleted from Recon's unhealthy containers table.
+    containerHealthTask.triggerContainerHealthCheck();
+
+    // Recon's SCM container state map is not mocked and stubbed
+    // and will continue to return 2 containers.
+    // Check only the unhealthy containers table.
+    // Container 1 should have been deleted.
+    Assertions.assertEquals(1,
+        unHealthyContainersTableHandle.findAll().size());
   }
 
   private Set<ContainerReplica> getMockReplicas(
