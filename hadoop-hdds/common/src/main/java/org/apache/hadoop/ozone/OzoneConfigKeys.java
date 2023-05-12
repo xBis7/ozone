@@ -257,6 +257,16 @@ public final class OzoneConfigKeys {
   public static final String
       OZONE_SNAPSHOT_DELETING_SERVICE_TIMEOUT_DEFAULT = "300s";
 
+  public static final String OZONE_CONTAINER_CLEANUP_SERVICE_INTERVAL =
+      "ozone.container.cleanup.service.interval";
+  public static final String
+      OZONE_CONTAINER_CLEANUP_SERVICE_INTERVAL_DEFAULT = "60s";
+
+  public static final String OZONE_CONTAINER_CLEANUP_SERVICE_TIMEOUT =
+      "ozone.container.cleanup.service.timeout";
+  public static final String
+      OZONE_CONTAINER_CLEANUP_SERVICE_TIMEOUT_DEFAULT = "300s";
+
   public static final String OZONE_BLOCK_DELETING_SERVICE_WORKERS =
       "ozone.block.deleting.service.workers";
   public static final int OZONE_BLOCK_DELETING_SERVICE_WORKERS_DEFAULT

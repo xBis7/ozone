@@ -85,6 +85,7 @@ import org.apache.hadoop.ozone.om.request.OMClientRequest;
 import org.apache.hadoop.ozone.om.request.file.OMFileRequest;
 import org.apache.hadoop.ozone.om.service.DirectoryDeletingService;
 import org.apache.hadoop.ozone.om.service.KeyDeletingService;
+import org.apache.hadoop.ozone.om.service.MissingContainerCleanupService;
 import org.apache.hadoop.ozone.om.service.OpenKeyCleanupService;
 import org.apache.hadoop.ozone.om.service.SnapshotDeletingService;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.PartKeyInfo;
@@ -112,6 +113,10 @@ import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVI
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_TIMEOUT_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CLIENT_LIST_TRASH_KEYS_MAX;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CLIENT_LIST_TRASH_KEYS_MAX_DEFAULT;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CONTAINER_CLEANUP_SERVICE_INTERVAL;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CONTAINER_CLEANUP_SERVICE_INTERVAL_DEFAULT;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CONTAINER_CLEANUP_SERVICE_TIMEOUT;
+import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CONTAINER_CLEANUP_SERVICE_TIMEOUT_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SCM_BLOCK_SIZE_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_SNAPSHOT_DELETING_SERVICE_INTERVAL;
@@ -169,6 +174,7 @@ public class KeyManagerImpl implements KeyManager {
 
   private BackgroundService snapshotSstFilteringService;
   private BackgroundService snapshotDeletingService;
+  private BackgroundService missingContainerCleanupService;
 
   private final KeyProviderCryptoExtension kmsProvider;
   private final boolean enableFileSystemPaths;
@@ -290,6 +296,22 @@ public class KeyManagerImpl implements KeyManager {
         LOG.error("Error starting Snapshot Deleting Service", e);
       }
     }
+
+    if (missingContainerCleanupService == null) {
+      long containerCleanupServiceInterval = configuration.getTimeDuration(
+          OZONE_CONTAINER_CLEANUP_SERVICE_INTERVAL,
+          OZONE_CONTAINER_CLEANUP_SERVICE_INTERVAL_DEFAULT,
+          TimeUnit.MILLISECONDS);
+      long containerCleanupServiceTimeout = configuration.getTimeDuration(
+          OZONE_CONTAINER_CLEANUP_SERVICE_TIMEOUT,
+          OZONE_CONTAINER_CLEANUP_SERVICE_TIMEOUT_DEFAULT,
+          TimeUnit.MILLISECONDS);
+      missingContainerCleanupService =
+          new MissingContainerCleanupService(
+              containerCleanupServiceInterval, TimeUnit.MILLISECONDS,
+              containerCleanupServiceTimeout, ozoneManager,
+              scmClient.getBlockClient(), scmClient.getContainerClient());
+    }
   }
 
   KeyProviderCryptoExtension getKMSProvider() {
@@ -317,6 +339,10 @@ public class KeyManagerImpl implements KeyManager {
     if (snapshotDeletingService != null) {
       snapshotDeletingService.shutdown();
       snapshotDeletingService = null;
+    }
+    if (missingContainerCleanupService != null) {
+      missingContainerCleanupService.shutdown();
+      missingContainerCleanupService = null;
     }
   }
 
