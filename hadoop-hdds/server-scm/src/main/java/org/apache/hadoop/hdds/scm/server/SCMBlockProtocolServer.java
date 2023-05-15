@@ -279,12 +279,6 @@ public class SCMBlockProtocolServer implements
     return results;
   }
 
-  public long getBlockContainer() {
-
-    // Return container ID
-    return 0L;
-  }
-
   @Override
   public ScmInfo getScmInfo() throws IOException {
     boolean auditSuccess = true;

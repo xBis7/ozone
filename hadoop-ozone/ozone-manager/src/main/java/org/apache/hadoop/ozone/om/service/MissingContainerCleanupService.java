@@ -51,8 +51,9 @@ import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK_DEFAULT;
 
 /**
- * Missing container cleanup service. Delete container from
- * the SCM and then delete all its metadata in the OM.
+ * Missing container cleanup service. For every container on the
+ * MissingContainerTable, delete all keys in the OM and then
+ * delete the container in the SCM.
  */
 public class MissingContainerCleanupService extends AbstractKeyDeletingService {
 
@@ -70,7 +71,7 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
                                         long serviceTimeout,
                                         OzoneManager ozoneManager,
                                         ScmBlockLocationProtocol scmBlockClient,
-                                        StorageContainerLocationProtocol scmContainerClient,
+                                        StorageContainerLocationProtocol scmClient,
                                         ConfigurationSource configuration) {
     super(MissingContainerCleanupService.class.getSimpleName(),
         interval, TimeUnit.MILLISECONDS,
@@ -78,7 +79,7 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
         serviceTimeout, ozoneManager, scmBlockClient);
     this.ozoneManager = ozoneManager;
     this.scmBlockClient = scmBlockClient;
-    this.scmContainerClient = scmContainerClient;
+    this.scmContainerClient = scmClient;
     this.suspended = new AtomicBoolean(false);
     this.metadataManager = ozoneManager.getMetadataManager();
     this.keyTable = metadataManager
@@ -147,7 +148,8 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
       return BackgroundTask.super.getPriority();
     }
 
-    private List<OmKeyInfo> getContainerKeys(long containerId) throws IOException {
+    private List<OmKeyInfo> getContainerKeys(long containerId)
+        throws IOException {
       List<OmKeyInfo> omKeyInfoList = new LinkedList<>();
 
       // FileTable
@@ -257,8 +259,8 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
      * Returns a list of blocks that are associated with the
      * provided key and don't belong to missing containers.
      */
-    private List<BlockGroup> getAvailableKeyBlocks(List<Long> notMissingContainerIdList,
-                                                   OmKeyInfo keyInfo) {
+    private List<BlockGroup> getAvailableKeyBlocks(
+        List<Long> notMissingContainerIdList, OmKeyInfo keyInfo) {
       List<BlockGroup> blockList = new ArrayList<>();
       for (OmKeyLocationInfoGroup keyLocations :
           keyInfo.getKeyLocationVersions()) {

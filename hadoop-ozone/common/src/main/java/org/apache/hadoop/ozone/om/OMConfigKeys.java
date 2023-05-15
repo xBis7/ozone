@@ -123,8 +123,8 @@ public final class OMConfigKeys {
 
   public static final String OZONE_MISSING_CONTAINER_DELETING_LIMIT_PER_TASK =
       "ozone.missing.container.deleting.limit.per.task";
-  public static final int OZONE_MISSING_CONTAINER_DELETING_LIMIT_PER_TASK_DEFAULT
-      = 1000;
+  public static final int
+      OZONE_MISSING_CONTAINER_DELETING_LIMIT_PER_TASK_DEFAULT = 1000;
 
   public static final String OZONE_OM_METRICS_SAVE_INTERVAL =
       "ozone.om.save.metrics.interval";
