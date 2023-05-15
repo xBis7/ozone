@@ -17,6 +17,7 @@
 package org.apache.hadoop.ozone.om.service;
 
 import org.apache.hadoop.hdds.client.BlockID;
+import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.protocol.ScmBlockLocationProtocol;
 import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
@@ -32,6 +33,7 @@ import org.apache.hadoop.ozone.ClientVersion;
 import org.apache.hadoop.ozone.common.BlockGroup;
 import org.apache.hadoop.ozone.common.DeleteBlockGroupResult;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
+import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -44,6 +46,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+
+import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK;
+import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK_DEFAULT;
 
 /**
  * Missing container cleanup service. Delete container from
@@ -59,12 +64,14 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
   private final StorageContainerLocationProtocol scmContainerClient;
   private final Table<String, OmKeyInfo> keyTable;
   private final Table<String, OmKeyInfo> fileTable;
+  private final int containerCleanupLimitPerTask;
 
   public MissingContainerCleanupService(long interval,
                                         long serviceTimeout,
                                         OzoneManager ozoneManager,
                                         ScmBlockLocationProtocol scmBlockClient,
-                                        StorageContainerLocationProtocol scmContainerClient) {
+                                        StorageContainerLocationProtocol scmContainerClient,
+                                        ConfigurationSource configuration) {
     super(MissingContainerCleanupService.class.getSimpleName(),
         interval, TimeUnit.MILLISECONDS,
         CONTAINER_CLEANUP_CORE_POOL_SIZE,
@@ -78,6 +85,9 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
         .getKeyTable(BucketLayout.LEGACY);
     this.fileTable = metadataManager
         .getKeyTable(BucketLayout.FILE_SYSTEM_OPTIMIZED);
+    this.containerCleanupLimitPerTask = configuration
+        .getInt(OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK,
+            OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK_DEFAULT);
   }
 
   @Override
@@ -98,30 +108,35 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
       if (!shouldRun()) {
         return BackgroundTaskResult.EmptyTaskResult.newResult();
       }
+      OmMetadataManagerImpl omMetadataManager =
+          (OmMetadataManagerImpl) metadataManager;
+      List<Long> missingContainerIds = omMetadataManager
+          .getPendingMissingContainersForCleanup(
+              containerCleanupLimitPerTask);
 
-      long containerId = 0L;
+      for (long containerId : missingContainerIds) {
+        // When a datanode dies, all replicas are removed.
+        // If the container is missing then the container's
+        // replica list should be empty.
+        List<HddsProtos.SCMContainerReplicaProto> replicas =
+            scmContainerClient.getContainerReplicas(containerId,
+                ClientVersion.CURRENT_VERSION);
 
-      // When a datanode dies, all replicas are removed.
-      // If the container is missing then the container's
-      // replica list should be empty.
-      List<HddsProtos.SCMContainerReplicaProto> replicas =
-          scmContainerClient.getContainerReplicas(containerId,
-              ClientVersion.CURRENT_VERSION);
+        if (replicas.isEmpty()) {
+          // Get container key list
+          List<OmKeyInfo> omKeyInfoList = getContainerKeys(containerId);
+          // Delete keys in OM
+          deleteContainerKeys(omKeyInfoList);
 
-      if (replicas.isEmpty()) {
-        LOG.info("Verified Container " +
-            containerId + " is missing.");
-        // Get container key list
-        List<OmKeyInfo> omKeyInfoList = getContainerKeys(containerId);
-        // Delete keys in OM
-        deleteContainerKeys(omKeyInfoList);
+          // Delete container in SCM container map
+          scmContainerClient.deleteContainer(containerId);
+          LOG.info("Successfully cleaned up missing container " +
+              containerId);
 
-        // Delete container in SCM container map
-        scmContainerClient.deleteContainer(containerId);
-        LOG.info("Successfully cleaned up missing container " +
-            containerId);
-      } else {
-        LOG.error("Provided ID doesn't belong to a missing container");
+          // Remove cleaned up container from MissingContainerTable.
+          metadataManager.getMissingContainerTable()
+              .delete(String.valueOf(containerId));
+        }
       }
 
       return BackgroundTaskResult.EmptyTaskResult.newResult();

@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.utils.DBStoreHAManager;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
@@ -371,6 +372,8 @@ public interface OMMetadataManager extends DBStoreHAManager {
   Table<String, SnapshotInfo> getSnapshotInfoTable();
 
   Table<String, String> getSnapshotRenamedTable();
+
+  Table<String, ContainerInfo> getMissingContainerTable();
 
   /**
    * Gets the OM Meta table.

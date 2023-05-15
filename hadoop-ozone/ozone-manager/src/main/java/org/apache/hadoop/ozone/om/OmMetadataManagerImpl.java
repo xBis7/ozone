@@ -37,6 +37,8 @@ import java.util.stream.Stream;
 
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.scm.container.ContainerID;
+import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.utils.db.DBCheckpoint;
 import org.apache.hadoop.hdds.utils.TableCacheMetrics;
 import org.apache.hadoop.hdds.utils.db.BatchOperation;
@@ -137,23 +139,25 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
    *
    * Common Tables:
    * |----------------------------------------------------------------------|
-   * |  Column Family     |        VALUE                                    |
+   * |  Column Family        |        VALUE                                 |
    * |----------------------------------------------------------------------|
-   * | userTable          |     /user->UserVolumeInfo                       |
+   * | userTable             | /user->UserVolumeInfo                        |
    * |----------------------------------------------------------------------|
-   * | volumeTable        |     /volume->VolumeInfo                         |
+   * | volumeTable           | /volume->VolumeInfo                          |
    * |----------------------------------------------------------------------|
-   * | bucketTable        |     /volume/bucket-> BucketInfo                 |
+   * | bucketTable           | /volume/bucket-> BucketInfo                  |
    * |----------------------------------------------------------------------|
-   * | s3SecretTable      | s3g_access_key_id -> s3Secret                   |
+   * | s3SecretTable         | s3g_access_key_id -> s3Secret                |
    * |----------------------------------------------------------------------|
-   * | dTokenTable        | OzoneTokenID -> renew_time                      |
+   * | dTokenTable           | OzoneTokenID -> renew_time                   |
    * |----------------------------------------------------------------------|
-   * | prefixInfoTable    | prefix -> PrefixInfo                            |
+   * | prefixInfoTable       | prefix -> PrefixInfo                         |
    * |----------------------------------------------------------------------|
-   * | multipartInfoTable | /volumeName/bucketName/keyName/uploadId ->...   |
+   * | multipartInfoTable    | /volumeName/bucketName/keyName/uploadId ->...|
    * |----------------------------------------------------------------------|
-   * | transactionInfoTable| #TRANSACTIONINFO -> OMTransactionInfo          |
+   * | transactionInfoTable  | #TRANSACTIONINFO -> OMTransactionInfo        |
+   * |----------------------------------------------------------------------|
+   * | missingContainerTable | containerId -> ContainerInfo                 |
    * |----------------------------------------------------------------------|
    *
    * Multi-Tenant Tables:
@@ -230,6 +234,8 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
   public static final String SNAPSHOT_INFO_TABLE = "snapshotInfoTable";
   public static final String SNAPSHOT_RENAMED_TABLE =
       "snapshotRenamedTable";
+  public static final String MISSING_CONTAINER_TABLE =
+      "missingContainerTable";
 
   static final String[] ALL_TABLES = new String[] {
       USER_TABLE,
@@ -252,7 +258,8 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
       PRINCIPAL_TO_ACCESS_IDS_TABLE,
       TENANT_STATE_TABLE,
       SNAPSHOT_INFO_TABLE,
-      SNAPSHOT_RENAMED_TABLE
+      SNAPSHOT_RENAMED_TABLE,
+      MISSING_CONTAINER_TABLE
   };
 
   private DBStore store;
@@ -286,6 +293,7 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
   private boolean isRatisEnabled;
   private boolean ignorePipelineinKey;
   private Table deletedDirTable;
+  private Table missingContainerTable;
 
   // Table-level locks that protects table read/write access. Note:
   // Don't use this lock for tables other than deletedTable and deletedDirTable.
@@ -1546,6 +1554,21 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
     return keyBlocksList;
   }
 
+  public List<Long> getPendingMissingContainersForCleanup(int containerCount)
+      throws IOException {
+    List<Long> containerIDs = new ArrayList<>();
+    try (TableIterator<String, ? extends KeyValue<String, ContainerInfo>>
+             containerIterator = getMissingContainerTable().iterator()) {
+      int currentCount = 0;
+      while (containerIterator.hasNext() && currentCount < containerCount) {
+        KeyValue<String, ContainerInfo> kv = containerIterator.next();
+        containerIDs.add(Long.parseLong(kv.getKey()));
+        currentCount++;
+      }
+    }
+    return containerIDs;
+  }
+
   /**
    * Get the latest OmSnapshot for a snapshot path.
    */
@@ -1792,6 +1815,11 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
   @Override
   public Table<String, String> getSnapshotRenamedTable() {
     return snapshotRenamedTable;
+  }
+
+  @Override
+  public Table<String, ContainerInfo> getMissingContainerTable() {
+    return missingContainerTable;
   }
 
   /**

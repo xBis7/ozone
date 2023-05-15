@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.om.codec;
 
+import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.utils.TransactionInfoCodec;
 import org.apache.hadoop.hdds.utils.db.DBColumnFamilyDefinition;
 import org.apache.hadoop.hdds.utils.db.DBDefinition;
@@ -249,6 +250,15 @@ public class OMDBDefinition implements DBDefinition {
           String.class, // path to key in prev snapshot's key(file)/dir Table.
           new StringCodec());
 
+  public static final DBColumnFamilyDefinition<String, ContainerInfo>
+      MISSING_CONTAINER_TABLE =
+      new DBColumnFamilyDefinition<>(
+          OmMetadataManagerImpl.MISSING_CONTAINER_TABLE,
+          String.class,
+          new StringCodec(),
+          ContainerInfo.class,
+          new OmContainerInfoCodec());
+
   @Override
   public String getName() {
     return OzoneConsts.OM_DB_NAME;
@@ -268,7 +278,7 @@ public class OMDBDefinition implements DBDefinition {
         FILE_TABLE, OPEN_FILE_TABLE, DELETED_DIR_TABLE, META_TABLE,
         TENANT_ACCESS_ID_TABLE,
         PRINCIPAL_TO_ACCESS_IDS_TABLE, TENANT_STATE_TABLE,
-        SNAPSHOT_INFO_TABLE, SNAPSHOT_RENAMED_TABLE};
+        SNAPSHOT_INFO_TABLE, SNAPSHOT_RENAMED_TABLE,
+        MISSING_CONTAINER_TABLE};
   }
 }
-
