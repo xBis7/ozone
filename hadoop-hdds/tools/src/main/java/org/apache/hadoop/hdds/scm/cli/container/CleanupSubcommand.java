@@ -98,8 +98,7 @@ public class CleanupSubcommand extends ScmSubcommand
         // Delete keys in OM
         deleteContainerKeys(filterOptions.containerId);
 
-        // Delete container in SCM container map
-        scmClient.deleteContainerInSCM(filterOptions.containerId);
+
         LOG.info("Successfully cleaned up missing container " +
             filterOptions.containerId);
       } else {

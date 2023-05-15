@@ -16,22 +16,29 @@
  */
 package org.apache.hadoop.ozone.om.service;
 
+import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.protocol.ScmBlockLocationProtocol;
 import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
 import org.apache.hadoop.hdds.scm.storage.BlockLocationInfo;
-import org.apache.hadoop.hdds.utils.BackgroundService;
 import org.apache.hadoop.hdds.utils.BackgroundTask;
 import org.apache.hadoop.hdds.utils.BackgroundTaskQueue;
 import org.apache.hadoop.hdds.utils.BackgroundTaskResult;
+import org.apache.hadoop.hdds.utils.db.BatchOperation;
+import org.apache.hadoop.hdds.utils.db.DBStore;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.ClientVersion;
+import org.apache.hadoop.ozone.common.BlockGroup;
+import org.apache.hadoop.ozone.common.DeleteBlockGroupResult;
+import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
+import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -42,25 +49,35 @@ import java.util.stream.Collectors;
  * Missing container cleanup service. Delete container from
  * the SCM and then delete all its metadata in the OM.
  */
-public class MissingContainerCleanupService extends BackgroundService {
+public class MissingContainerCleanupService extends AbstractKeyDeletingService {
 
   private static final int CONTAINER_CLEANUP_CORE_POOL_SIZE = 1;
   private final AtomicBoolean suspended;
   private final OzoneManager ozoneManager;
+  private final OMMetadataManager metadataManager;
   private final ScmBlockLocationProtocol scmBlockClient;
   private final StorageContainerLocationProtocol scmContainerClient;
+  private final Table<String, OmKeyInfo> keyTable;
+  private final Table<String, OmKeyInfo> fileTable;
 
-  public MissingContainerCleanupService(long interval, TimeUnit unit,
+  public MissingContainerCleanupService(long interval,
                                         long serviceTimeout,
                                         OzoneManager ozoneManager,
                                         ScmBlockLocationProtocol scmBlockClient,
                                         StorageContainerLocationProtocol scmContainerClient) {
-    super(MissingContainerCleanupService.class.getSimpleName(), interval,
-        unit, CONTAINER_CLEANUP_CORE_POOL_SIZE, serviceTimeout);
+    super(MissingContainerCleanupService.class.getSimpleName(),
+        interval, TimeUnit.MILLISECONDS,
+        CONTAINER_CLEANUP_CORE_POOL_SIZE,
+        serviceTimeout, ozoneManager, scmBlockClient);
     this.ozoneManager = ozoneManager;
     this.scmBlockClient = scmBlockClient;
     this.scmContainerClient = scmContainerClient;
     this.suspended = new AtomicBoolean(false);
+    this.metadataManager = ozoneManager.getMetadataManager();
+    this.keyTable = metadataManager
+        .getKeyTable(BucketLayout.LEGACY);
+    this.fileTable = metadataManager
+        .getKeyTable(BucketLayout.FILE_SYSTEM_OPTIMIZED);
   }
 
   @Override
@@ -94,8 +111,9 @@ public class MissingContainerCleanupService extends BackgroundService {
       if (replicas.isEmpty()) {
         LOG.info("Verified Container " +
             containerId + " is missing.");
-        // Delete keys in OM
+        // Get container key list
         List<OmKeyInfo> omKeyInfoList = getContainerKeys(containerId);
+        // Delete keys in OM
         deleteContainerKeys(omKeyInfoList);
 
         // Delete container in SCM container map
@@ -120,15 +138,12 @@ public class MissingContainerCleanupService extends BackgroundService {
       // FileTable
       try (TableIterator<String,
           ? extends Table.KeyValue<String, OmKeyInfo>>
-               fileTableIterator = ozoneManager.getMetadataManager()
-              .getKeyTable(BucketLayout.FILE_SYSTEM_OPTIMIZED).iterator()) {
+               fileTableIterator = fileTable.iterator()) {
         while (fileTableIterator.hasNext()) {
           Table.KeyValue<String, OmKeyInfo> entry = fileTableIterator.next();
 
           OmKeyInfo omKeyInfo = entry.getValue();
-          List<Long> containerIds = omKeyInfo.getKeyLocationVersions().stream()
-              .flatMap(v -> v.getLocationList().stream())
-              .map(BlockLocationInfo::getContainerID).collect(Collectors.toList());
+          List<Long> containerIds = getContainerIDsForKey(omKeyInfo);
 
           if (containerIds.contains(containerId)) {
             omKeyInfoList.add(omKeyInfo);
@@ -139,15 +154,12 @@ public class MissingContainerCleanupService extends BackgroundService {
       // KeyTable
       try (TableIterator<String,
           ? extends Table.KeyValue<String, OmKeyInfo>>
-               keyTableIterator = ozoneManager.getMetadataManager()
-          .getKeyTable(BucketLayout.LEGACY).iterator()) {
+               keyTableIterator = keyTable.iterator()) {
         while (keyTableIterator.hasNext()) {
           Table.KeyValue<String, OmKeyInfo> entry = keyTableIterator.next();
 
           OmKeyInfo omKeyInfo = entry.getValue();
-          List<Long> containerIds = omKeyInfo.getKeyLocationVersions().stream()
-              .flatMap(v -> v.getLocationList().stream())
-              .map(BlockLocationInfo::getContainerID).collect(Collectors.toList());
+          List<Long> containerIds = getContainerIDsForKey(omKeyInfo);
 
           if (containerIds.contains(containerId)) {
             omKeyInfoList.add(omKeyInfo);
@@ -158,8 +170,117 @@ public class MissingContainerCleanupService extends BackgroundService {
       return omKeyInfoList;
     }
 
-    private void deleteContainerKeys(List<OmKeyInfo> omKeyInfoList) {
+    private void deleteContainerKeys(List<OmKeyInfo> omKeyInfoList)
+        throws IOException {
+      DBStore dbStore = metadataManager.getStore();
+      try (BatchOperation batchOperation = dbStore.initBatchOperation()) {
+        for (OmKeyInfo keyInfo : omKeyInfoList) {
+          // Get all container Ids for key
+          List<Long> containerIds =
+              getContainerIDsForKey(keyInfo);
+          // Filter container Ids to remove Ids
+          // belonging to missing containers.
+          List<Long> notMissingContainerIds =
+              getNotMissingContainerIDsFromList(containerIds);
+          // Get key blocks for not missing containers.
+          List<BlockGroup> blockGroupList =
+              getAvailableKeyBlocks(notMissingContainerIds, keyInfo);
+          if (!blockGroupList.isEmpty()) {
+            // Delete blocks.
+            List<DeleteBlockGroupResult> results = scmBlockClient
+                .deleteKeyBlocks(blockGroupList);
+            // Submit purge keys request for the keys
+            // that their blocks got deleted.
+//            submitPurgeKeysRequest(results, null);
+          }
+          BucketLayout bucketLayout = checkKeyBucketLayout(keyInfo);
+          long volumeId = metadataManager
+              .getVolumeId(keyInfo.getVolumeName());
+          long bucketId = metadataManager
+              .getBucketId(keyInfo.getVolumeName(),
+                  keyInfo.getBucketName());
 
+          long parentId = keyInfo.getParentObjectID();
+
+          String fileName = bucketLayout
+              .isFileSystemOptimized() ?
+              keyInfo.getFileName() :
+              keyInfo.getKeyName();
+
+          Table<String, OmKeyInfo> table = bucketLayout
+              .isFileSystemOptimized() ?
+              fileTable :
+              keyTable;
+
+          String key = metadataManager
+              .getOzonePathKey(volumeId, bucketId, parentId, fileName);
+          table.deleteWithBatch(batchOperation, key);
+        }
+        dbStore.commitBatchOperation(batchOperation);
+      }
+    }
+
+    private List<Long> getContainerIDsForKey(OmKeyInfo omKeyInfo) {
+      return omKeyInfo.getKeyLocationVersions().stream()
+          .flatMap(v -> v.getLocationList().stream())
+          .map(BlockLocationInfo::getContainerID)
+          .collect(Collectors.toList());
+    }
+
+    private List<Long> getNotMissingContainerIDsFromList(
+        List<Long> containerIdList) throws IOException {
+      for (long id : containerIdList) {
+        if (scmContainerClient.getContainerReplicas(id,
+            ClientVersion.CURRENT_VERSION).isEmpty()) {
+          containerIdList.remove(id);
+        }
+      }
+      return containerIdList;
+    }
+
+    /**
+     * Returns a list of blocks that are associated with the
+     * provided key and don't belong to missing containers.
+     */
+    private List<BlockGroup> getAvailableKeyBlocks(List<Long> notMissingContainerIdList,
+                                                   OmKeyInfo keyInfo) {
+      List<BlockGroup> blockList = new ArrayList<>();
+      for (OmKeyLocationInfoGroup keyLocations :
+          keyInfo.getKeyLocationVersions()) {
+        List<BlockID> blockIDs = keyLocations.getLocationList().stream()
+            .map(b -> new BlockID(b.getContainerID(), b.getLocalID()))
+            .collect(Collectors.toList());
+
+        List<BlockID> missingContainerBlockIDs = new ArrayList<>();
+
+        for (BlockID id : blockIDs) {
+          // If BlockID doesn't exist on the list,
+          // then it belongs to missing container.
+          if (!notMissingContainerIdList.contains(id.getContainerID())) {
+            missingContainerBlockIDs.add(id);
+          }
+        }
+
+        for (BlockID id : missingContainerBlockIDs) {
+          blockIDs.remove(id);
+        }
+
+        BlockGroup keyBlocks = BlockGroup.newBuilder()
+            .setKeyName(keyInfo.getKeyName())
+            .addAllBlockIDs(blockIDs)
+            .build();
+        blockList.add(keyBlocks);
+      }
+      return blockList;
+    }
+
+    private BucketLayout checkKeyBucketLayout(OmKeyInfo omKeyInfo)
+        throws IOException {
+      String bucketKey = metadataManager
+          .getBucketKey(omKeyInfo.getVolumeName(),
+              omKeyInfo.getBucketName());
+      return metadataManager.getBucketTable()
+          .getIfExist(bucketKey).getBucketLayout();
     }
   }
 }

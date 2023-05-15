@@ -144,7 +144,7 @@ public abstract class AbstractKeyDeletingService extends BackgroundService {
    * by SCM.
    * @param results DeleteBlockGroups returned by SCM.
    */
-  private int submitPurgeKeysRequest(List<DeleteBlockGroupResult> results,
+  protected int submitPurgeKeysRequest(List<DeleteBlockGroupResult> results,
                                      String snapTableKey) {
     Map<Pair<String, String>, List<String>> purgeKeysMapPerBucket =
         new HashMap<>();

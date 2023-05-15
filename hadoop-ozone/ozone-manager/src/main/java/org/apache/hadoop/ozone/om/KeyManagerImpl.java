@@ -308,7 +308,7 @@ public class KeyManagerImpl implements KeyManager {
           TimeUnit.MILLISECONDS);
       missingContainerCleanupService =
           new MissingContainerCleanupService(
-              containerCleanupServiceInterval, TimeUnit.MILLISECONDS,
+              containerCleanupServiceInterval,
               containerCleanupServiceTimeout, ozoneManager,
               scmClient.getBlockClient(), scmClient.getContainerClient());
     }
