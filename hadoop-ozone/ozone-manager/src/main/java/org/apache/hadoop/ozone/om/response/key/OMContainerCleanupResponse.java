@@ -29,24 +29,24 @@ import java.io.IOException;
 import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.MISSING_CONTAINER_TABLE;
 
 /**
- * Response for ContainerCleanup request.
+ * Response for CleanupContainer request.
  */
 @CleanupTableInfo(cleanupTables = {MISSING_CONTAINER_TABLE})
-public class OMCleanupContainerResponse extends OMClientResponse {
+public class OMContainerCleanupResponse extends OMClientResponse {
 
-  private final String containerId;
+  private final long containerId;
   private final ContainerInfo containerInfo;
 
-  public OMCleanupContainerResponse(@Nonnull OMResponse omResponse,
-                                    String containerId,
+  public OMContainerCleanupResponse(@Nonnull OMResponse omResponse,
+                                    long containerId,
                                     ContainerInfo containerInfo) {
     super(omResponse);
     this.containerId = containerId;
     this.containerInfo = containerInfo;
   }
 
-  public OMCleanupContainerResponse(@Nonnull OMResponse omResponse,
-                                    String containerId) {
+  public OMContainerCleanupResponse(@Nonnull OMResponse omResponse,
+                                    long containerId) {
     super(omResponse);
     this.containerId = containerId;
     this.containerInfo = null;

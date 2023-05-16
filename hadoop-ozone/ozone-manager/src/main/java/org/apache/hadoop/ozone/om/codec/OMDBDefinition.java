@@ -250,12 +250,12 @@ public class OMDBDefinition implements DBDefinition {
           String.class, // path to key in prev snapshot's key(file)/dir Table.
           new StringCodec());
 
-  public static final DBColumnFamilyDefinition<String, ContainerInfo>
+  public static final DBColumnFamilyDefinition<Long, ContainerInfo>
       MISSING_CONTAINER_TABLE =
       new DBColumnFamilyDefinition<>(
           OmMetadataManagerImpl.MISSING_CONTAINER_TABLE,
-          String.class,
-          new StringCodec(),
+          Long.class,
+          new LongCodec(),
           ContainerInfo.class,
           new OmContainerInfoCodec());
 

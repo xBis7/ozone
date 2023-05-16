@@ -141,7 +141,7 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
 
         // Remove the container from MissingContainerTable.
         metadataManager.getMissingContainerTable()
-            .delete(String.valueOf(containerId));
+            .delete(containerId);
       }
 
       return BackgroundTaskResult.EmptyTaskResult.newResult();

@@ -48,7 +48,7 @@ import org.apache.hadoop.ozone.om.request.bucket.acl.OMBucketAddAclRequest;
 import org.apache.hadoop.ozone.om.request.bucket.acl.OMBucketRemoveAclRequest;
 import org.apache.hadoop.ozone.om.request.bucket.acl.OMBucketSetAclRequest;
 import org.apache.hadoop.ozone.om.request.file.OMRecoverLeaseRequest;
-import org.apache.hadoop.ozone.om.request.key.OMCleanupContainerRequest;
+import org.apache.hadoop.ozone.om.request.key.OMContainerCleanupRequest;
 import org.apache.hadoop.ozone.om.request.key.OMKeyPurgeRequest;
 import org.apache.hadoop.ozone.om.request.key.OMDirectoriesPurgeRequestWithFSO;
 import org.apache.hadoop.ozone.om.request.key.OMOpenKeysDeleteRequest;
@@ -247,7 +247,7 @@ public final class OzoneManagerRatisUtils {
       }
       return new OMRecoverLeaseRequest(omRequest);
     case CleanupContainer:
-      return new OMCleanupContainerRequest(omRequest);
+      return new OMContainerCleanupRequest(omRequest);
     /*
      * Key requests that can have multiple variants based on the bucket layout
      * should be created using {@link BucketLayoutAwareOMKeyRequestFactory}.

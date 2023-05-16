@@ -939,7 +939,7 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
   public void cleanupContainer(long containerId) throws IOException {
     CleanupContainerRequest.Builder req = CleanupContainerRequest.newBuilder();
     CleanupContainerArgs containerArgs = CleanupContainerArgs.newBuilder()
-        .setContainerId(String.valueOf(containerId))
+        .setContainerId(containerId)
         .build();
     req.setCleanupContainerArgs(containerArgs);
     OMRequest omRequest = createOMRequest(Type.CleanupContainer)

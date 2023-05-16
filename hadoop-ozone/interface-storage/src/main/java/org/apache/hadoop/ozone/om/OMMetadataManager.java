@@ -373,7 +373,7 @@ public interface OMMetadataManager extends DBStoreHAManager {
 
   Table<String, String> getSnapshotRenamedTable();
 
-  Table<String, ContainerInfo> getMissingContainerTable();
+  Table<Long, ContainerInfo> getMissingContainerTable();
 
   /**
    * Gets the OM Meta table.

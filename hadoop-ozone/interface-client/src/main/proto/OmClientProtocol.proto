@@ -1265,7 +1265,7 @@ message CleanupContainerRequest {
 }
 
 message CleanupContainerArgs {
-  required string containerId = 1;
+  required uint64 containerId = 1;
 }
 
 message CleanupContainerResponse {

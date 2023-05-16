@@ -719,7 +719,7 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
     // TODO: [SNAPSHOT] Initialize table lock for snapshotRenamedTable.
 
     missingContainerTable = this.store.getTable(MISSING_CONTAINER_TABLE,
-        String.class, ContainerInfo.class);
+        Long.class, ContainerInfo.class);
     checkTableStatus(missingContainerTable, MISSING_CONTAINER_TABLE,
         addCacheMetrics);
   }
@@ -1564,12 +1564,12 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
   public List<Long> getPendingMissingContainersForCleanup(int containerCount)
       throws IOException {
     List<Long> containerIDs = new ArrayList<>();
-    try (TableIterator<String, ? extends KeyValue<String, ContainerInfo>>
+    try (TableIterator<Long, ? extends KeyValue<Long, ContainerInfo>>
              containerIterator = getMissingContainerTable().iterator()) {
       int currentCount = 0;
       while (containerIterator.hasNext() && currentCount < containerCount) {
-        KeyValue<String, ContainerInfo> kv = containerIterator.next();
-        containerIDs.add(Long.parseLong(kv.getKey()));
+        KeyValue<Long, ContainerInfo> kv = containerIterator.next();
+        containerIDs.add(kv.getKey());
         currentCount++;
       }
     }
@@ -1825,7 +1825,7 @@ public class OmMetadataManagerImpl implements OMMetadataManager,
   }
 
   @Override
-  public Table<String, ContainerInfo> getMissingContainerTable() {
+  public Table<Long, ContainerInfo> getMissingContainerTable() {
     return missingContainerTable;
   }
 

@@ -61,15 +61,14 @@ public class ContainerCleanupSubCommand implements Callable<Void> {
       description = "Missing Container ID",
       required = true
   )
-  private String containerId;
+  private long containerId;
 
   @Override
   public Void call() throws Exception {
     OzoneConfiguration conf = parent.getParent().getOzoneConf();
     try (OzoneManagerProtocol client =
              createOmClient(conf, omServiceId)) {
-      long id = Long.parseLong(containerId);
-      client.cleanupContainer(id);
+      client.cleanupContainer(containerId);
     }
     return null;
   }

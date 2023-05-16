@@ -26,7 +26,7 @@ import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerDoubleBufferHelper;
 import org.apache.hadoop.ozone.om.request.OMClientRequest;
 import org.apache.hadoop.ozone.om.request.util.OmResponseUtil;
 import org.apache.hadoop.ozone.om.response.OMClientResponse;
-import org.apache.hadoop.ozone.om.response.key.OMCleanupContainerResponse;
+import org.apache.hadoop.ozone.om.response.key.OMContainerCleanupResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerArgs;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
@@ -35,11 +35,11 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMReque
 import java.io.IOException;
 
 /**
- * Handles ContainerCleanup Request.
+ * Handles CleanupContainer Request.
  */
-public class OMCleanupContainerRequest extends OMClientRequest {
+public class OMContainerCleanupRequest extends OMClientRequest {
 
-  public OMCleanupContainerRequest(OMRequest omRequest) {
+  public OMContainerCleanupRequest(OMRequest omRequest) {
     super(omRequest);
   }
 
@@ -73,22 +73,21 @@ public class OMCleanupContainerRequest extends OMClientRequest {
     OMResponse.Builder omResponse = OmResponseUtil.getOMResponseBuilder(
         getOmRequest());
 
-    String containerId = omRequest.getCleanupContainerRequest()
+    long containerId = omRequest.getCleanupContainerRequest()
         .getCleanupContainerArgs().getContainerId();
 
-    OMCleanupContainerResponse cleanupContainerResponse;
-    long id = Long.parseLong(containerId);
+    OMContainerCleanupResponse cleanupContainerResponse;
 
     try {
       ContainerInfo containerInfo = ozoneManager.getScmClient()
-          .getContainerClient().getContainer(id);
+          .getContainerClient().getContainer(containerId);
       ozoneManager.getMetadataManager().getMissingContainerTable()
           .addCacheEntry(new CacheKey<>(containerId),
               CacheValue.get(transactionLogIndex));
-      cleanupContainerResponse = new OMCleanupContainerResponse(
+      cleanupContainerResponse = new OMContainerCleanupResponse(
           omResponse.build(), containerId, containerInfo);
     } catch (IOException ex) {
-      cleanupContainerResponse = new OMCleanupContainerResponse(
+      cleanupContainerResponse = new OMContainerCleanupResponse(
           createErrorOMResponse(omResponse, ex), containerId);
     }
 
