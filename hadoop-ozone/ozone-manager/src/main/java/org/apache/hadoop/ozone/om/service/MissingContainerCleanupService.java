@@ -38,6 +38,8 @@ import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -57,6 +59,8 @@ import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_
  */
 public class MissingContainerCleanupService extends AbstractKeyDeletingService {
 
+  private static final Logger LOG =
+      LoggerFactory.getLogger(MissingContainerCleanupService.class);
   private static final int CONTAINER_CLEANUP_CORE_POOL_SIZE = 1;
   private final AtomicBoolean suspended;
   private final OzoneManager ozoneManager;
@@ -67,12 +71,12 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
   private final Table<String, OmKeyInfo> fileTable;
   private final int containerCleanupLimitPerTask;
 
-  public MissingContainerCleanupService(long interval,
-                                        long serviceTimeout,
-                                        OzoneManager ozoneManager,
-                                        ScmBlockLocationProtocol scmBlockClient,
-                                        StorageContainerLocationProtocol scmClient,
-                                        ConfigurationSource configuration) {
+  public MissingContainerCleanupService(
+      long interval, long serviceTimeout,
+      OzoneManager ozoneManager,
+      ScmBlockLocationProtocol scmBlockClient,
+      StorageContainerLocationProtocol scmClient,
+      ConfigurationSource configuration) {
     super(MissingContainerCleanupService.class.getSimpleName(),
         interval, TimeUnit.MILLISECONDS,
         CONTAINER_CLEANUP_CORE_POOL_SIZE,
@@ -133,11 +137,11 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
           scmContainerClient.deleteContainer(containerId);
           LOG.info("Successfully cleaned up missing container " +
               containerId);
-
-          // Remove cleaned up container from MissingContainerTable.
-          metadataManager.getMissingContainerTable()
-              .delete(String.valueOf(containerId));
         }
+
+        // Remove the container from MissingContainerTable.
+        metadataManager.getMissingContainerTable()
+            .delete(String.valueOf(containerId));
       }
 
       return BackgroundTaskResult.EmptyTaskResult.newResult();
@@ -246,12 +250,15 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
 
     private List<Long> getNotMissingContainerIDsFromList(
         List<Long> containerIdList) throws IOException {
+      List<Long> missingContainers = new ArrayList<>();
       for (long id : containerIdList) {
         if (scmContainerClient.getContainerReplicas(id,
             ClientVersion.CURRENT_VERSION).isEmpty()) {
-          containerIdList.remove(id);
+          missingContainers.add(id);
         }
       }
+      containerIdList.removeAll(missingContainers);
+
       return containerIdList;
     }
 

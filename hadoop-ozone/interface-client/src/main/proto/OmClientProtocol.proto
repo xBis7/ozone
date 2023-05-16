@@ -134,6 +134,8 @@ enum Type {
   TransferLeadership = 117;
   SnapshotPurge = 118;
   RecoverLease = 119;
+
+  CleanupContainer = 120;
 }
 
 message OMRequest {
@@ -252,6 +254,8 @@ message OMRequest {
   optional SnapshotPurgeRequest             SnapshotPurgeRequest           = 118;
 
   optional RecoverLeaseRequest              RecoverLeaseRequest            = 119;
+
+  optional CleanupContainerRequest          CleanupContainerRequest        = 120;
 }
 
 message OMResponse {
@@ -362,6 +366,8 @@ message OMResponse {
   optional hdds.TransferLeadershipResponseProto   TransferOmLeadershipResponse  = 117;
   optional SnapshotPurgeResponse              SnapshotPurgeResponse         = 118;
   optional RecoverLeaseResponse              RecoverLeaseResponse          = 119;
+
+  optional CleanupContainerRequest          CleanupContainerRequest        = 120;
 }
 
 enum Status {
@@ -1252,6 +1258,18 @@ message OpenKeyBucket {
 message OpenKey {
   required string name = 1;
   optional uint64 clientID = 2 [deprecated=true];
+}
+
+message CleanupContainerRequest {
+  optional CleanupContainerArgs cleanupContainerArgs = 1;
+}
+
+message CleanupContainerArgs {
+  required string containerId = 1;
+}
+
+message CleanupContainerResponse {
+  optional bool status = 1;
 }
 
 message OMTokenProto {

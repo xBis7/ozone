@@ -181,6 +181,8 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.TenantL
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.TenantListUserResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.TenantRevokeAdminRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.TenantRevokeUserAccessIdRequest;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerRequest;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerArgs;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.VolumeInfo;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.EchoRPCRequest;
@@ -926,6 +928,25 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
 
     handleError(submitRequest(omRequest));
 
+  }
+
+  /**
+   * Deletes a missing container and cleans it up from the system.
+   *
+   * @param containerId
+   */
+  @Override
+  public void cleanupContainer(long containerId) throws IOException {
+    CleanupContainerRequest.Builder req = CleanupContainerRequest.newBuilder();
+    CleanupContainerArgs containerArgs = CleanupContainerArgs.newBuilder()
+        .setContainerId(String.valueOf(containerId))
+        .build();
+    req.setCleanupContainerArgs(containerArgs);
+    OMRequest omRequest = createOMRequest(Type.CleanupContainer)
+        .setCleanupContainerRequest(req)
+        .build();
+
+    handleError(submitRequest(omRequest));
   }
 
   /**

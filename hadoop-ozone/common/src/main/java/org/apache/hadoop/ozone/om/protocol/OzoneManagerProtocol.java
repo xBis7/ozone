@@ -353,6 +353,15 @@ public interface OzoneManagerProtocol
         "this to be implemented, as write requests use a new approach.");
   }
 
+  /**
+   * Deletes a missing container and cleans it up from the system.
+   *
+   * @param containerId
+   */
+  default void cleanupContainer(long containerId) throws IOException {
+    throw new UnsupportedOperationException("OzoneManager does not require " +
+        "this to be implemented, as write requests use a new approach.");
+  }
 
   /**
    * Deletes an existing empty bucket from volume.
