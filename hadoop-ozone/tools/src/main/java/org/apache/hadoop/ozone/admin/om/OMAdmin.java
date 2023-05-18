@@ -28,8 +28,8 @@ import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.client.OzoneClientException;
 import org.apache.hadoop.ozone.client.OzoneClientFactory;
 import org.apache.hadoop.ozone.client.protocol.ClientProtocol;
-import org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory;
 import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
+import org.apache.hadoop.ozone.om.protocolPB.OmTransportFactory;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolClientSideTranslatorPB;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolPB;
 
@@ -117,8 +117,8 @@ public class OMAdmin extends GenericCli implements SubcommandWithParent {
         ProtobufRpcEngine.class);
     String clientId = ClientId.randomId().toString();
     if (!forceHA || (forceHA && OmUtils.isOmHAServiceId(conf, omServiceID))) {
-      OmTransport omTransport = new Hadoop3OmTransportFactory()
-          .createOmTransport(conf, parent.getUser(), omServiceID);
+      OmTransport omTransport = OmTransportFactory
+          .create(conf, parent.getUser(), omServiceID);
       return new OzoneManagerProtocolClientSideTranslatorPB(omTransport,
           clientId);
     } else {

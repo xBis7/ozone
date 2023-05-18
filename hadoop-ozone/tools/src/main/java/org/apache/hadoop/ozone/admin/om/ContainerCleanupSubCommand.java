@@ -26,6 +26,7 @@ import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
 import org.apache.hadoop.ozone.om.protocolPB.OmTransportFactory;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolClientSideTranslatorPB;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolPB;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerResponse;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ratis.protocol.ClientId;
 import picocli.CommandLine;
@@ -57,6 +58,12 @@ public class ContainerCleanupSubCommand implements Callable<Void> {
   private String omServiceId;
 
   @CommandLine.Option(
+      names = {"-host", "--service-host"},
+      description = "Ozone Manager Host"
+  )
+  private String omHost;
+
+  @CommandLine.Option(
       names = {"-cid", "--container-id"},
       description = "Missing Container ID",
       required = true
@@ -65,32 +72,32 @@ public class ContainerCleanupSubCommand implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    OzoneConfiguration conf = parent.getParent().getOzoneConf();
     try (OzoneManagerProtocol client =
-             createOmClient(conf, omServiceId)) {
-      client.cleanupContainer(containerId);
-    }
-    return null;
-  }
+             parent.createOmClient(omServiceId, omHost, false)) {
+      CleanupContainerResponse.StatusType statusType;
+      try {
+        statusType =
+            client.cleanupContainer(containerId);
+      } catch (IOException ex) {
+        System.out.println(ex.getMessage());
+        statusType = CleanupContainerResponse
+            .StatusType.CONTAINER_NOT_FOUND_IN_SCM;
+      }
 
-  public OzoneManagerProtocolClientSideTranslatorPB createOmClient(
-      OzoneConfiguration conf, String omServiceID) throws IOException {
-    UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-    RPC.setProtocolEngine(conf, OzoneManagerProtocolPB.class,
-        ProtobufRpcEngine.class);
-    String clientId = ClientId.randomId().toString();
-
-    if (omServiceID == null) {
-
-      //if only one serviceId is configured, use that
-      final String[] configuredServiceIds =
-          conf.getTrimmedStrings(OZONE_OM_SERVICE_IDS_KEY);
-      if (configuredServiceIds.length == 1) {
-        omServiceID = configuredServiceIds[0];
+      if (statusType.equals(CleanupContainerResponse
+          .StatusType.SUCCESS)) {
+        System.out.println("Container with ID '" + containerId +
+            "' was successfully submitted for cleanup.");
+      } else if (statusType.equals(CleanupContainerResponse
+          .StatusType.CONTAINER_IS_NOT_MISSING)) {
+        System.out.println("Container with ID '" + containerId +
+            "', is not missing.");
+      } else if (statusType.equals(CleanupContainerResponse
+          .StatusType.CONTAINER_NOT_FOUND_IN_SCM)) {
+        System.out.println("Container with ID '" + containerId +
+            "' doesn't exist.");
       }
     }
-
-    OmTransport transport = OmTransportFactory.create(conf, ugi, omServiceID);
-    return new OzoneManagerProtocolClientSideTranslatorPB(transport, clientId);
+    return null;
   }
 }

@@ -21,6 +21,7 @@ import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.response.CleanupTableInfo;
 import org.apache.hadoop.ozone.om.response.OMClientResponse;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
 
 import javax.annotation.Nonnull;
@@ -34,29 +35,35 @@ import static org.apache.hadoop.ozone.om.OmMetadataManagerImpl.MISSING_CONTAINER
 @CleanupTableInfo(cleanupTables = {MISSING_CONTAINER_TABLE})
 public class OMContainerCleanupResponse extends OMClientResponse {
 
-  private final long containerId;
-  private final ContainerInfo containerInfo;
+  private final CleanupContainerResponse.StatusType statusType;
+  private long containerId;
+  private ContainerInfo containerInfo;
 
-  public OMContainerCleanupResponse(@Nonnull OMResponse omResponse,
-                                    long containerId,
-                                    ContainerInfo containerInfo) {
+  public OMContainerCleanupResponse(
+      @Nonnull OMResponse omResponse,
+      @Nonnull CleanupContainerResponse.StatusType statusType,
+      long containerId, ContainerInfo containerInfo) {
     super(omResponse);
+    this.statusType = statusType;
     this.containerId = containerId;
     this.containerInfo = containerInfo;
   }
 
-  public OMContainerCleanupResponse(@Nonnull OMResponse omResponse,
-                                    long containerId) {
+  public OMContainerCleanupResponse(
+      @Nonnull OMResponse omResponse,
+      @Nonnull CleanupContainerResponse.StatusType statusType) {
     super(omResponse);
-    this.containerId = containerId;
-    this.containerInfo = null;
+    this.statusType = statusType;
   }
 
   @Override
   protected void addToDBBatch(OMMetadataManager omMetadataManager,
                               BatchOperation batchOperation)
       throws IOException {
-    omMetadataManager.getMissingContainerTable()
-        .putWithBatch(batchOperation, containerId, containerInfo);
+    if (statusType.equals(CleanupContainerResponse
+        .StatusType.SUCCESS)) {
+      omMetadataManager.getMissingContainerTable()
+          .putWithBatch(batchOperation, containerId, containerInfo);
+    }
   }
 }

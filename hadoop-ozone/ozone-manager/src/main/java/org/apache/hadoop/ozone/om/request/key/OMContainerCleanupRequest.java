@@ -18,21 +18,25 @@
 package org.apache.hadoop.ozone.om.request.key;
 
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
 import org.apache.hadoop.hdds.utils.db.cache.CacheValue;
+import org.apache.hadoop.ozone.ClientVersion;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerDoubleBufferHelper;
 import org.apache.hadoop.ozone.om.request.OMClientRequest;
 import org.apache.hadoop.ozone.om.request.util.OmResponseUtil;
 import org.apache.hadoop.ozone.om.response.OMClientResponse;
 import org.apache.hadoop.ozone.om.response.key.OMContainerCleanupResponse;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerArgs;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Handles CleanupContainer Request.
@@ -79,16 +83,55 @@ public class OMContainerCleanupRequest extends OMClientRequest {
     OMContainerCleanupResponse cleanupContainerResponse;
 
     try {
+      // If container doesn't exist in the SCM,
+      // trying to get the container or its replicas
+      // will result in an IOException.
+
+      // Verify container is missing.
+      List<HddsProtos.SCMContainerReplicaProto> replicaList =
+          ozoneManager.getScmClient()
+              .getContainerClient()
+              .getContainerReplicas(containerId,
+                  ClientVersion.CURRENT_VERSION);
+
+      if (!replicaList.isEmpty()) {
+        omResponse.setCleanupContainerResponse(
+            CleanupContainerResponse.newBuilder()
+                .setStatus(CleanupContainerResponse
+                    .StatusType.CONTAINER_IS_NOT_MISSING)
+                .build());
+        cleanupContainerResponse = new OMContainerCleanupResponse(
+            omResponse.build(), CleanupContainerResponse
+            .StatusType.CONTAINER_IS_NOT_MISSING);
+        return cleanupContainerResponse;
+      }
+
       ContainerInfo containerInfo = ozoneManager.getScmClient()
           .getContainerClient().getContainer(containerId);
       ozoneManager.getMetadataManager().getMissingContainerTable()
           .addCacheEntry(new CacheKey<>(containerId),
               CacheValue.get(transactionLogIndex));
+      omResponse.setCleanupContainerResponse(
+          CleanupContainerResponse.newBuilder()
+              .setStatus(CleanupContainerResponse
+                  .StatusType.SUCCESS)
+              .build());
       cleanupContainerResponse = new OMContainerCleanupResponse(
-          omResponse.build(), containerId, containerInfo);
+          omResponse.build(), CleanupContainerResponse
+          .StatusType.SUCCESS, containerId, containerInfo);
     } catch (IOException ex) {
+      omResponse.setCleanupContainerResponse(
+          CleanupContainerResponse.newBuilder()
+              .setStatus(CleanupContainerResponse
+                  .StatusType.CONTAINER_NOT_FOUND_IN_SCM)
+              .build());
+      // Don't use createErrorOMResponse(omResponse, exception)
+      // as it will rethrow the ContainerNotFoundException
+      // and cause OzoneManager service to stop.
       cleanupContainerResponse = new OMContainerCleanupResponse(
-          createErrorOMResponse(omResponse, ex), containerId);
+          omResponse.build(), CleanupContainerResponse
+          .StatusType.CONTAINER_NOT_FOUND_IN_SCM);
+      return cleanupContainerResponse;
     }
 
     addResponseToDoubleBuffer(transactionLogIndex, cleanupContainerResponse,

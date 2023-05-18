@@ -367,7 +367,7 @@ message OMResponse {
   optional SnapshotPurgeResponse              SnapshotPurgeResponse         = 118;
   optional RecoverLeaseResponse              RecoverLeaseResponse          = 119;
 
-  optional CleanupContainerRequest          CleanupContainerRequest        = 120;
+  optional CleanupContainerResponse          CleanupContainerResponse      = 120;
 }
 
 enum Status {
@@ -1269,7 +1269,12 @@ message CleanupContainerArgs {
 }
 
 message CleanupContainerResponse {
-  optional bool status = 1;
+  enum StatusType {
+    SUCCESS = 1;
+    CONTAINER_IS_NOT_MISSING = 2;
+    CONTAINER_NOT_FOUND_IN_SCM = 3;
+  }
+  required StatusType status = 1;
 }
 
 message OMTokenProto {

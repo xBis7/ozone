@@ -62,6 +62,7 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Prepare
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.PrepareStatusResponse.PrepareStatus;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CancelPrepareResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.EchoRPCResponse;
+import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerResponse;
 import org.apache.hadoop.ozone.security.OzoneDelegationTokenSelector;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
@@ -358,7 +359,8 @@ public interface OzoneManagerProtocol
    *
    * @param containerId
    */
-  default void cleanupContainer(long containerId) throws IOException {
+  default CleanupContainerResponse.StatusType cleanupContainer(long containerId)
+      throws IOException {
     throw new UnsupportedOperationException("OzoneManager does not require " +
         "this to be implemented, as write requests use a new approach.");
   }

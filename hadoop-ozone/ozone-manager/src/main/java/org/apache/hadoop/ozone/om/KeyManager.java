@@ -253,4 +253,10 @@ public interface KeyManager extends OzoneManagerFS, IOzoneAcl {
    * @return Background service.
    */
   BackgroundService getSnapshotDeletingService();
+
+  /**
+   * Returns the instance of Missing Container Cleanup service.
+   * @return Background service.
+   */
+  BackgroundService getMissingContainerCleanupService();
 }

@@ -676,6 +676,11 @@ public class KeyManagerImpl implements KeyManager {
   }
 
   @Override
+  public BackgroundService getMissingContainerCleanupService() {
+    return missingContainerCleanupService;
+  }
+
+  @Override
   public OmMultipartUploadList listMultipartUploads(String volumeName,
       String bucketName, String prefix) throws OMException {
     Preconditions.checkNotNull(volumeName);
