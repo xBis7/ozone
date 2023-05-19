@@ -170,11 +170,11 @@ public class KeyManagerImpl implements KeyManager {
   private final OzoneBlockTokenSecretManager secretManager;
   private final boolean grpcBlockTokenEnabled;
 
-  private BackgroundService keyDeletingService;
+  private KeyDeletingService keyDeletingService;
 
-  private BackgroundService snapshotSstFilteringService;
-  private BackgroundService snapshotDeletingService;
-  private BackgroundService missingContainerCleanupService;
+  private SstFilteringService snapshotSstFilteringService;
+  private SnapshotDeletingService snapshotDeletingService;
+  private MissingContainerCleanupService missingContainerCleanupService;
 
   private final KeyProviderCryptoExtension kmsProvider;
   private final boolean enableFileSystemPaths;
@@ -261,7 +261,9 @@ public class KeyManagerImpl implements KeyManager {
       openKeyCleanupService.start();
     }
 
-    if (snapshotSstFilteringService == null) {
+    if (snapshotSstFilteringService == null &&
+        ozoneManager.isFilesystemSnapshotEnabled()) {
+
       long serviceInterval = configuration.getTimeDuration(
           OZONE_SNAPSHOT_SST_FILTERING_SERVICE_INTERVAL,
           OZONE_SNAPSHOT_SST_FILTERING_SERVICE_INTERVAL_DEFAULT,
@@ -278,7 +280,9 @@ public class KeyManagerImpl implements KeyManager {
       }
     }
 
-    if (snapshotDeletingService == null) {
+    if (snapshotDeletingService == null &&
+        ozoneManager.isFilesystemSnapshotEnabled()) {
+
       long snapshotServiceInterval = configuration.getTimeDuration(
           OZONE_SNAPSHOT_DELETING_SERVICE_INTERVAL,
           OZONE_SNAPSHOT_DELETING_SERVICE_INTERVAL_DEFAULT,
@@ -654,7 +658,7 @@ public class KeyManagerImpl implements KeyManager {
   }
 
   @Override
-  public BackgroundService getDeletingService() {
+  public KeyDeletingService getDeletingService() {
     return keyDeletingService;
   }
 
@@ -667,16 +671,16 @@ public class KeyManagerImpl implements KeyManager {
     return openKeyCleanupService;
   }
 
-  public BackgroundService getSnapshotSstFilteringService() {
+  public SstFilteringService getSnapshotSstFilteringService() {
     return snapshotSstFilteringService;
   }
 
-  public BackgroundService getSnapshotDeletingService() {
+  public SnapshotDeletingService getSnapshotDeletingService() {
     return snapshotDeletingService;
   }
 
   @Override
-  public BackgroundService getMissingContainerCleanupService() {
+  public MissingContainerCleanupService getMissingContainerCleanupService() {
     return missingContainerCleanupService;
   }
 
@@ -761,10 +765,8 @@ public class KeyManagerImpl implements KeyManager {
         throw new OMException("No Such Multipart upload exists for this key.",
             ResultCodes.NO_SUCH_MULTIPART_UPLOAD_ERROR);
       } else {
-        TreeMap<Integer, PartKeyInfo> partKeyInfoMap =
-            multipartKeyInfo.getPartKeyInfoMap();
-        Iterator<Map.Entry<Integer, PartKeyInfo>> partKeyInfoMapIterator =
-            partKeyInfoMap.entrySet().iterator();
+        Iterator<PartKeyInfo> partKeyInfoMapIterator =
+            multipartKeyInfo.getPartKeyInfoMap().iterator();
 
         ReplicationConfig replicationConfig = null;
 
@@ -772,13 +774,11 @@ public class KeyManagerImpl implements KeyManager {
         List<OmPartInfo> omPartInfoList = new ArrayList<>();
 
         while (count < maxParts && partKeyInfoMapIterator.hasNext()) {
-          Map.Entry<Integer, PartKeyInfo> partKeyInfoEntry =
-              partKeyInfoMapIterator.next();
-          nextPartNumberMarker = partKeyInfoEntry.getKey();
+          PartKeyInfo partKeyInfo = partKeyInfoMapIterator.next();
+          nextPartNumberMarker = partKeyInfo.getPartNumber();
           // As we should return only parts with part number greater
           // than part number marker
-          if (partKeyInfoEntry.getKey() > partNumberMarker) {
-            PartKeyInfo partKeyInfo = partKeyInfoEntry.getValue();
+          if (nextPartNumberMarker > partNumberMarker) {
             String partName = getPartName(partKeyInfo, volumeName, bucketName,
                 keyName);
             OmPartInfo omPartInfo = new OmPartInfo(partKeyInfo.getPartNumber(),

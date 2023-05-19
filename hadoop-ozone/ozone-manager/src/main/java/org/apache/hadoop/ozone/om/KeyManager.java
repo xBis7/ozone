@@ -28,6 +28,9 @@ import org.apache.hadoop.ozone.om.helpers.OmMultipartUploadListParts;
 import org.apache.hadoop.ozone.om.fs.OzoneManagerFS;
 import org.apache.hadoop.hdds.utils.BackgroundService;
 import org.apache.hadoop.ozone.om.helpers.RepeatedOmKeyInfo;
+import org.apache.hadoop.ozone.om.service.KeyDeletingService;
+import org.apache.hadoop.ozone.om.service.MissingContainerCleanupService;
+import org.apache.hadoop.ozone.om.service.SnapshotDeletingService;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -153,7 +156,7 @@ public interface KeyManager extends OzoneManagerFS, IOzoneAcl {
    * Returns the instance of Deleting Service.
    * @return Background service.
    */
-  BackgroundService getDeletingService();
+  KeyDeletingService getDeletingService();
 
 
   OmMultipartUploadList listMultipartUploads(String volumeName,
@@ -246,17 +249,17 @@ public interface KeyManager extends OzoneManagerFS, IOzoneAcl {
    * Returns the instance of Snapshot SST Filtering service.
    * @return Background service.
    */
-  BackgroundService getSnapshotSstFilteringService();
+  SstFilteringService getSnapshotSstFilteringService();
 
   /**
    * Returns the instance of Snapshot Deleting service.
    * @return Background service.
    */
-  BackgroundService getSnapshotDeletingService();
+  SnapshotDeletingService getSnapshotDeletingService();
 
   /**
    * Returns the instance of Missing Container Cleanup service.
    * @return Background service.
    */
-  BackgroundService getMissingContainerCleanupService();
+  MissingContainerCleanupService getMissingContainerCleanupService();
 }

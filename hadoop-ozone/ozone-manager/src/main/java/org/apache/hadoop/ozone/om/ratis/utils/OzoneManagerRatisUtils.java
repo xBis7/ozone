@@ -52,7 +52,6 @@ import org.apache.hadoop.ozone.om.request.key.OMContainerCleanupRequest;
 import org.apache.hadoop.ozone.om.request.key.OMKeyPurgeRequest;
 import org.apache.hadoop.ozone.om.request.key.OMDirectoriesPurgeRequestWithFSO;
 import org.apache.hadoop.ozone.om.request.key.OMOpenKeysDeleteRequest;
-import org.apache.hadoop.ozone.om.request.key.OMTrashRecoverRequest;
 import org.apache.hadoop.ozone.om.request.key.acl.OMKeyAddAclRequest;
 import org.apache.hadoop.ozone.om.request.key.acl.OMKeyAddAclRequestWithFSO;
 import org.apache.hadoop.ozone.om.request.key.acl.OMKeyRemoveAclRequest;
@@ -184,8 +183,6 @@ public final class OzoneManagerRatisUtils {
       return new OMRenewDelegationTokenRequest(omRequest);
     case GetS3Secret:
       return new S3GetSecretRequest(omRequest);
-    case RecoverTrash:
-      return new OMTrashRecoverRequest(omRequest);
     case FinalizeUpgrade:
       return new OMFinalizeUpgradeRequest(omRequest);
     case Prepare:

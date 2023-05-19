@@ -91,6 +91,8 @@ import org.apache.hadoop.ozone.om.ha.OMHAMetrics;
 import org.apache.hadoop.ozone.om.helpers.KeyInfoWithVolumeContext;
 import org.apache.hadoop.ozone.om.helpers.SnapshotInfo;
 import org.apache.hadoop.ozone.om.request.OMClientRequest;
+import org.apache.hadoop.ozone.om.s3.S3SecretCacheProvider;
+import org.apache.hadoop.ozone.om.s3.S3SecretStoreProvider;
 import org.apache.hadoop.ozone.om.service.OMRangerBGSyncService;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.hadoop.ozone.om.upgrade.OMLayoutFeature;
@@ -285,6 +287,8 @@ import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.INVA
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.INVALID_REQUEST;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.PERMISSION_DENIED;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.TOKEN_ERROR_OTHER;
+import static org.apache.hadoop.ozone.om.s3.S3SecretStoreConfigurationKeys.DEFAULT_SECRET_STORAGE_TYPE;
+import static org.apache.hadoop.ozone.om.s3.S3SecretStoreConfigurationKeys.S3_SECRET_STORAGE_TYPE;
 import static org.apache.hadoop.util.ExitUtil.terminate;
 import static org.apache.hadoop.ozone.om.lock.OzoneManagerLock.Resource.BUCKET_LOCK;
 import static org.apache.hadoop.ozone.om.lock.OzoneManagerLock.Resource.VOLUME_LOCK;
@@ -434,6 +438,8 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
   private final OzoneLockProvider ozoneLockProvider;
   private OMPerformanceMetrics perfMetrics;
 
+  private boolean fsSnapshotEnabled;
+
   /**
    * OM Startup mode.
    */
@@ -544,6 +550,10 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         OMConfigKeys.OZONE_OM_RATIS_ENABLE_KEY,
         OMConfigKeys.OZONE_OM_RATIS_ENABLE_DEFAULT);
 
+    fsSnapshotEnabled = configuration.getBoolean(
+        OMConfigKeys.OZONE_FILESYSTEM_SNAPSHOT_ENABLED_KEY,
+        OMConfigKeys.OZONE_FILESYSTEM_SNAPSHOT_ENABLED_DEFAULT);
+
     String defaultBucketLayoutString =
         configuration.getTrimmed(OZONE_DEFAULT_BUCKET_LAYOUT,
             OZONE_DEFAULT_BUCKET_LAYOUT_DEFAULT);
@@ -625,6 +635,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
         OMMultiTenantManager.checkAndEnableMultiTenancy(this, conf);
 
     metrics = OMMetrics.create();
+    perfMetrics = OMPerformanceMetrics.register();
     // Get admin list
     omStarterUser = UserGroupInformation.getCurrentUser().getShortUserName();
     Collection<String> omAdminUsernames =
@@ -769,8 +780,27 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     }
     volumeManager = new VolumeManagerImpl(metadataManager);
     bucketManager = new BucketManagerImpl(metadataManager);
+
+    Class<? extends S3SecretStoreProvider> storeProviderClass =
+        configuration.getClass(
+            S3_SECRET_STORAGE_TYPE,
+            DEFAULT_SECRET_STORAGE_TYPE,
+            S3SecretStoreProvider.class);
+    S3SecretStore store;
+    try {
+      store = storeProviderClass == DEFAULT_SECRET_STORAGE_TYPE
+              ? metadataManagerImpl
+              : storeProviderClass
+                  .getConstructor().newInstance().get(configuration);
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
+    S3SecretCacheProvider secretCacheProvider = S3SecretCacheProvider.IN_MEMORY;
     s3SecretManager = new S3SecretLockedManager(
-        new S3SecretManagerImpl(metadataManagerImpl, metadataManagerImpl),
+        new S3SecretManagerImpl(
+            store,
+            secretCacheProvider.get(configuration)
+        ),
         metadataManager.getLock()
     );
     if (secConfig.isSecurityEnabled() || testSecureOmFlag) {
@@ -778,11 +808,12 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     }
 
     prefixManager = new PrefixManagerImpl(metadataManager, isRatisEnabled);
-    perfMetrics = OMPerformanceMetrics.register();
     keyManager = new KeyManagerImpl(this, scmClient, configuration,
         perfMetrics);
     omMetadataReader = new OmMetadataReader(keyManager, prefixManager,
         this, LOG, AUDIT, metrics);
+
+    // TODO: [SNAPSHOT] Revisit this in HDDS-8529.
     omSnapshotManager = new OmSnapshotManager(this);
 
     // Snapshot metrics
@@ -2720,8 +2751,9 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
    * {@inheritDoc}
    */
   @Override
-  public List<OmBucketInfo> listBuckets(String volumeName,
-      String startKey, String prefix, int maxNumOfBuckets)
+  public List<OmBucketInfo> listBuckets(String volumeName, String startKey,
+                                        String prefix, int maxNumOfBuckets,
+                                        boolean hasSnapshot)
       throws IOException {
     boolean auditSuccess = true;
     Map<String, String> auditMap = buildAuditMap(volumeName);
@@ -2729,6 +2761,8 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     auditMap.put(OzoneConsts.PREFIX, prefix);
     auditMap.put(OzoneConsts.MAX_NUM_OF_BUCKETS,
         String.valueOf(maxNumOfBuckets));
+    auditMap.put(OzoneConsts.HAS_SNAPSHOT, String.valueOf(hasSnapshot));
+
     try {
       if (isAclEnabled) {
         omMetadataReader.checkAcls(ResourceType.VOLUME,
@@ -2737,7 +2771,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       }
       metrics.incNumBucketLists();
       return bucketManager.listBuckets(volumeName,
-          startKey, prefix, maxNumOfBuckets);
+          startKey, prefix, maxNumOfBuckets, hasSnapshot);
     } catch (IOException ex) {
       metrics.incNumBucketListFails();
       auditSuccess = false;
@@ -3992,6 +4026,13 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
    */
   public boolean isRatisEnabled() {
     return isRatisEnabled;
+  }
+
+  /**
+   * @return true if Ozone filesystem snapshot is enabled, false otherwise.
+   */
+  public boolean isFilesystemSnapshotEnabled() {
+    return fsSnapshotEnabled;
   }
 
   /**

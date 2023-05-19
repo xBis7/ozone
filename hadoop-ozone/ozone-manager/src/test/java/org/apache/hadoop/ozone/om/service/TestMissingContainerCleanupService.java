@@ -103,8 +103,8 @@ public class TestMissingContainerCleanupService {
     omWriteClient = omTestManagers.getWriteClient();
     omMetadataManager = omTestManagers.getMetadataManager();
     scmContainerClient = ozoneManager.getScmClient().getContainerClient();
-    containerCleanupService = (MissingContainerCleanupService)
-        keyManager.getMissingContainerCleanupService();
+    containerCleanupService = keyManager
+        .getMissingContainerCleanupService();
 
     createVolumeAndBuckets();
 
