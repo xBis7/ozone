@@ -26,6 +26,9 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getRandom
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -33,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.hadoop.hdds.client.RatisReplicationConfig;
@@ -43,10 +47,12 @@ import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolPro
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.ContainerReplicaProto;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
+import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
 import org.apache.hadoop.hdds.scm.ha.SCMHAManager;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
+import org.apache.hadoop.hdds.utils.db.Table;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -280,5 +286,47 @@ public class TestReconContainerManager
     // And the only entry should match DN02
     assertEquals(uuid2,
         repHistMap.get(cIDlong1).keySet().iterator().next());
+  }
+
+  @Test
+  public void testDeleteContainer()
+      throws IOException, TimeoutException {
+    final ReconContainerManager containerManager = getContainerManager();
+    final long longContainerID = ThreadLocalRandom.current().nextLong(100);
+    final ContainerID containerID = ContainerID.valueOf(longContainerID);
+
+    Pipeline pipeline = getRandomPipeline();
+    getPipelineManager().addPipeline(pipeline);
+
+    // Get Recon-SCM containers table.
+    Table<ContainerID, ContainerInfo> reconContainersTable =
+        getContainerTable();
+
+    // Add a new container.
+    final ContainerInfo info =
+        newContainerInfo(longContainerID, pipeline);
+    containerManager.addNewContainer(
+        new ContainerWithPipeline(info, pipeline));
+
+    // Add container in the Recon-SCM containers table.
+    reconContainersTable.put(containerID, info);
+
+    // This is getting the container from the ContainerStateMap.
+    // Operation should succeed without any exceptions.
+    containerManager.getContainer(containerID);
+
+    // Container should exist in the Recon-SCM containers table.
+    assertNotNull(reconContainersTable.getIfExist(containerID));
+
+    // Delete container.
+    containerManager.deleteContainer(containerID);
+
+    // Container shouldn't exist in the Recon-SCM containers table.
+    assertNull(reconContainersTable.getIfExist(containerID));
+
+    // Getting the container from the ContainerStateMap,
+    // should throw a ContainerNotFoundException.
+    assertThrows(ContainerNotFoundException.class,
+        () -> containerManager.getContainer(containerID));
   }
 }

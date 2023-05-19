@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.hadoop.hdds.utils.db.RDBBatchOperation;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
@@ -412,6 +413,66 @@ public class TestReconContainerMetadataManagerImpl {
     keyPrefixMap =
         reconContainerMetadataManager.getKeyPrefixesForContainer(containerId);
     assertEquals(1, keyPrefixMap.size());
+  }
+
+  @Test
+  public void testDeleteContainerFromMappingTables() throws Exception {
+    long containerId1 = ThreadLocalRandom.current().nextLong(100);
+    long containerId2 = containerId1 + 1;
+
+    // Populate keys and store them in
+    // "containerKeyTable" and "KeyContainerTable".
+    // For containerId1, 1 key with keyPrefix1 and 2 keys with keyPrefix2.
+    // For containerId2, 3 keys with keyPrefix3.
+    // 3 total keys for each container.
+    populateKeysInContainers(containerId1, containerId2);
+
+    // Populate "containerKeyCountTable".
+    RDBBatchOperation rdbBatchOperation = new RDBBatchOperation();
+    reconContainerMetadataManager
+        .batchStoreContainerKeyCounts(rdbBatchOperation, containerId1, 3L);
+    reconContainerMetadataManager
+        .batchStoreContainerKeyCounts(rdbBatchOperation, containerId2, 3L);
+    reconContainerMetadataManager.commitBatchOperation(rdbBatchOperation);
+
+    // containerId1 has 2 key prefixes.
+    assertEquals(2, reconContainerMetadataManager
+        .getKeyPrefixesForContainer(containerId1).size());
+    // containerId2 has 1 key prefix.
+    assertEquals(1, reconContainerMetadataManager
+        .getKeyPrefixesForContainer(containerId2).size());
+
+    // Checking container key count table to see if containers exist.
+    assertTrue(reconContainerMetadataManager
+        .doesContainerExists(containerId1));
+    assertTrue(reconContainerMetadataManager
+        .doesContainerExists(containerId2));
+
+    // Both containers should have a key count larger than 0.
+    assertTrue(reconContainerMetadataManager
+        .getKeyCountForContainer(containerId1) > 0);
+    assertTrue(reconContainerMetadataManager
+        .getKeyCountForContainer(containerId2) > 0);
+
+    // Remove containerId1 from the tables.
+    reconContainerMetadataManager
+        .removeContainerFromMappingTables(containerId1);
+
+    // containerId1 shouldn't have any key prefixes or key count.
+    assertEquals(0, reconContainerMetadataManager
+        .getKeyPrefixesForContainer(containerId1).size());
+    assertFalse(reconContainerMetadataManager
+        .doesContainerExists(containerId1));
+    assertEquals(0L, reconContainerMetadataManager
+        .getKeyCountForContainer(containerId1));
+
+    // containerId2 should still exist in all tables.
+    assertEquals(1, reconContainerMetadataManager
+        .getKeyPrefixesForContainer(containerId2).size());
+    assertTrue(reconContainerMetadataManager
+        .doesContainerExists(containerId2));
+    assertEquals(3L, reconContainerMetadataManager
+        .getKeyCountForContainer(containerId2));
   }
 
   @Test

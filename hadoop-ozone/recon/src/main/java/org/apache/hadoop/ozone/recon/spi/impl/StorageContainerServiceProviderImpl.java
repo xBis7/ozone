@@ -140,6 +140,12 @@ public class StorageContainerServiceProviderImpl
   }
 
   @Override
+  public ContainerInfo getContainer(long containerId)
+      throws IOException {
+    return scmClient.getContainer(containerId);
+  }
+
+  @Override
   public List<ContainerWithPipeline> getExistContainerWithPipelinesInBatch(
       List<Long> containerIDs) {
     return scmClient.getExistContainerWithPipelinesInBatch(containerIDs);
