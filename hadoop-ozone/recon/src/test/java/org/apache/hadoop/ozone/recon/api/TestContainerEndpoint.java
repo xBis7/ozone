@@ -1173,7 +1173,10 @@ public class TestContainerEndpoint {
         deletedContainerInfo.getContainerState());
   }
 
-  @Test
+  // As long as the container doesn't exist in the SCM, then it shouldn't be in Recon.
+  // This test should be deleted.
+
+//  @Test
   public void testGetContainerInsightsNonSCMContainers()
       throws IOException, TimeoutException {
     Map<Long, ContainerMetadata> omContainers =
