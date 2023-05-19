@@ -348,7 +348,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
     ContainerInfo info = reconContainersTable
         .getIfExist(containerID);
 
-    // If container exists on the table, delete it.
+    // If the container exists in the table, delete it.
     if (Objects.nonNull(info)) {
       reconContainersTable.delete(containerID);
     }
