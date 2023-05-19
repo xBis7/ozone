@@ -16,12 +16,14 @@
  */
 package org.apache.hadoop.ozone.om.service;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.protocol.ScmBlockLocationProtocol;
 import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
 import org.apache.hadoop.hdds.scm.storage.BlockLocationInfo;
+import org.apache.hadoop.hdds.utils.BackgroundService;
 import org.apache.hadoop.hdds.utils.BackgroundTask;
 import org.apache.hadoop.hdds.utils.BackgroundTaskQueue;
 import org.apache.hadoop.hdds.utils.BackgroundTaskResult;
@@ -47,6 +49,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK;
@@ -57,7 +60,7 @@ import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_
  * MissingContainerTable, delete all keys in the OM and then
  * delete the container in the SCM.
  */
-public class MissingContainerCleanupService extends AbstractKeyDeletingService {
+public class MissingContainerCleanupService extends BackgroundService {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(MissingContainerCleanupService.class);
@@ -70,6 +73,8 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
   private final Table<String, OmKeyInfo> keyTable;
   private final Table<String, OmKeyInfo> fileTable;
   private final int containerCleanupLimitPerTask;
+  private final AtomicLong serviceRunCount;
+  private final AtomicLong deletedContainerCount;
 
   public MissingContainerCleanupService(
       long interval, long serviceTimeout,
@@ -80,7 +85,7 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
     super(MissingContainerCleanupService.class.getSimpleName(),
         interval, TimeUnit.MILLISECONDS,
         CONTAINER_CLEANUP_CORE_POOL_SIZE,
-        serviceTimeout, ozoneManager, scmBlockClient);
+        serviceTimeout);
     this.ozoneManager = ozoneManager;
     this.scmBlockClient = scmBlockClient;
     this.scmContainerClient = scmClient;
@@ -93,6 +98,8 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
     this.containerCleanupLimitPerTask = configuration
         .getInt(OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK,
             OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK_DEFAULT);
+    this.serviceRunCount = new AtomicLong(0);
+    this.deletedContainerCount = new AtomicLong(0);
   }
 
   @Override
@@ -100,6 +107,16 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
     BackgroundTaskQueue queue = new BackgroundTaskQueue();
     queue.add(new ContainerCleanupTask());
     return queue;
+  }
+
+  @VisibleForTesting
+  public long getServiceRunCount() {
+    return serviceRunCount.get();
+  }
+
+  @VisibleForTesting
+  public long getDeletedContainerCount() {
+    return deletedContainerCount.get();
   }
 
   private boolean shouldRun() {
@@ -113,6 +130,8 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
       if (!shouldRun()) {
         return BackgroundTaskResult.EmptyTaskResult.newResult();
       }
+      serviceRunCount.incrementAndGet();
+
       OmMetadataManagerImpl omMetadataManager =
           (OmMetadataManagerImpl) metadataManager;
       List<Long> missingContainerIds = omMetadataManager
@@ -137,9 +156,13 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
           scmContainerClient.deleteContainer(containerId);
           LOG.info("Successfully cleaned up missing container " +
               containerId);
+
+          deletedContainerCount.incrementAndGet();
         }
 
-        // Remove the container from MissingContainerTable.
+        // The container is cleaned up, remove from the table.
+        // If the container isn't cleaned up, it's because it's not missing.
+        // In any case, remove from the table.
         metadataManager.getMissingContainerTable()
             .delete(containerId);
       }
@@ -199,8 +222,8 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
           // Get all container Ids for key
           List<Long> containerIds =
               getContainerIDsForKey(keyInfo);
-          // Filter container Ids to remove Ids
-          // belonging to missing containers.
+          // Filter container Ids and get only the Ids
+          // that don't belong to missing containers.
           List<Long> notMissingContainerIds =
               getNotMissingContainerIDsFromList(containerIds);
           // Get key blocks for not missing containers.
@@ -208,13 +231,9 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
               getAvailableKeyBlocks(notMissingContainerIds, keyInfo);
           if (!blockGroupList.isEmpty()) {
             // Delete blocks.
-            List<DeleteBlockGroupResult> results = scmBlockClient
-                .deleteKeyBlocks(blockGroupList);
-            // Submit purge keys request for the keys
-            // that their blocks got deleted.
-//            submitPurgeKeysRequest(results, null);
+            scmBlockClient.deleteKeyBlocks(blockGroupList);
           }
-          BucketLayout bucketLayout = checkKeyBucketLayout(keyInfo);
+          BucketLayout bucketLayout = getBucketLayoutForKey(keyInfo);
           long volumeId = metadataManager
               .getVolumeId(keyInfo.getVolumeName());
           long bucketId = metadataManager
@@ -228,10 +247,9 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
               keyInfo.getFileName() :
               keyInfo.getKeyName();
 
-          Table<String, OmKeyInfo> table = bucketLayout
-              .isFileSystemOptimized() ?
-              fileTable :
-              keyTable;
+          Table<String, OmKeyInfo> table =
+              bucketLayout.isFileSystemOptimized() ?
+                  fileTable : keyTable;
 
           String key = metadataManager
               .getOzonePathKey(volumeId, bucketId, parentId, fileName);
@@ -298,7 +316,7 @@ public class MissingContainerCleanupService extends AbstractKeyDeletingService {
       return blockList;
     }
 
-    private BucketLayout checkKeyBucketLayout(OmKeyInfo omKeyInfo)
+    private BucketLayout getBucketLayoutForKey(OmKeyInfo omKeyInfo)
         throws IOException {
       String bucketKey = metadataManager
           .getBucketKey(omKeyInfo.getVolumeName(),
