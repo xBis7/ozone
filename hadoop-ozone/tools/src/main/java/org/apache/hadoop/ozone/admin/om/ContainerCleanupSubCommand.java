@@ -18,23 +18,12 @@
 package org.apache.hadoop.ozone.admin.om;
 
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
-import org.apache.hadoop.hdds.conf.OzoneConfiguration;
-import org.apache.hadoop.ipc.ProtobufRpcEngine;
-import org.apache.hadoop.ipc.RPC;
 import org.apache.hadoop.ozone.om.protocol.OzoneManagerProtocol;
-import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
-import org.apache.hadoop.ozone.om.protocolPB.OmTransportFactory;
-import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolClientSideTranslatorPB;
-import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolPB;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerResponse;
-import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.ratis.protocol.ClientId;
 import picocli.CommandLine;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
-
-import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_SERVICE_IDS_KEY;
 
 /**
  * Handler of ozone admin om containerCleanup command.
