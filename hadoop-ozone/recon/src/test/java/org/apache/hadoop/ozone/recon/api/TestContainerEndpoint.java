@@ -1173,7 +1173,8 @@ public class TestContainerEndpoint {
         deletedContainerInfo.getContainerState());
   }
 
-  // As long as the container doesn't exist in the SCM, then it shouldn't be in Recon.
+  // As long as the container doesn't exist in the SCM,
+  // then it shouldn't be in Recon.
   // This test should be deleted.
 
 //  @Test

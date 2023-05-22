@@ -274,11 +274,13 @@ public class ContainerHealthTask extends ReconScmTask {
       ContainerInfo containerInfo) {
     try {
       scmClient.getContainer(containerInfo.getContainerID());
-      return false;
     } catch (IOException ex) {
-      LOG.info("Container not present in SCM");
-      return true;
+      if (ex instanceof ContainerNotFoundException) {
+        LOG.info("Container not present in SCM");
+        return true;
+      }
     }
+    return false;
   }
 
   /**
