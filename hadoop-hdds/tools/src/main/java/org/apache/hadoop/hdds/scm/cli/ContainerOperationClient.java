@@ -317,6 +317,11 @@ public class ContainerOperationClient implements ScmClient {
   }
 
   @Override
+  public void deleteContainerInSCM(long containerId) throws IOException {
+    storageContainerLocationClient.deleteContainer(containerId);
+  }
+
+  @Override
   public List<ContainerInfo> listContainer(long startContainerID,
       int count) throws IOException {
     return storageContainerLocationClient.listContainer(

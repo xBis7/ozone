@@ -35,6 +35,7 @@ import org.apache.hadoop.hdds.scm.container.ContainerManager;
 import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
+import org.apache.hadoop.hdds.scm.ha.SCMHAUtils;
 import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHealthSchemaManager;
 import org.apache.hadoop.ozone.recon.scm.ReconScmTask;
@@ -66,6 +67,7 @@ public class ContainerHealthTask extends ReconScmTask {
   private ContainerHealthSchemaManager containerHealthSchemaManager;
   private PlacementPolicy placementPolicy;
   private final long interval;
+  private boolean containerNotFoundInSCM;
 
   private Set<ContainerInfo> processedContainers = new HashSet<>();
 
@@ -82,6 +84,7 @@ public class ContainerHealthTask extends ReconScmTask {
     this.placementPolicy = placementPolicy;
     this.containerManager = containerManager;
     interval = reconTaskConfig.getMissingContainerTaskInterval().toMillis();
+    containerNotFoundInSCM = false;
   }
 
   @Override
@@ -180,19 +183,17 @@ public class ContainerHealthTask extends ReconScmTask {
             if (currentContainer.isMissing() &&
                 containerDeletedInSCM(currentContainer.getContainer())) {
               rec.delete();
-            }
-            // Check if the missing container is deleted in SCM,
-            // without using a pipeline, in case of dead datanode
-            if (currentContainer.isMissing() &&
-                containerDeletedInSCMNoPipelineAvail(currentContainer
-                    .getContainer())) {
-              rec.delete();
-              try {
-                containerManager.deleteContainer(currentContainer
-                    .getContainer().containerID());
-              } catch (IOException | TimeoutException ex) {
-                LOG.error("Unable to delete container during " +
-                    "periodic container health task.");
+
+              if (containerNotFoundInSCM) {
+                try {
+                  containerManager.deleteContainer(currentContainer
+                      .getContainer().containerID());
+                } catch (IOException | TimeoutException ex) {
+                  LOG.error("Unable to delete container during " +
+                      "periodic container health task.");
+                } finally {
+                  containerNotFoundInSCM = false;
+                }
               }
             }
             existingRecords.add(rec.getContainerState());
@@ -260,24 +261,14 @@ public class ContainerHealthTask extends ReconScmTask {
       LOG.error("Failed to transition Container state while processing " +
           "container in Container Health task", e);
     } catch (IOException | TimeoutException e) {
-      LOG.error("Got exception while processing container in" +
-          " Container Health task", e);
-    }
-    return false;
-  }
-
-  /**
-   * In case the datanode is dead,
-   * we can't use getContainerWithPipeline.
-   */
-  private boolean containerDeletedInSCMNoPipelineAvail(
-      ContainerInfo containerInfo) {
-    try {
-      scmClient.getContainer(containerInfo.getContainerID());
-    } catch (IOException ex) {
-      if (ex instanceof ContainerNotFoundException) {
-        LOG.info("Container not present in SCM");
+      Throwable t = SCMHAUtils.unwrapException(e);
+      if (t instanceof ContainerNotFoundException) {
+        LOG.error("Container not present in SCM", t);
+        containerNotFoundInSCM = true;
         return true;
+      } else {
+        LOG.error("Got exception while processing container in" +
+            " Container Health task", e);
       }
     }
     return false;
