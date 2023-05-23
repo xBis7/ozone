@@ -48,6 +48,8 @@ import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
 import org.apache.hadoop.hdds.scm.container.placement.algorithms.ContainerPlacementStatusDefault;
+import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
+import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHealthSchemaManager;
 import org.apache.hadoop.ozone.recon.scm.ReconContainerManager;
 import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
@@ -301,15 +303,15 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
   }
 
   /**
-   * Test the case where a container is missing due to
-   * dead datanodes, and it has been deleted in the SCM.
+   * Test the case where a container is missing,
+   * and it is not found in the SCM.
    * ContainerHealthTask should pick it up and clean up
    * the container in Recon.
-   * This is only testing the unhealthy containers records,
-   * "containerManager.deleteContainer()" is not tested here.
+   * This is only testing the unhealthy containers records, any
+   * other operations performed to clean up Recon are not tested here.
    */
   @Test
-  public void testDeletedMissingContainer() throws IOException {
+  public void testMissingContainerNotFoundInSCM() throws IOException {
     // DAOs
     UnhealthyContainersDao unHealthyContainersTableHandle =
         getDao(UnhealthyContainersDao.class);
@@ -347,9 +349,7 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
 
     // Assume datanodes are dead and both containers are missing.
     // In that case, both containers are in CLOSING state
-    // and have no replicas. Their pipelines are not available
-    // and getting them throws an exception, but the containers
-    // exist in the SCM and can be accessed without a pipeline.
+    // and have no replicas.
     for (ContainerInfo containerInfo : mockContainers) {
       when(reconContainerManagerMock
           .getContainer(containerInfo.containerID()))
@@ -360,12 +360,13 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
       when(reconContainerManagerMock
           .getContainerReplicas(containerInfo.containerID()))
           .thenReturn(Collections.emptySet());
+
+      Pipeline pipeline = mock(Pipeline.class);
+      ContainerWithPipeline containerWithPipeline =
+          new ContainerWithPipeline(containerInfo, pipeline);
       when(scmClientMock
           .getContainerWithPipeline(containerInfo.getContainerID()))
-          .thenThrow(IOException.class);
-      when(scmClientMock
-          .getContainer(containerInfo.getContainerID()))
-          .thenReturn(containerInfo);
+          .thenReturn(containerWithPipeline);
     }
 
     // Init ContainerHealthTask
@@ -382,14 +383,19 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
     // Trigger first check.
     containerHealthTask.triggerContainerHealthCheck();
 
-    // Both containers should be marked as unhealthy.
+    // Both containers have no replicas and
+    // should be marked as unhealthy.
     Assertions.assertEquals(2,
         unHealthyContainersTableHandle.findAll().size());
 
-    // If the container is deleted in the SCM, scmClient.getContainer()
-    // will throw ContainerNotFoundException.
-    when(scmClientMock.getContainer(1L))
-        .thenThrow(ContainerNotFoundException.class);
+    // If the container is not found in the SCM,
+    // ContainerManager.getContainer() will throw ContainerNotFoundException
+    // which will reach the client wrapped as a RemoteException.
+    ContainerNotFoundException ex = new ContainerNotFoundException();
+    RemoteException exception = new RemoteException(
+        ex.getClass().getName(), "ID " + 1L);
+    when(scmClientMock.getContainerWithPipeline(1L))
+        .thenThrow(exception);
 
     // Trigger second check. Container 1 doesn't exist in the SCM
     // and should be deleted from Recon's unhealthy containers table.
@@ -401,6 +407,8 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
     // Container 1 should have been deleted.
     Assertions.assertEquals(1,
         unHealthyContainersTableHandle.findAll().size());
+    Assertions.assertEquals(1,
+        unHealthyContainersTableHandle.fetchByContainerId(2L).size());
   }
 
   private Set<ContainerReplica> getMockReplicas(
