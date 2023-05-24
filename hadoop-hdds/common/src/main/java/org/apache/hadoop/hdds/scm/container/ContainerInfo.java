@@ -27,9 +27,13 @@ import java.util.Comparator;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.hadoop.hdds.client.ECReplicationConfig;
+import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
+import org.apache.hadoop.hdds.utils.db.Codec;
+import org.apache.hadoop.hdds.utils.db.DelegatedCodec;
+import org.apache.hadoop.hdds.utils.db.Proto2Codec;
 import org.apache.hadoop.util.Time;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -47,6 +51,15 @@ public class ContainerInfo implements Comparator<ContainerInfo>,
   private static final String SERIALIZATION_ERROR_MSG = "Java serialization not"
       + " supported. Use protobuf instead.";
 
+  private static final Codec<ContainerInfo> CODEC = new DelegatedCodec<>(
+      Proto2Codec.get(HddsProtos.ContainerInfoProto.class),
+      ContainerInfo::getFromProtobuf,
+      ContainerInfo::getProtobuf,
+      true);
+
+  public static Codec<ContainerInfo> getCodec() {
+    return CODEC;
+  }
 
   private HddsProtos.LifeCycleState state;
   @JsonIgnore
@@ -250,6 +263,24 @@ public class ContainerInfo implements Comparator<ContainerInfo>,
 
   public void updateLastUsedTime() {
     lastUsed = Instant.ofEpochMilli(Time.now());
+  }
+
+  public static ContainerInfo getFromProtobuf(
+      HddsProtos.ContainerInfoProto containerInfoProto) {
+    ContainerInfo.Builder builder = new ContainerInfo.Builder()
+        .setContainerID(containerInfoProto.getContainerID())
+        .setUsedBytes(containerInfoProto.getUsedBytes())
+        .setNumberOfKeys(containerInfoProto.getNumberOfKeys())
+        .setStateEnterTime(containerInfoProto.getStateEnterTime())
+        .setDeleteTransactionId(containerInfoProto.getDeleteTransactionId())
+        .setOwner(containerInfoProto.getOwner())
+        .setSequenceId(containerInfoProto.getSequenceId())
+        .setPipelineID(PipelineID
+            .getFromProtobuf(containerInfoProto.getPipelineID()))
+        .setReplicationConfig(RatisReplicationConfig
+            .getInstance(containerInfoProto.getReplicationFactor()));
+
+    return builder.build();
   }
 
   @JsonIgnore

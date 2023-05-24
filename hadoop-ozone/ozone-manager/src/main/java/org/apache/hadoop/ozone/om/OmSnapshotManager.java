@@ -52,7 +52,6 @@ import org.apache.hadoop.hdds.utils.db.cache.CacheValue;
 import org.apache.hadoop.hdds.utils.db.managed.ManagedColumnFamilyOptions;
 import org.apache.hadoop.hdds.utils.db.managed.ManagedDBOptions;
 import org.apache.hadoop.hdds.utils.db.managed.ManagedRocksDB;
-import org.apache.hadoop.ozone.om.codec.OmDBDiffReportEntryCodec;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.RepeatedOmKeyInfo;
@@ -329,7 +328,7 @@ public final class OmSnapshotManager implements AutoCloseable {
           // metadataManager
           PrefixManagerImpl pm = new PrefixManagerImpl(snapshotMetadataManager,
               false);
-          KeyManagerImpl km = new KeyManagerImpl(null,
+          KeyManagerImpl km = new KeyManagerImpl(ozoneManager,
               ozoneManager.getScmClient(), snapshotMetadataManager, conf,
               ozoneManager.getBlockTokenSecretManager(),
               ozoneManager.getKmsProvider(), ozoneManager.getPerfMetrics());
@@ -353,7 +352,7 @@ public final class OmSnapshotManager implements AutoCloseable {
     final CodecRegistry.Builder registry = CodecRegistry.newBuilder();
     // DiffReportEntry codec for Diff Report.
     registry.addCodec(SnapshotDiffReportOzone.DiffReportEntry.class,
-        new OmDBDiffReportEntryCodec());
+        SnapshotDiffReportOzone.getDiffReportEntryCodec());
     registry.addCodec(SnapshotDiffJob.class,
         new SnapshotDiffJob.SnapshotDiffJobCodec());
     return registry.build();
@@ -831,6 +830,12 @@ public final class OmSnapshotManager implements AutoCloseable {
 
   @Override
   public void close() {
+    if (snapshotDiffManager != null) {
+      snapshotDiffManager.close();
+    }
+    if (snapshotCache != null) {
+      snapshotCache.invalidateAll();
+    }
     if (snapshotDiffCleanupService != null) {
       snapshotDiffCleanupService.shutdown();
     }

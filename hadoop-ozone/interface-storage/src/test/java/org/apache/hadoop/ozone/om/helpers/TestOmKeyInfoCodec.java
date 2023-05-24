@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.hadoop.ozone.om.codec;
+package org.apache.hadoop.ozone.om.helpers;
 
 import org.apache.hadoop.fs.FileChecksum;
 import org.apache.hadoop.fs.MD5MD5CRC32GzipFileChecksum;
@@ -25,10 +25,9 @@ import org.apache.hadoop.hdds.client.RatisReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.HddsTestUtils;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
+import org.apache.hadoop.hdds.utils.db.Codec;
+import org.apache.hadoop.hdds.utils.db.Proto2CodecTestBase;
 import org.apache.hadoop.io.MD5Hash;
-import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
-import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
-import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
 import org.apache.hadoop.util.Time;
 import org.junit.Test;
 
@@ -43,15 +42,20 @@ import static org.junit.Assert.assertNull;
 
 
 /**
- * This class tests OmKeyInfoCodec.
+ * Test {@link OmKeyInfo#getCodec(boolean)} .
  */
-public class TestOmKeyInfoCodec {
+public class TestOmKeyInfoCodec extends Proto2CodecTestBase<OmKeyInfo> {
   private static final String VOLUME = "hadoop";
   private static final String BUCKET = "ozone";
   private static final String KEYNAME =
       "user/root/terasort/10G-input-6/part-m-00037";
 
   private static FileChecksum checksum = createEmptyChecksum();
+
+  @Override
+  public Codec<OmKeyInfo> getCodec() {
+    return OmKeyInfo.getCodec(false);
+  }
 
   private static FileChecksum createEmptyChecksum() {
     final int lenOfZeroBytes = 32;
@@ -101,7 +105,7 @@ public class TestOmKeyInfoCodec {
 
   public void testOmKeyInfoCodecWithoutPipeline(int chunkNum)
       throws IOException {
-    OmKeyInfoCodec codec = new OmKeyInfoCodec(true);
+    final Codec<OmKeyInfo> codec = OmKeyInfo.getCodec(true);
     OmKeyInfo originKey = getKeyInfo(chunkNum);
     byte[] rawData = codec.toPersistedFormat(originKey);
     OmKeyInfo key = codec.fromPersistedFormat(rawData);
@@ -114,8 +118,8 @@ public class TestOmKeyInfoCodec {
   }
 
   public void testOmKeyInfoCodecCompatibility(int chunkNum) throws IOException {
-    OmKeyInfoCodec codecWithoutPipeline = new OmKeyInfoCodec(true);
-    OmKeyInfoCodec codecWithPipeline = new OmKeyInfoCodec(false);
+    final Codec<OmKeyInfo> codecWithoutPipeline = OmKeyInfo.getCodec(true);
+    final Codec<OmKeyInfo> codecWithPipeline = OmKeyInfo.getCodec(false);
     OmKeyInfo originKey = getKeyInfo(chunkNum);
     byte[] rawData = codecWithPipeline.toPersistedFormat(originKey);
     OmKeyInfo key = codecWithoutPipeline.fromPersistedFormat(rawData);
