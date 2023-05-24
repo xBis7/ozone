@@ -16,13 +16,20 @@
  */
 package org.apache.hadoop.ozone.om.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.protocol.ScmBlockLocationProtocol;
 import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
 import org.apache.hadoop.hdds.scm.storage.BlockLocationInfo;
+import org.apache.hadoop.hdds.server.http.HttpConfig;
 import org.apache.hadoop.hdds.utils.BackgroundService;
 import org.apache.hadoop.hdds.utils.BackgroundTask;
 import org.apache.hadoop.hdds.utils.BackgroundTaskQueue;
@@ -30,7 +37,7 @@ import org.apache.hadoop.hdds.utils.BackgroundTaskResult;
 import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.hdds.utils.db.DBStore;
 import org.apache.hadoop.hdds.utils.db.Table;
-import org.apache.hadoop.hdds.utils.db.TableIterator;
+import org.apache.hadoop.hdfs.web.URLConnectionFactory;
 import org.apache.hadoop.ozone.ClientVersion;
 import org.apache.hadoop.ozone.common.BlockGroup;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
@@ -39,20 +46,43 @@ import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
+import org.apache.hadoop.ozone.om.request.file.OMFileRequest;
+import org.apache.hadoop.ozone.om.service.helpers.ContainerKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.ConnectException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static org.apache.hadoop.hdds.server.http.HttpConfig.getHttpPolicy;
+import static org.apache.hadoop.ozone.OzoneConsts.OM_KEY_PREFIX;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_OPEN_KEY_CLEANUP_LIMIT_PER_TASK_DEFAULT;
+import static java.net.HttpURLConnection.HTTP_CREATED;
+import static java.net.HttpURLConnection.HTTP_OK;
+import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_ADDRESS_DEFAULT;
+import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_ADDRESS_KEY;
+import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_HTTPS_ADDRESS_DEFAULT;
+import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_HTTPS_ADDRESS_KEY;
+import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_HTTP_ADDRESS_DEFAULT;
+import static org.apache.hadoop.hdds.recon.ReconConfigKeys.OZONE_RECON_HTTP_ADDRESS_KEY;
+import static org.apache.hadoop.http.HttpServer2.HTTPS_SCHEME;
+import static org.apache.hadoop.http.HttpServer2.HTTP_SCHEME;
 
 /**
  * Missing container cleanup service. For every container on the
@@ -69,6 +99,7 @@ public class MissingContainerCleanupService extends BackgroundService {
   private final OMMetadataManager metadataManager;
   private final ScmBlockLocationProtocol scmBlockClient;
   private final StorageContainerLocationProtocol scmContainerClient;
+  private final OzoneConfiguration conf;
   private final Table<String, OmKeyInfo> keyTable;
   private final Table<String, OmKeyInfo> fileTable;
   private final int containerCleanupLimitPerTask;
@@ -90,6 +121,7 @@ public class MissingContainerCleanupService extends BackgroundService {
     this.scmContainerClient = scmClient;
     this.suspended = new AtomicBoolean(false);
     this.metadataManager = ozoneManager.getMetadataManager();
+    this.conf = ozoneManager.getConfiguration();
     this.keyTable = metadataManager
         .getKeyTable(BucketLayout.LEGACY);
     this.fileTable = metadataManager
@@ -146,12 +178,18 @@ public class MissingContainerCleanupService extends BackgroundService {
                 ClientVersion.CURRENT_VERSION);
 
         if (replicas.isEmpty()) {
-          // Get container key list
-          List<OmKeyInfo> omKeyInfoList = getContainerKeys(containerId);
-          // Delete keys in OM
+          // Get container keys from Recon.
+          List<ContainerKey> reconContainerKeys =
+              getContainerKeysFromRecon(containerId);
+
+          // Get OmKeyInfo list from Recon's key information.
+          List<OmKeyInfo> omKeyInfoList =
+              getContainerOmKeyInfoList(reconContainerKeys);
+
+          // Delete keys in OM.
           deleteContainerKeys(omKeyInfoList);
 
-          // Delete container in SCM container map
+          // Delete container in SCM container map.
           scmContainerClient.deleteContainer(containerId);
           LOG.info("Successfully cleaned up missing container " +
               containerId);
@@ -174,45 +212,6 @@ public class MissingContainerCleanupService extends BackgroundService {
       return BackgroundTask.super.getPriority();
     }
 
-    private List<OmKeyInfo> getContainerKeys(long containerId)
-        throws IOException {
-      List<OmKeyInfo> omKeyInfoList = new LinkedList<>();
-
-      // FileTable
-      try (TableIterator<String,
-          ? extends Table.KeyValue<String, OmKeyInfo>>
-               fileTableIterator = fileTable.iterator()) {
-        while (fileTableIterator.hasNext()) {
-          Table.KeyValue<String, OmKeyInfo> entry = fileTableIterator.next();
-
-          OmKeyInfo omKeyInfo = entry.getValue();
-          List<Long> containerIds = getContainerIDsForKey(omKeyInfo);
-
-          if (containerIds.contains(containerId)) {
-            omKeyInfoList.add(omKeyInfo);
-          }
-        }
-      }
-
-      // KeyTable
-      try (TableIterator<String,
-          ? extends Table.KeyValue<String, OmKeyInfo>>
-               keyTableIterator = keyTable.iterator()) {
-        while (keyTableIterator.hasNext()) {
-          Table.KeyValue<String, OmKeyInfo> entry = keyTableIterator.next();
-
-          OmKeyInfo omKeyInfo = entry.getValue();
-          List<Long> containerIds = getContainerIDsForKey(omKeyInfo);
-
-          if (containerIds.contains(containerId)) {
-            omKeyInfoList.add(omKeyInfo);
-          }
-        }
-      }
-
-      return omKeyInfoList;
-    }
-
     private void deleteContainerKeys(List<OmKeyInfo> omKeyInfoList)
         throws IOException {
       DBStore dbStore = metadataManager.getStore();
@@ -232,26 +231,17 @@ public class MissingContainerCleanupService extends BackgroundService {
             // Delete blocks.
             scmBlockClient.deleteKeyBlocks(blockGroupList);
           }
-          BucketLayout bucketLayout = getBucketLayoutForKey(keyInfo);
-          long volumeId = metadataManager
-              .getVolumeId(keyInfo.getVolumeName());
-          long bucketId = metadataManager
-              .getBucketId(keyInfo.getVolumeName(),
-                  keyInfo.getBucketName());
-
-          long parentId = keyInfo.getParentObjectID();
-
-          String fileName = bucketLayout
-              .isFileSystemOptimized() ?
-              keyInfo.getFileName() :
-              keyInfo.getKeyName();
+          String volumeName = keyInfo.getVolumeName();
+          String bucketName = keyInfo.getBucketName();
+          BucketLayout bucketLayout =
+              getBucketLayoutForKey(volumeName, bucketName);
 
           Table<String, OmKeyInfo> table =
               bucketLayout.isFileSystemOptimized() ?
                   fileTable : keyTable;
 
-          String key = metadataManager
-              .getOzonePathKey(volumeId, bucketId, parentId, fileName);
+          String key = getTableObjectKey(volumeName, bucketName,
+              keyInfo.getKeyName(), bucketLayout);
           table.deleteWithBatch(batchOperation, key);
         }
         dbStore.commitBatchOperation(batchOperation);
@@ -315,13 +305,178 @@ public class MissingContainerCleanupService extends BackgroundService {
       return blockList;
     }
 
-    private BucketLayout getBucketLayoutForKey(OmKeyInfo omKeyInfo)
-        throws IOException {
+    private BucketLayout getBucketLayoutForKey(
+        String volumeName, String bucketName) throws IOException {
       String bucketKey = metadataManager
-          .getBucketKey(omKeyInfo.getVolumeName(),
-              omKeyInfo.getBucketName());
+          .getBucketKey(volumeName, bucketName);
       return metadataManager.getBucketTable()
           .getIfExist(bucketKey).getBucketLayout();
+    }
+
+    private List<OmKeyInfo> getContainerOmKeyInfoList(
+        List<ContainerKey> containerKeys) throws IOException {
+      List<OmKeyInfo> keyInfoList = new ArrayList<>();
+
+      for (ContainerKey containerKey : containerKeys) {
+        String volumeName = containerKey.getVolume();
+        String bucketName = containerKey.getBucket();
+        String keyName = containerKey.getKey();
+
+        BucketLayout bucketLayout =
+            getBucketLayoutForKey(volumeName, bucketName);
+
+        String objectKey = getTableObjectKey(volumeName,
+            bucketName, keyName, bucketLayout);
+
+        OmKeyInfo omKeyInfo = metadataManager
+            .getKeyTable(bucketLayout).getIfExist(objectKey);
+
+        if (Objects.nonNull(omKeyInfo)) {
+          keyInfoList.add(omKeyInfo);
+        }
+      }
+      return keyInfoList;
+    }
+
+    private String getTableObjectKey(
+        String volumeName, String bucketName,
+        String keyName, BucketLayout bucketLayout) throws IOException {
+      String objectKey;
+      if (bucketLayout.isFileSystemOptimized()) {
+        Iterator<Path> pathComponents = Paths.get(keyName).iterator();
+        long volumeId = metadataManager.getVolumeId(volumeName);
+        long bucketId = metadataManager.getBucketId(volumeName,
+            bucketName);
+        long parentId = OMFileRequest.getParentID(volumeId, bucketId,
+            pathComponents, keyName, metadataManager);
+
+
+        String[] keyComponents = keyName.split(OM_KEY_PREFIX);
+        int lastIndex = keyComponents.length - 1;
+        String fileName =
+            keyComponents.length > 1 ?
+                keyComponents[lastIndex] : keyName;
+
+        objectKey = metadataManager
+            .getOzonePathKey(volumeId, bucketId, parentId, fileName);
+      } else {
+        objectKey = metadataManager
+            .getOzoneKey(volumeName, bucketName, keyName);
+      }
+      return objectKey;
+    }
+
+    private List<ContainerKey> getContainerKeysFromRecon(long containerId)
+        throws JsonProcessingException {
+      StringBuilder urlBuilder = new StringBuilder();
+      urlBuilder.append(getReconWebAddress())
+          .append("/api/v1/containers/")
+          .append(containerId)
+          .append("/keys");
+      String containerKeysResponse = "";
+      try {
+        containerKeysResponse = makeHttpCall(urlBuilder,
+            isHTTPSEnabled());
+      } catch (Exception e) {
+        LOG.error("Error getting container keys response from Recon");
+      }
+
+      if (Strings.isNullOrEmpty(containerKeysResponse)) {
+        LOG.info("Container keys response from Recon is empty");
+        // Return empty list
+        return new LinkedList<>();
+      }
+
+      // Get the keys JSON array
+      String keysJsonArray = containerKeysResponse.substring(
+          containerKeysResponse.indexOf("keys\":") + 6,
+          containerKeysResponse.length() - 1);
+
+      final ObjectMapper objectMapper = new ObjectMapper();
+
+      return objectMapper.readValue(keysJsonArray,
+          new TypeReference<List<ContainerKey>>() { });
+    }
+
+    private String makeHttpCall(StringBuilder url,
+                                      boolean isSpnegoEnabled)
+        throws Exception {
+
+      System.out.println("Connecting to Recon: " + url + " ...");
+      final URLConnectionFactory connectionFactory =
+          URLConnectionFactory.newDefaultURLConnectionFactory(conf);
+
+      HttpURLConnection httpURLConnection;
+
+      try {
+        httpURLConnection = (HttpURLConnection)
+            connectionFactory.openConnection(new URL(url.toString()),
+                isSpnegoEnabled);
+        httpURLConnection.connect();
+        int errorCode = httpURLConnection.getResponseCode();
+        InputStream inputStream = httpURLConnection.getInputStream();
+
+        if ((errorCode == HTTP_OK) || (errorCode == HTTP_CREATED)) {
+          return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+        }
+
+        if (httpURLConnection.getErrorStream() != null) {
+          System.out.println("Recon is being initialized. " +
+              "Please wait a moment");
+          return null;
+        } else {
+          System.out.println("Unexpected null in http payload," +
+              " while processing request");
+        }
+        return null;
+      } catch (ConnectException ex) {
+        System.err.println("Connection Refused. Please make sure the " +
+            "Recon Server has been started.");
+        return null;
+      }
+    }
+
+    private String getReconWebAddress() {
+      final String protocol;
+      final HttpConfig.Policy webPolicy = getHttpPolicy(conf);
+
+      final boolean isHostDefault;
+      String host;
+
+      if (webPolicy.isHttpsEnabled()) {
+        protocol = HTTPS_SCHEME;
+        host = conf.get(OZONE_RECON_HTTPS_ADDRESS_KEY,
+            OZONE_RECON_HTTPS_ADDRESS_DEFAULT);
+        isHostDefault = getHostOnly(host).equals(
+            getHostOnly(OZONE_RECON_HTTPS_ADDRESS_DEFAULT));
+      } else {
+        protocol = HTTP_SCHEME;
+        host = conf.get(OZONE_RECON_HTTP_ADDRESS_KEY,
+            OZONE_RECON_HTTP_ADDRESS_DEFAULT);
+        isHostDefault = getHostOnly(host).equals(
+            getHostOnly(OZONE_RECON_HTTP_ADDRESS_DEFAULT));
+      }
+
+      if (isHostDefault) {
+        // Fallback to <Recon RPC host name>:<Recon http(s) address port>
+        final String rpcHost =
+            conf.get(OZONE_RECON_ADDRESS_KEY, OZONE_RECON_ADDRESS_DEFAULT);
+        host = getHostOnly(rpcHost) + ":" + getPort(host);
+      }
+
+      return protocol + "://" + host;
+    }
+
+    private String getHostOnly(String host) {
+      return host.split(":", 2)[0];
+    }
+
+    private String getPort(String host) {
+      return host.split(":", 2)[1];
+    }
+
+    private boolean isHTTPSEnabled() {
+      return getHttpPolicy(conf) == HttpConfig.Policy.HTTPS_ONLY;
     }
   }
 }

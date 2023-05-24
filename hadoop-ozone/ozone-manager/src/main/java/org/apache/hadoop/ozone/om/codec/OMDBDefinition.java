@@ -255,7 +255,7 @@ public class OMDBDefinition implements DBDefinition {
       new DBColumnFamilyDefinition<>(
           OmMetadataManagerImpl.MISSING_CONTAINER_TABLE,
           Long.class,
-          new LongCodec(),
+          LongCodec.get(),
           ContainerInfo.class,
           new OmContainerInfoCodec());
 
