@@ -653,7 +653,8 @@ public final class OmSnapshotManager implements AutoCloseable {
                                                     final String toSnapshot,
                                                     final String token,
                                                     int pageSize,
-                                                    boolean forceFullDiff)
+                                                    boolean forceFullDiff,
+                                                    boolean cancel)
       throws IOException {
 
     validateSnapshotsExistAndActive(volume, bucket, fromSnapshot, toSnapshot);
@@ -665,7 +666,7 @@ public final class OmSnapshotManager implements AutoCloseable {
 
     SnapshotDiffResponse snapshotDiffReport =
         snapshotDiffManager.getSnapshotDiffReport(volume, bucket,
-            fromSnapshot, toSnapshot, index, pageSize, forceFullDiff);
+            fromSnapshot, toSnapshot, index, pageSize, forceFullDiff, cancel);
 
     // Check again to make sure that from and to snapshots are still active and
     // were not deleted in between response generation.

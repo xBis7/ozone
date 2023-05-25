@@ -378,7 +378,8 @@ public class SnapshotDiffManager implements AutoCloseable {
       final String toSnapshotName,
       final int index,
       final int pageSize,
-      final boolean forceFullDiff
+      final boolean forceFullDiff,
+      final boolean cancel
   ) throws IOException {
 
     SnapshotInfo fsInfo = getSnapshotInfo(ozoneManager,
@@ -391,14 +392,14 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     SnapshotDiffJob snapDiffJob = getSnapDiffReportStatus(snapDiffJobKey,
         volumeName, bucketName, fromSnapshotName, toSnapshotName,
-        forceFullDiff);
+        forceFullDiff, cancel);
 
     OFSPath snapshotRoot = getSnapshotRootPath(volumeName, bucketName);
 
     switch (snapDiffJob.getStatus()) {
     case QUEUED:
       return submitSnapDiffJob(snapDiffJobKey, volumeName, bucketName,
-          fromSnapshotName, toSnapshotName, index, pageSize, forceFullDiff);
+          fromSnapshotName, toSnapshotName, index, pageSize, forceFullDiff, cancel);
     case IN_PROGRESS:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
@@ -501,14 +502,15 @@ public class SnapshotDiffManager implements AutoCloseable {
       final String toSnapshot,
       final int index,
       final int pageSize,
-      final boolean forceFullDiff
+      final boolean forceFullDiff,
+      final boolean cancel
   ) throws IOException {
 
     SnapshotDiffJob snapDiffJob = snapDiffJobTable.get(jobKey);
 
     OFSPath snapshotRoot = getSnapshotRootPath(volume, bucket);
 
-    // This is only possible if another thread tired to submit the request,
+    // This is only possible if another thread tried to submit the request,
     // and it got rejected. In this scenario, return the Rejected job status
     // with wait time.
     if (snapDiffJob == null) {
@@ -539,7 +541,7 @@ public class SnapshotDiffManager implements AutoCloseable {
     }
 
     return submitSnapDiffJob(jobKey, snapDiffJob.getJobId(), volume, bucket,
-        fromSnapshot, toSnapshot, forceFullDiff);
+        fromSnapshot, toSnapshot, forceFullDiff, cancel);
   }
 
   private synchronized SnapshotDiffResponse submitSnapDiffJob(
@@ -549,7 +551,8 @@ public class SnapshotDiffManager implements AutoCloseable {
       final String bucketName,
       final String fromSnapshotName,
       final String toSnapshotName,
-      final boolean forceFullDiff
+      final boolean forceFullDiff,
+      final boolean cancel
   ) {
 
     LOG.info("Submitting snap diff report generation request for" +
@@ -609,7 +612,8 @@ public class SnapshotDiffManager implements AutoCloseable {
       String bucketName,
       String fromSnapshotName,
       String toSnapshotName,
-      boolean forceFullDiff
+      boolean forceFullDiff,
+      boolean cancel
   ) {
     SnapshotDiffJob snapDiffJob = snapDiffJobTable.get(jobKey);
 
@@ -617,7 +621,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       String jobId = UUID.randomUUID().toString();
       snapDiffJob = new SnapshotDiffJob(System.currentTimeMillis(), jobId,
           QUEUED, volumeName, bucketName, fromSnapshotName, toSnapshotName,
-          forceFullDiff, 0L);
+          forceFullDiff, cancel, 0L);
       snapDiffJobTable.put(jobKey, snapDiffJob);
     }
 
@@ -1256,7 +1260,8 @@ public class SnapshotDiffManager implements AutoCloseable {
               snapshotDiffJob.getBucket(),
               snapshotDiffJob.getFromSnapshot(),
               snapshotDiffJob.getToSnapshot(),
-              snapshotDiffJob.isForceFullDiff());
+              snapshotDiffJob.isForceFullDiff(),
+              snapshotDiffJob.isCancel());
         }
       }
     }

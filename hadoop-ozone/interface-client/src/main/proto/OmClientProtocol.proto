@@ -1704,6 +1704,7 @@ message SnapshotDiffRequest {
   optional string token = 5;
   optional uint32 pageSize = 6;
   optional bool forceFullDiff = 7;
+  optional bool cancel = 8;
 }
 
 message DeleteSnapshotRequest {
@@ -1782,6 +1783,7 @@ message SnapshotDiffResponse {
     DONE = 3;
     REJECTED = 4;
     FAILED = 5;
+    CANCELLED = 6;
   }
   optional SnapshotDiffReportProto snapshotDiffReport = 1;
   optional JobStatusProto jobStatus = 2;

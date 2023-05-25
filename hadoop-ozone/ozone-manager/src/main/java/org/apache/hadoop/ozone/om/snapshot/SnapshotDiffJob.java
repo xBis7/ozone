@@ -37,6 +37,7 @@ public class SnapshotDiffJob {
   private String fromSnapshot;
   private String toSnapshot;
   private boolean forceFullDiff;
+  private boolean cancel;
   private long totalDiffEntries;
 
   // Default constructor for Jackson Serializer.
@@ -53,6 +54,7 @@ public class SnapshotDiffJob {
                          String fromSnapshot,
                          String toSnapshot,
                          boolean forceFullDiff,
+                         boolean cancel,
                          long totalDiffEntries) {
     this.creationTime = creationTime;
     this.jobId = jobId;
@@ -62,6 +64,7 @@ public class SnapshotDiffJob {
     this.fromSnapshot = fromSnapshot;
     this.toSnapshot = toSnapshot;
     this.forceFullDiff = forceFullDiff;
+    this.cancel = cancel;
     this.totalDiffEntries = totalDiffEntries;
   }
 
@@ -129,6 +132,14 @@ public class SnapshotDiffJob {
     this.creationTime = creationTime;
   }
 
+  public boolean isCancel() {
+    return cancel;
+  }
+
+  public void setCancel(boolean cancel) {
+    this.cancel = cancel;
+  }
+
   public long getTotalDiffEntries() {
     return totalDiffEntries;
   }
@@ -147,6 +158,7 @@ public class SnapshotDiffJob {
         ", fromSnapshot: " + fromSnapshot +
         ", toSnapshot: " + toSnapshot +
         ", forceFullDiff: " + forceFullDiff +
+        ", cancel: " + cancel +
         ", totalDiffEntries: " + totalDiffEntries;
   }
 

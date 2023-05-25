@@ -1069,6 +1069,6 @@ public interface ClientProtocol {
   SnapshotDiffResponse snapshotDiff(String volumeName, String bucketName,
                                     String fromSnapshot, String toSnapshot,
                                     String token, int pageSize,
-                                    boolean forceFullDiff)
+                                    boolean forceFullDiff, boolean cancel)
       throws IOException;
 }
