@@ -46,8 +46,10 @@ import org.apache.hadoop.hdds.utils.NativeConstants;
 import org.apache.hadoop.hdds.utils.NativeLibraryLoader;
 import org.apache.hadoop.hdds.utils.NativeLibraryNotLoadedException;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -105,6 +107,7 @@ import static org.apache.hadoop.ozone.om.snapshot.SnapshotUtils.checkSnapshotAct
 import static org.apache.hadoop.ozone.om.snapshot.SnapshotUtils.dropColumnFamilyHandle;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
 import static org.apache.hadoop.ozone.om.snapshot.SnapshotUtils.getSnapshotInfo;
+import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCELED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.DONE;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.FAILED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.IN_PROGRESS;
@@ -153,6 +156,9 @@ public class SnapshotDiffManager implements AutoCloseable {
    */
   private final PersistentMap<String, SnapshotDiffJob> snapDiffJobTable;
   private final ExecutorService snapDiffExecutor;
+  private final Map<String, Future<?>> snapDiffFutures =
+      new ConcurrentHashMap<>();
+
   private ExecutorService sstDumpToolExecutor;
 
   /**
@@ -371,6 +377,7 @@ public class SnapshotDiffManager implements AutoCloseable {
         .getPath(), tablesToLookUp);
   }
 
+  @SuppressWarnings("parameternumber")
   public SnapshotDiffResponse getSnapshotDiffReport(
       final String volumeName,
       final String bucketName,
@@ -396,10 +403,22 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     OFSPath snapshotRoot = getSnapshotRootPath(volumeName, bucketName);
 
+    // Job will exist in snapDiffFutures only if it's IN_PROGRESS.
+    if (cancel && snapDiffFutures.containsKey(snapDiffJobKey)) {
+      Future<?> future = snapDiffFutures.get(snapDiffJobKey);
+      future.cancel(true);
+
+      return new SnapshotDiffResponse(
+          new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
+              bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
+              null),
+          CANCELED, defaultWaitTime);
+    }
+
     switch (snapDiffJob.getStatus()) {
     case QUEUED:
       return submitSnapDiffJob(snapDiffJobKey, volumeName, bucketName,
-          fromSnapshotName, toSnapshotName, index, pageSize, forceFullDiff, cancel);
+          fromSnapshotName, toSnapshotName, index, pageSize, forceFullDiff);
     case IN_PROGRESS:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
@@ -423,6 +442,12 @@ public class SnapshotDiffManager implements AutoCloseable {
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
           REJECTED, defaultWaitTime);
+    case CANCELED:
+      return new SnapshotDiffResponse(
+          new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
+              bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
+              null),
+          CANCELED, defaultWaitTime);
     default:
       throw new IllegalStateException("Unknown snapshot job status: " +
           snapDiffJob.getStatus());
@@ -502,8 +527,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       final String toSnapshot,
       final int index,
       final int pageSize,
-      final boolean forceFullDiff,
-      final boolean cancel
+      final boolean forceFullDiff
   ) throws IOException {
 
     SnapshotDiffJob snapDiffJob = snapDiffJobTable.get(jobKey);
@@ -514,7 +538,7 @@ public class SnapshotDiffManager implements AutoCloseable {
     // and it got rejected. In this scenario, return the Rejected job status
     // with wait time.
     if (snapDiffJob == null) {
-      LOG.info("Snap diff job has been removed for for volume: {}, " +
+      LOG.info("Snap diff job has been removed for volume: {}, " +
           "bucket: {}, fromSnapshot: {} and toSnapshot: {}.",
           volume, bucket, fromSnapshot, toSnapshot);
       return new SnapshotDiffResponse(
@@ -541,7 +565,7 @@ public class SnapshotDiffManager implements AutoCloseable {
     }
 
     return submitSnapDiffJob(jobKey, snapDiffJob.getJobId(), volume, bucket,
-        fromSnapshot, toSnapshot, forceFullDiff, cancel);
+        fromSnapshot, toSnapshot, forceFullDiff);
   }
 
   private synchronized SnapshotDiffResponse submitSnapDiffJob(
@@ -551,9 +575,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       final String bucketName,
       final String fromSnapshotName,
       final String toSnapshotName,
-      final boolean forceFullDiff,
-      final boolean cancel
-  ) {
+      final boolean forceFullDiff) {
 
     LOG.info("Submitting snap diff report generation request for" +
             " volume: {}, bucket: {}, fromSnapshot: {} and toSnapshot: {}",
@@ -565,10 +587,11 @@ public class SnapshotDiffManager implements AutoCloseable {
     // If executor cannot take any more job, remove the job form DB and return
     // the Rejected Job status with wait time.
     try {
-      snapDiffExecutor.execute(() -> generateSnapshotDiffReport(jobKey, jobId,
-          volumeName, bucketName, fromSnapshotName, toSnapshotName,
-          forceFullDiff));
+      Future<?> snapDiffFuture = snapDiffExecutor.submit(() ->
+          generateSnapshotDiffReport(jobKey, jobId, volumeName,
+              bucketName, fromSnapshotName, toSnapshotName, forceFullDiff));
       updateJobStatus(jobKey, QUEUED, IN_PROGRESS);
+      snapDiffFutures.put(jobKey, snapDiffFuture);
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
@@ -746,12 +769,16 @@ public class SnapshotDiffManager implements AutoCloseable {
 
       validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
           toSnapshotName);
-      long totalDiffEntries = generateDiffReport(jobId,
-          objectIDsToCheckMap,
-          objectIdToKeyNameMapForFromSnapshot,
-          objectIdToKeyNameMapForToSnapshot);
-
-      updateJobStatusToDone(jobKey, totalDiffEntries);
+      try {
+        long totalDiffEntries = generateDiffReport(jobId,
+            objectIDsToCheckMap,
+            objectIdToKeyNameMapForFromSnapshot,
+            objectIdToKeyNameMapForToSnapshot);
+        updateJobStatusToDone(jobKey, totalDiffEntries);
+      } catch (InterruptedException exception) {
+        LOG.error("Cancelling job for jobID: " + jobId, exception);
+        updateJobStatusToCanceled(jobKey);
+      }
     } catch (ExecutionException | IOException | RocksDBException exception) {
       updateJobStatus(jobKey, IN_PROGRESS, FAILED);
       LOG.error("Caught checked exception during diff report generation for " +
@@ -981,7 +1008,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       final PersistentSet<byte[]> objectIDsToCheck,
       final PersistentMap<byte[], byte[]> oldObjIdToKeyMap,
       final PersistentMap<byte[], byte[]> newObjIdToKeyMap
-  ) {
+  ) throws InterruptedException {
 
     LOG.debug("Starting diff report generation for jobId: {}.", jobId);
     ColumnFamilyHandle deleteDiffColumnFamily = null;
@@ -1014,6 +1041,10 @@ public class SnapshotDiffManager implements AutoCloseable {
       try (ClosableIterator<byte[]>
                objectIdsIterator = objectIDsToCheck.iterator()) {
         while (objectIdsIterator.hasNext()) {
+          // Check if job is canceled and throw an exception.
+          if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException();
+          }
           byte[] id = objectIdsIterator.next();
           /*
            * This key can be
@@ -1135,11 +1166,14 @@ public class SnapshotDiffManager implements AutoCloseable {
 
   private long addToReport(String jobId, long index,
                            PersistentList<byte[]> diffReportEntries)
-      throws IOException {
+      throws IOException, InterruptedException {
     try (ClosableIterator<byte[]>
              diffReportIterator = diffReportEntries.iterator()) {
       while (diffReportIterator.hasNext()) {
-
+        // Check if job is canceled and throw an exception.
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException();
+        }
         snapDiffReportTable.put(
             codecRegistry.asRawData(jobId + DELIMITER + index),
             diffReportIterator.next());
@@ -1186,7 +1220,23 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     snapshotDiffJob.setStatus(DONE);
     snapshotDiffJob.setTotalDiffEntries(totalNumberOfEntries);
+    snapDiffFutures.remove(jobKey);
     snapDiffJobTable.put(jobKey, snapshotDiffJob);
+  }
+
+  private synchronized void updateJobStatusToCanceled(String jobKey) {
+    SnapshotDiffJob snapshotDiffJob = snapDiffJobTable.get(jobKey);
+    if (snapshotDiffJob.getStatus() != IN_PROGRESS) {
+      throw new IllegalStateException("Invalid job status for jobID: " +
+          snapshotDiffJob.getJobId() + ". Job's current status is '" +
+          snapshotDiffJob.getStatus() + "', while '" + IN_PROGRESS +
+          "' is expected.");
+    }
+
+    snapshotDiffJob.setStatus(CANCELED);
+    snapDiffFutures.remove(jobKey);
+    // Remove from the table, so that the job can be re-submitted.
+    snapDiffJobTable.remove(jobKey);
   }
 
   private BucketLayout getBucketLayout(final String volume,
@@ -1260,8 +1310,7 @@ public class SnapshotDiffManager implements AutoCloseable {
               snapshotDiffJob.getBucket(),
               snapshotDiffJob.getFromSnapshot(),
               snapshotDiffJob.getToSnapshot(),
-              snapshotDiffJob.isForceFullDiff(),
-              snapshotDiffJob.isCancel());
+              snapshotDiffJob.isForceFullDiff());
         }
       }
     }

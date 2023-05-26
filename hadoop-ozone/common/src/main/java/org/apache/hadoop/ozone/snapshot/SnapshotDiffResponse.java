@@ -33,7 +33,7 @@ public class SnapshotDiffResponse {
     DONE,
     REJECTED,
     FAILED,
-    CANCELLED;
+    CANCELED;
 
     public JobStatusProto toProtobuf() {
       return JobStatusProto.valueOf(this.name());

@@ -178,6 +178,7 @@ public class SnapshotDiffJob {
           Objects.equals(this.fromSnapshot, otherJob.fromSnapshot) &&
           Objects.equals(this.toSnapshot, otherJob.toSnapshot) &&
           Objects.equals(this.forceFullDiff, otherJob.forceFullDiff) &&
+          Objects.equals(this.cancel, otherJob.cancel) &&
           Objects.equals(this.totalDiffEntries, otherJob.totalDiffEntries);
     }
     return false;
@@ -186,7 +187,7 @@ public class SnapshotDiffJob {
   @Override
   public int hashCode() {
     return Objects.hash(creationTime, jobId, status, volume, bucket,
-        fromSnapshot, toSnapshot, forceFullDiff, totalDiffEntries);
+        fromSnapshot, toSnapshot, forceFullDiff, cancel, totalDiffEntries);
   }
 
   /**

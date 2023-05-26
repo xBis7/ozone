@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.ozone.shell.snapshot;
 
-import com.google.common.base.Strings;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.client.OzoneClient;
 import org.apache.hadoop.ozone.shell.Handler;
@@ -27,8 +26,6 @@ import picocli.CommandLine;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * ozone sh snapshot snapshotDiff.
@@ -65,7 +62,8 @@ public class SnapshotDiffHandler extends Handler {
 
 
   @CommandLine.Option(names = {"-c", "--cancel"},
-      description = "Cancel a current running snapshotDiff job.",
+      description = "Cancel a running snapshotDiff job. " +
+          "If the job is not IN_PROGRESS then the option is ignored.",
       defaultValue = "false")
   private boolean cancel;
 
