@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.om.snapshot;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.LoadingCache;
 
 import java.io.BufferedWriter;
@@ -254,6 +255,16 @@ public class SnapshotDiffManager implements AutoCloseable {
     this.loadJobsOnStartUp();
   }
 
+  @VisibleForTesting
+  public PersistentMap<String, SnapshotDiffJob> getSnapDiffJobTable() {
+    return snapDiffJobTable;
+  }
+
+  @VisibleForTesting
+  public Map<String, Future<?>> getSnapDiffFutures() {
+    return snapDiffFutures;
+  }
+
   private Optional<ManagedSSTDumpTool> initSSTDumpTool(
       final OzoneConfiguration conf) {
     if (!NativeLibraryLoader.getInstance()
@@ -414,6 +425,9 @@ public class SnapshotDiffManager implements AutoCloseable {
               null),
           CANCELED, defaultWaitTime);
     }
+
+    // When cancel is true but the job is queued,
+    // It goes into in_progress. Log it?
 
     switch (snapDiffJob.getStatus()) {
     case QUEUED:

@@ -488,6 +488,11 @@ public final class OmSnapshotManager implements AutoCloseable {
     return OM_KEY_PREFIX + volumeId + OM_KEY_PREFIX + bucketId + OM_KEY_PREFIX;
   }
 
+  @VisibleForTesting
+  public SnapshotDiffManager getSnapshotDiffManager() {
+    return snapshotDiffManager;
+  }
+
   /**
    * Helper method to locate the end key with the given prefix and iterator.
    * @param keyIter TableIterator

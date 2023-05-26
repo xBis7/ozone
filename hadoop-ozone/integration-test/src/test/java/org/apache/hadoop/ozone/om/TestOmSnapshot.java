@@ -85,6 +85,7 @@ import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.CONT
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.KEY_NOT_FOUND;
 import static org.apache.hadoop.ozone.om.helpers.BucketLayout.FILE_SYSTEM_OPTIMIZED;
 import static org.apache.hadoop.ozone.om.helpers.BucketLayout.OBJECT_STORE;
+import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCELED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.DONE;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.IN_PROGRESS;
 import static org.awaitility.Awaitility.await;
@@ -551,6 +552,46 @@ public class TestOmSnapshot {
         SnapshotDiffReportOzone.getDiffReportEntry(
             SnapshotDiffReportOzone.DiffType.CREATE, dir1)));
 
+  }
+
+  @Test
+  public void testSnapDiffCancel() throws IOException,
+      InterruptedException, TimeoutException {
+    String volume = "vol-" + RandomStringUtils.randomNumeric(5);
+    String bucket = "buck-" + RandomStringUtils.randomNumeric(5);
+    store.createVolume(volume);
+    OzoneVolume volume1 = store.getVolume(volume);
+    volume1.createBucket(bucket);
+    OzoneBucket bucket1 = volume1.getBucket(bucket);
+    // Create Key1 and take snapshot
+    String key1 = "key-1-";
+    createFileKey(bucket1, key1);
+    String snap1 = "snap" + RandomStringUtils.randomNumeric(5);
+    createSnapshot(volume, bucket, snap1);
+
+    // Create Key2 and delete Key1, take snapshot
+    String key2 = "key-2-";
+    createFileKey(bucket1, key2);
+    String snap2 = "snap" + RandomStringUtils.randomNumeric(5);
+    createSnapshot(volume, bucket, snap2);
+
+    SnapshotDiffResponse response = store
+        .snapshotDiff(volume, bucket, snap1, snap2,
+            null, 0, false, false);
+
+    assertEquals(IN_PROGRESS, response.getJobStatus());
+
+    SnapshotDiffResponse canceledResponse = store
+        .snapshotDiff(volume, bucket, snap1, snap2,
+            null, 0, false, true);
+
+    assertEquals(CANCELED, canceledResponse.getJobStatus());
+
+    SnapshotDiffResponse restartResponse = store
+        .snapshotDiff(volume, bucket, snap1, snap2,
+            null, 0, false, false);
+
+    assertEquals(IN_PROGRESS, restartResponse.getJobStatus());
   }
 
   private SnapshotDiffReportOzone getSnapDiffReport(String volume,
