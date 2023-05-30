@@ -589,21 +589,21 @@ public class TestOmSnapshot {
         .snapshotDiff(volume, bucket, snap1, snap2,
             null, 0, false, true);
 
-    // Job is IN_PROGRESS, until the thread is interrupted,
-    // response will be CANCELED.
-//    assertEquals(CANCELED, canceledResponse.getJobStatus());
+    // Job will IN_PROGRESS, until the thread is interrupted,
+    // but the JobStatus in the table should be updated
+    // and response should be CANCELED.
+    assertEquals(CANCELED, canceledResponse.getJobStatus());
 
     // Executing the command will return CANCELED until the job
-    // until the job is canceled and removed from the snapDiffJobTable.
+    // is canceled and removed from the snapDiffJobTable.
     // In that case, executing the command will submit a new job,
-    // cancel is ignored and response will be IN_PROGRESS.
+    // cancel is ignored until JobStatus in the table is IN_PROGRESS,
+    // and cancel has to be resubmitted.
     GenericTestUtils.waitFor(() -> {
       try {
-        SnapshotDiffResponse res = store.snapshotDiff(volume, bucket, snap1, snap2,
-                null, 0, false, true);
-        Logger.getLogger(TestOmSnapshot.class).info("xbis: " + res.getJobStatus());
-
-            return res.getJobStatus().equals(DONE);
+        return store.snapshotDiff(volume, bucket, snap1, snap2,
+                null, 0, false, false)
+            .getJobStatus().equals(DONE);
       } catch (IOException ignored) {
       }
       return null;

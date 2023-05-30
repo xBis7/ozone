@@ -412,16 +412,20 @@ public class SnapshotDiffManager implements AutoCloseable {
     // Job will exist in snapDiffFutures only if it's IN_PROGRESS.
     if (cancel && snapDiffFutures.containsKey(snapDiffJobKey)) {
       Future<?> future = snapDiffFutures.get(snapDiffJobKey);
-      boolean suc = future.cancel(true);
-      LOG.info("xbis: cancel success: " + suc);
-      // store thread id and then get it. thread id.
+      boolean success = future.cancel(true);
 
-//      if (snapDiffJobTable.get(snapDiffJobKey)
-//          .getStatus().equals(IN_PROGRESS)) {
-//        updateJobStatus(snapDiffJobKey, IN_PROGRESS, CANCELED);
-        // Job is no longer IN_PROGRESS, remove from snapDiffFutures.
-//        snapDiffFutures.remove(snapDiffJobKey);
-//      }
+      if (success) {
+        LOG.info("Cancelling job with JobID: " +
+            snapDiffJobTable.get(snapDiffJobKey).getJobId());
+
+        // Check that JobStatus is still IN_PROGRESS
+        // and not updated to DONE or any other type
+        // of failure in the meantime.
+        if (snapDiffJobTable.get(snapDiffJobKey)
+            .getStatus().equals(IN_PROGRESS)) {
+          updateJobStatus(snapDiffJobKey, IN_PROGRESS, CANCELED);
+        }
+      }
     }
 
     SnapshotDiffJob snapDiffJob = getSnapDiffReportStatus(snapDiffJobKey,
@@ -761,13 +765,16 @@ public class SnapshotDiffManager implements AutoCloseable {
       Table<String, OmKeyInfo> tsKeyTable = toSnapshot.getMetadataManager()
           .getKeyTable(bucketLayout);
 
-      long totalDiffEntries;
       try {
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException();
+        }
+
         getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsKeyTable, tsKeyTable,
             fromSnapshot, toSnapshot, fsInfo, tsInfo, useFullDiff,
             tablePrefixes, objectIdToKeyNameMapForFromSnapshot,
             objectIdToKeyNameMapForToSnapshot, objectIDsToCheckMap,
-            path.toString(), jobKey);
+            path.toString());
 
         if (bucketLayout.isFileSystemOptimized()) {
           validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
@@ -778,30 +785,40 @@ public class SnapshotDiffManager implements AutoCloseable {
           Table<String, OmDirectoryInfo> tsDirTable =
               toSnapshot.getMetadataManager().getDirectoryTable();
 
+
+          if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException();
+          }
+
           getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsDirTable, tsDirTable,
               fromSnapshot, toSnapshot, fsInfo, tsInfo, useFullDiff,
               tablePrefixes, objectIdToKeyNameMapForFromSnapshot,
               objectIdToKeyNameMapForToSnapshot, objectIDsToCheckMap,
-              path.toString(), jobKey);
+              path.toString());
         }
 
         validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
             toSnapshotName);
-        totalDiffEntries = generateDiffReport(jobKey,
-            jobId,
+
+        if (Thread.currentThread().isInterrupted()) {
+          throw new InterruptedException();
+        }
+
+        long totalDiffEntries = generateDiffReport(jobId,
             objectIDsToCheckMap,
             objectIdToKeyNameMapForFromSnapshot,
             objectIdToKeyNameMapForToSnapshot);
+        if (!snapDiffJobTable.get(jobKey)
+            .getStatus().equals(CANCELED)) {
+          updateJobStatusToDone(jobKey, totalDiffEntries);
+        }
       } catch (InterruptedException exception) {
-        LOG.error("Cancelling job for jobID: " + jobId, exception);
-//      updateJobStatus(jobKey, IN_PROGRESS, CANCELED);
+        LOG.error("Job with jobID: " + jobId +
+            ", successfully canceled", exception);
         snapDiffFutures.remove(jobKey);
         // Remove from the table, so that the job can be re-submitted.
         snapDiffJobTable.remove(jobKey);
-        return;
       }
-
-      updateJobStatusToDone(jobKey, totalDiffEntries);
     } catch (ExecutionException | IOException | RocksDBException exception) {
       updateJobStatus(jobKey, IN_PROGRESS, FAILED);
       LOG.error("Caught checked exception during diff report generation for " +
@@ -810,9 +827,6 @@ public class SnapshotDiffManager implements AutoCloseable {
       // TODO: [SNAPSHOT] Fail gracefully.
       throw new RuntimeException(exception);
     } catch (Exception exception) {
-      if (exception instanceof InterruptedException) {
-        LOG.info("xbis: ex");
-      }
       updateJobStatus(jobKey, IN_PROGRESS, FAILED);
       LOG.error("Caught unchecked exception during diff report generation " +
               "for volume: {} bucket: {}, fromSnapshot: {} and toSnapshot: {}",
@@ -829,14 +843,6 @@ public class SnapshotDiffManager implements AutoCloseable {
     }
   }
 
-//  catch (InterruptedException exception) {
-//    LOG.error("Cancelling job for jobID: " + jobId, exception);
-////      updateJobStatus(jobKey, IN_PROGRESS, CANCELED);
-//    snapDiffFutures.remove(jobKey);
-//    // Remove from the table, so that the job can be re-submitted.
-//    snapDiffJobTable.remove(jobKey);
-//  }
-
   @SuppressWarnings("checkstyle:ParameterNumber")
   private void getDeltaFilesAndDiffKeysToObjectIdToKeyMap(
       final Table<String, ? extends WithObjectID> fsTable,
@@ -850,8 +856,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       final PersistentMap<byte[], byte[]> oldObjIdToKeyMap,
       final PersistentMap<byte[], byte[]> newObjIdToKeyMap,
       final PersistentSet<byte[]> objectIDsToCheck,
-      final String diffDir,
-      final String jobKey
+      final String diffDir
   ) throws IOException, RocksDBException, InterruptedException {
 
     List<String> tablesToLookUp = Collections.singletonList(fsTable.getName());
@@ -859,20 +864,16 @@ public class SnapshotDiffManager implements AutoCloseable {
     Set<String> deltaFiles = getDeltaFiles(fromSnapshot, toSnapshot,
         tablesToLookUp, fsInfo, tsInfo, useFullDiff, tablePrefixes, diffDir);
 
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException();
+    }
+
     // Workaround to handle deletes if native rocksDb tool for reading
     // tombstone is not loaded.
     // TODO: [SNAPSHOT] Update Rocksdb SSTFileIterator to read tombstone
     if (!sstDumpTool.isPresent()) {
-      for (String sstFile : getSSTFileListForSnapshot(fromSnapshot,
-          tablesToLookUp)) {
-        if (Thread.currentThread().isInterrupted()) {
-//          updateJobStatus(jobKey, IN_PROGRESS, CANCELED);
-          throw new InterruptedException();
-        }
-        deltaFiles.add(sstFile);
-      }
-//      deltaFiles.addAll(getSSTFileListForSnapshot(fromSnapshot,
-//          tablesToLookUp));
+      deltaFiles.addAll(getSSTFileListForSnapshot(fromSnapshot,
+          tablesToLookUp));
     }
 
     try {
@@ -883,25 +884,15 @@ public class SnapshotDiffManager implements AutoCloseable {
           oldObjIdToKeyMap,
           newObjIdToKeyMap,
           objectIDsToCheck,
-          tablePrefixes,
-          jobKey);
+          tablePrefixes);
     } catch (NativeLibraryNotLoadedException e) {
       LOG.warn("SSTDumpTool load failure, retrying without it.", e);
       try {
         // Workaround to handle deletes if use of native rockDB for reading
         // tombstone fails.
         // TODO: [SNAPSHOT] Update Rocksdb SSTFileIterator to read tombstone
-
-        for (String sstFile : getSSTFileListForSnapshot(fromSnapshot,
-            tablesToLookUp)) {
-          if (Thread.currentThread().isInterrupted()) {
-//            updateJobStatus(jobKey, IN_PROGRESS, CANCELED);
-            throw new InterruptedException();
-          }
-          deltaFiles.add(sstFile);
-        }
-//        deltaFiles.addAll(getSSTFileListForSnapshot(
-//            fromSnapshot, tablesToLookUp));
+        deltaFiles.addAll(getSSTFileListForSnapshot(
+            fromSnapshot, tablesToLookUp));
         addToObjectIdMap(fsTable,
             tsTable,
             deltaFiles,
@@ -909,8 +900,7 @@ public class SnapshotDiffManager implements AutoCloseable {
             oldObjIdToKeyMap,
             newObjIdToKeyMap,
             objectIDsToCheck,
-            tablePrefixes,
-            jobKey);
+            tablePrefixes);
       } catch (NativeLibraryNotLoadedException ex) {
         throw new IllegalStateException(ex);
       }
@@ -925,7 +915,7 @@ public class SnapshotDiffManager implements AutoCloseable {
                                 PersistentMap<byte[], byte[]> oldObjIdToKeyMap,
                                 PersistentMap<byte[], byte[]> newObjIdToKeyMap,
                                 PersistentSet<byte[]> objectIDsToCheck,
-                                Map<String, String> tablePrefixes, String jobKey)
+                                Map<String, String> tablePrefixes)
       throws IOException, NativeLibraryNotLoadedException,
       RocksDBException, InterruptedException {
 
@@ -944,7 +934,6 @@ public class SnapshotDiffManager implements AutoCloseable {
                  : sstFileReader.getKeyStream()) {
       for (String key : keysToCheck.collect(Collectors.toList())) {
         if (Thread.currentThread().isInterrupted()) {
-//          updateJobStatus(jobKey, IN_PROGRESS, CANCELED);
           throw new InterruptedException();
         }
         try {
@@ -999,7 +988,7 @@ public class SnapshotDiffManager implements AutoCloseable {
                                     boolean useFullDiff,
                                     Map<String, String> tablePrefixes,
                                     String diffDir)
-      throws RocksDBException, IOException, InterruptedException {
+      throws RocksDBException, IOException {
     // TODO: [SNAPSHOT] Refactor the parameter list
 
     final Set<String> deltaFiles = new HashSet<>();
@@ -1017,13 +1006,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       LOG.debug("Calling RocksDBCheckpointDiffer");
       List<String> sstDiffList =
           differ.getSSTDiffListWithFullPath(toDSI, fromDSI, diffDir);
-      for (String sstDiff : sstDiffList) {
-        if (Thread.currentThread().isInterrupted()) {
-          throw new InterruptedException();
-        }
-        deltaFiles.add(sstDiff);
-      }
-//      deltaFiles.addAll(sstDiffList);
+      deltaFiles.addAll(sstDiffList);
     }
 
     if (useFullDiff || deltaFiles.isEmpty()) {
@@ -1045,20 +1028,8 @@ public class SnapshotDiffManager implements AutoCloseable {
                   .getDbLocation().getPath(),
               tablesToLookUp);
 
-      for (String fromSnapshotFile : fromSnapshotFiles) {
-        if (Thread.currentThread().isInterrupted()) {
-          throw new InterruptedException();
-        }
-        deltaFiles.add(fromSnapshotFile);
-      }
-//      deltaFiles.addAll(fromSnapshotFiles);
-      for (String toSnapshotFile : toSnapshotFiles) {
-        if (Thread.currentThread().isInterrupted()) {
-          throw new InterruptedException();
-        }
-        deltaFiles.add(toSnapshotFile);
-      }
-//      deltaFiles.addAll(toSnapshotFiles);
+      deltaFiles.addAll(fromSnapshotFiles);
+      deltaFiles.addAll(toSnapshotFiles);
       RocksDiffUtils.filterRelevantSstFiles(deltaFiles, tablePrefixes);
     }
 
@@ -1081,7 +1052,6 @@ public class SnapshotDiffManager implements AutoCloseable {
   }
 
   private long generateDiffReport(
-      final String jobKey,
       final String jobId,
       final PersistentSet<byte[]> objectIDsToCheck,
       final PersistentMap<byte[], byte[]> oldObjIdToKeyMap,
@@ -1120,7 +1090,6 @@ public class SnapshotDiffManager implements AutoCloseable {
                objectIdsIterator = objectIDsToCheck.iterator()) {
         while (objectIdsIterator.hasNext()) {
           if (Thread.currentThread().isInterrupted()) {
-//            updateJobStatus(jobKey, IN_PROGRESS, CANCELED);
             throw new InterruptedException();
           }
 

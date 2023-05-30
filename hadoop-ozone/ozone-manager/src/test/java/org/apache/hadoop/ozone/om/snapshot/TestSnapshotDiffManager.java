@@ -22,7 +22,6 @@ import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
 import org.apache.hadoop.hdds.utils.db.cache.CacheValue;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
-import org.apache.hadoop.ozone.om.OMConfigKeys;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OmSnapshot;
 import org.apache.hadoop.ozone.om.OmTestManagers;
@@ -42,12 +41,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.rocksdb.RocksDBException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
@@ -86,7 +84,22 @@ public class TestSnapshotDiffManager {
     snapDiffFutures = snapshotDiffManager.getSnapDiffFutures();
   }
 
-  Logger LOG = LoggerFactory.getLogger(TestSnapshotDiffManager.class);
+  /**
+   * Test Snapshot Diff job cancellation.
+   * JobStatus transitions for consecutive snapDiff
+   * executions should be:
+   * --
+   * 1st execution (the job is new, cancel is ignored)
+   * QUEUED -> IN_PROGRESS
+   * --
+   * 2nd execution (cancel = true)
+   * IN_PROGRESS -> CANCELED
+   * job removed from the table.
+   * --
+   * 3rd execution (new job)
+   * QUEUED -> IN_PROGRESS
+   * IN_PROGRESS -> DONE
+   */
   @Test
   public void testCanceledSnapshotDiffReport()
       throws IOException, InterruptedException, TimeoutException {
@@ -103,77 +116,78 @@ public class TestSnapshotDiffManager {
 
     Assertions.assertFalse(snapDiffFutures.containsKey(diffJobKey));
 
+    // This is a new job, cancel should be ignored.
     SnapshotDiffResponse snapshotDiffResponse = snapshotDiffManager
         .getSnapshotDiffReport(volumeName, bucketName,
             fromSnapshotName, toSnapshotName,
             0, 0, false, true);
 
+    // Response should be IN_PROGRESS
     Assertions.assertEquals(JobStatus.IN_PROGRESS,
         snapshotDiffResponse.getJobStatus());
 
-//    diffJob = snapDiffJobTable.get(diffJobKey);
-//    Assertions.assertNotNull(diffJob);
+    // Check snapDiffJobTable.
+    diffJob = snapDiffJobTable.get(diffJobKey);
+    Assertions.assertNotNull(diffJob);
+    // Status stored in the table should be IN_PROGRESS.
+    Assertions.assertEquals(JobStatus.IN_PROGRESS,
+        diffJob.getStatus());
 
-    LOG.info("xbis: " + snapshotDiffResponse.getJobStatus() +
-        " / table: " + snapDiffJobTable.get(diffJobKey).getStatus());
-//    Assertions.assertTrue(snapDiffFutures.containsKey(diffJobKey));
+    // Job should be canceled.
+    snapshotDiffResponse = snapshotDiffManager
+        .getSnapshotDiffReport(volumeName, bucketName,
+            fromSnapshotName, toSnapshotName,
+            0, 0, false, true);
 
-//    Assertions.assertEquals(JobStatus.CANCELED,
-//        snapshotDiffResponse.getJobStatus());
-//
-//    Assertions.assertTrue(snapDiffFutures.containsKey(diffJobKey));
+    // Response should be CANCELED.
+    Assertions.assertEquals(JobStatus.CANCELED,
+        snapshotDiffResponse.getJobStatus());
 
-//    Assertions.assertEquals(JobStatus.CANCELED,
-//        snapDiffJobTable.get(diffJobKey).getStatus());
+    // Check snapDiffJobTable.
+    diffJob = snapDiffJobTable.get(diffJobKey);
+    Assertions.assertNotNull(diffJob);
+    // Status stored in the table should be CANCELED.
+    Assertions.assertEquals(JobStatus.CANCELED,
+        diffJob.getStatus());
 
-//    snapshotDiffResponse = snapshotDiffManager
-//        .getSnapshotDiffReport(volumeName, bucketName,
-//            fromSnapshotName, toSnapshotName,
-//            0, 0, false, true);
-//
-//    Assertions.assertEquals(JobStatus.CANCELED,
-//        snapshotDiffResponse.getJobStatus());
+    // Run cancel again, job hasn't been removed from the
+    // table yet and response should still be canceled.
+    snapshotDiffResponse = snapshotDiffManager
+        .getSnapshotDiffReport(volumeName, bucketName,
+            fromSnapshotName, toSnapshotName,
+            0, 0, false, true);
 
+    // Response should be CANCELED.
+    Assertions.assertEquals(JobStatus.CANCELED,
+        snapshotDiffResponse.getJobStatus());
+
+    // Check snapDiffJobTable.
+    diffJob = snapDiffJobTable.get(diffJobKey);
+    Assertions.assertNotNull(diffJob);
+    // Status stored in the table should be CANCELED.
+    Assertions.assertEquals(JobStatus.CANCELED,
+        diffJob.getStatus());
+
+    // Wait until job is canceled and removed from the table.
+    GenericTestUtils.waitFor(() ->
+            Objects.isNull(snapDiffJobTable.get(diffJobKey)),
+        10, 10000);
+
+    Assertions.assertNull(snapDiffJobTable.get(diffJobKey));
+
+    // If the job is resubmitted, will be considered new.
+    // Wait until it runs and successfully finishes.
     GenericTestUtils.waitFor(() -> {
           try {
-            SnapshotDiffResponse resp = snapshotDiffManager.getSnapshotDiffReport(
+            return snapshotDiffManager.getSnapshotDiffReport(
                 volumeName, bucketName, fromSnapshotName,
-                toSnapshotName, 0, 0, false, true);
-            LOG.info("xbis: " + resp.getJobStatus() +
-                " / table: " + snapDiffJobTable.get(diffJobKey).getStatus());
-            return (resp.getJobStatus().equals(JobStatus.DONE));
+                toSnapshotName, 0, 0, false, false)
+                .getJobStatus().equals(JobStatus.DONE);
           } catch (IOException ignored) {
           }
           return null;
         },
         100, 80000);
-
-    // What it should look like.
-//    xbis: IN_PROGRESS / table: IN_PROGRESS
-//    xbis: CANCELED / table: CANCELED
-//    xbis: IN_PROGRESS / table: IN_PROGRESS
-
-//    Assertions.assertNotNull(snapDiffJobTable.get(diffJobKey));
-//    Assertions.assertFalse(snapDiffFutures.containsKey(diffJobKey));
-
-    snapshotDiffResponse = snapshotDiffManager
-        .getSnapshotDiffReport(volumeName, bucketName,
-            fromSnapshotName, toSnapshotName,
-            0, 0, false, false);
-
-    LOG.info("xbis: " + snapshotDiffResponse.getJobStatus() +
-        " / table: " + snapDiffJobTable.get(diffJobKey).getStatus());
-
-    snapshotDiffResponse = snapshotDiffManager
-        .getSnapshotDiffReport(volumeName, bucketName,
-            fromSnapshotName, toSnapshotName,
-            0, 0, false, false);
-
-    LOG.info("xbis: " + snapshotDiffResponse.getJobStatus() +
-        " / table: " + snapDiffJobTable.get(diffJobKey).getStatus());
-
-//    Assertions.assertEquals(JobStatus.IN_PROGRESS,
-//        snapshotDiffResponse.getJobStatus());
   }
 
   private String setUpSnapshotsAndGetSnapDiffKey(
@@ -181,7 +195,7 @@ public class TestSnapshotDiffManager {
       String fromSnapshotName, String toSnapshotName)
       throws IOException {
     UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-    // Snapshot IDs
+    // Snapshot IDs.
     String fromSnapshotId = UUID.randomUUID().toString();
     String toSnapshotId = UUID.randomUUID().toString();
 
