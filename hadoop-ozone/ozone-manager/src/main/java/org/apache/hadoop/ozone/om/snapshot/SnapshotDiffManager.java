@@ -55,7 +55,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.io.file.PathUtils;
@@ -935,10 +934,7 @@ public class SnapshotDiffManager implements AutoCloseable {
              nativeRocksToolsLoaded && sstDumpTool.isPresent()
                  ? sstFileReader.getKeyStreamWithTombstone(sstDumpTool.get())
                  : sstFileReader.getKeyStream()) {
-      for (String key : keysToCheck.collect(Collectors.toList())) {
-        if (Thread.currentThread().isInterrupted()) {
-          throw new InterruptedException();
-        }
+      keysToCheck.forEach(key -> {
         try {
           final WithObjectID oldKey = fsTable.get(key);
           final WithObjectID newKey = tsTable.get(key);
@@ -964,7 +960,7 @@ public class SnapshotDiffManager implements AutoCloseable {
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
-      }
+      });
     } catch (RocksDBException rocksDBException) {
       // TODO: [SNAPSHOT] Gracefully handle exception
       //  e.g. when input files do not exist

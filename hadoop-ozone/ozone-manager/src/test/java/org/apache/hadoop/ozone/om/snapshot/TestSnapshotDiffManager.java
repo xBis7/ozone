@@ -98,7 +98,6 @@ public class TestSnapshotDiffManager {
    * --
    * 3rd execution (new job)
    * QUEUED -> IN_PROGRESS
-   * IN_PROGRESS -> DONE
    */
   @Test
   public void testCanceledSnapshotDiffReport()
@@ -171,23 +170,21 @@ public class TestSnapshotDiffManager {
     // Wait until job is canceled and removed from the table.
     GenericTestUtils.waitFor(() ->
             Objects.isNull(snapDiffJobTable.get(diffJobKey)),
-        10, 10000);
+        100, 30000);
 
+    // Job should not exist in the table anymore.
     Assertions.assertNull(snapDiffJobTable.get(diffJobKey));
 
     // If the job is resubmitted, will be considered new.
-    // Wait until it runs.
-    GenericTestUtils.waitFor(() -> {
-      try {
-        return snapshotDiffManager
-            .getSnapshotDiffReport(volumeName, bucketName,
-                fromSnapshotName, toSnapshotName,
-                0, 0, false, false)
-            .getJobStatus().equals(JobStatus.IN_PROGRESS);
-      } catch (IOException ignored) {
-      }
-      return false;
-    }, 100, 80000);
+    snapshotDiffManager
+        .getSnapshotDiffReport(volumeName, bucketName,
+            fromSnapshotName, toSnapshotName,
+            0, 0, false, false);
+
+    // Job is stored again in the table as new.
+    Assertions.assertNotNull(snapDiffJobTable.get(diffJobKey));
+    Assertions.assertEquals(JobStatus.IN_PROGRESS,
+        snapDiffJobTable.get(diffJobKey).getStatus());
   }
 
   private String setUpSnapshotsAndGetSnapDiffKey(
