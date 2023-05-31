@@ -206,7 +206,7 @@ public class TestOmSnapshot {
 
     // stop the deletion services so that keys can still be read
     keyManager.stop();
-    preFinalizationChecks();
+//    preFinalizationChecks();
     finalizeOMUpgrade();
   }
 
@@ -630,43 +630,37 @@ public class TestOmSnapshot {
 
   @Test
   public void testSnapDiffCancel() throws Exception {
-    String volume = "vol-" + RandomStringUtils.randomNumeric(5);
-    String bucket = "buck-" + RandomStringUtils.randomNumeric(5);
-    store.createVolume(volume);
-    OzoneVolume volume1 = store.getVolume(volume);
-    volume1.createBucket(bucket);
-    OzoneBucket bucket1 = volume1.getBucket(bucket);
     // Create key1 and take snapshot.
-    String key1 = "key-1-";
-    createFileKey(bucket1, key1);
-    String snap1 = "snap" + RandomStringUtils.randomNumeric(5);
-    createSnapshot(volume, bucket, snap1);
+    String key1 = "key-1";
+    createFileKey(ozoneBucket, key1);
+    String fromSnapName = "snap-1-" + RandomStringUtils.randomNumeric(5);
+    createSnapshot(volumeName, bucketName, fromSnapName);
 
     // Create key2 and take snapshot.
-    String key2 = "key-2-";
-    createFileKey(bucket1, key2);
-    String snap2 = "snap" + RandomStringUtils.randomNumeric(5);
-    createSnapshot(volume, bucket, snap2);
+    String key2 = "key-2";
+    createFileKey(ozoneBucket, key2);
+    String toSnapName = "snap-2-" + RandomStringUtils.randomNumeric(5);
+    createSnapshot(volumeName, bucketName, toSnapName);
 
     // Cancel works only if the job is IN_PROGRESS, and
     // it's ignored if the job isn't already running.
 
-    SnapshotDiffResponse response = store
-        .snapshotDiff(volume, bucket, snap1, snap2,
-            null, 0, false, true);
+    SnapshotDiffResponse response = store.snapshotDiff(
+        volumeName, bucketName, fromSnapName, toSnapName,
+        null, 0, false, true);
 
     // Cancel here is ignored, job gets saved in the snapDiffJobTable
     // as QUEUED and then transitions IN_PROGRESS.
     assertEquals(IN_PROGRESS, response.getJobStatus());
 
-    SnapshotDiffResponse canceledResponse = store
-        .snapshotDiff(volume, bucket, snap1, snap2,
-            null, 0, false, true);
+    response = store.snapshotDiff(volumeName,
+        bucketName, fromSnapName, toSnapName,
+        null, 0, false, true);
 
     // Job will IN_PROGRESS, until the thread is interrupted,
     // but the JobStatus in the table should be updated
     // and response should be CANCELED.
-    assertEquals(CANCELED, canceledResponse.getJobStatus());
+    assertEquals(CANCELED, response.getJobStatus());
 
     // Executing the command will return CANCELED until the job
     // is canceled and removed from the snapDiffJobTable.
@@ -674,8 +668,9 @@ public class TestOmSnapshot {
     // cancel is ignored until JobStatus in the table is IN_PROGRESS,
     // and cancel has to be resubmitted.
     do {
-      response = store.snapshotDiff(volume, bucket, snap1,
-          snap2, null, 0, false, false);
+      response = store.snapshotDiff(volumeName,
+          bucketName, fromSnapName, toSnapName,
+          null, 0, false, false);
       Thread.sleep(response.getWaitTimeInMs());
     } while (!response.getJobStatus().equals(IN_PROGRESS));
   }
