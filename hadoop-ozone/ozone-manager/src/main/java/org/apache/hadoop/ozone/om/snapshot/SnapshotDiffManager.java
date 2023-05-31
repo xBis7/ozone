@@ -681,8 +681,8 @@ public class SnapshotDiffManager implements AutoCloseable {
     SnapshotInfo toSnapInfo = getSnapshotInfo(ozoneManager, volumeName,
         bucketName, toSnapshotName);
 
-    checkSnapshotActive(fromSnapInfo);
-    checkSnapshotActive(toSnapInfo);
+    checkSnapshotActive(fromSnapInfo, false);
+    checkSnapshotActive(toSnapInfo, false);
   }
 
   @SuppressWarnings("methodlength")
