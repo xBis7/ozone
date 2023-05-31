@@ -631,13 +631,13 @@ public class TestOmSnapshot {
   @Test
   public void testSnapDiffCancel() throws Exception {
     // Create key1 and take snapshot.
-    String key1 = "key-1-" + RandomStringUtils.randomNumeric(5);;
+    String key1 = "key-1-" + RandomStringUtils.randomNumeric(5);
     createFileKey(ozoneBucket, key1);
     String fromSnapName = "snap-1-" + RandomStringUtils.randomNumeric(5);
     createSnapshot(volumeName, bucketName, fromSnapName);
 
     // Create key2 and take snapshot.
-    String key2 = "key-2-" + RandomStringUtils.randomNumeric(5);;
+    String key2 = "key-2-" + RandomStringUtils.randomNumeric(5);
     createFileKey(ozoneBucket, key2);
     String toSnapName = "snap-2-" + RandomStringUtils.randomNumeric(5);
     createSnapshot(volumeName, bucketName, toSnapName);
