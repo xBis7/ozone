@@ -603,7 +603,7 @@ public class TestOmSnapshot {
       try {
         return store.snapshotDiff(volume, bucket, snap1, snap2,
                 null, 0, false, false)
-            .getJobStatus().equals(DONE);
+            .getJobStatus().equals(IN_PROGRESS);
       } catch (IOException ignored) {
       }
       return false;

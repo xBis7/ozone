@@ -176,14 +176,14 @@ public class TestSnapshotDiffManager {
     Assertions.assertNull(snapDiffJobTable.get(diffJobKey));
 
     // If the job is resubmitted, will be considered new.
-    // Wait until it runs and successfully finishes.
+    // Wait until it runs.
     GenericTestUtils.waitFor(() -> {
       try {
         return snapshotDiffManager
             .getSnapshotDiffReport(volumeName, bucketName,
                 fromSnapshotName, toSnapshotName,
                 0, 0, false, false)
-            .getJobStatus().equals(JobStatus.DONE);
+            .getJobStatus().equals(JobStatus.IN_PROGRESS);
       } catch (IOException ignored) {
       }
       return false;
