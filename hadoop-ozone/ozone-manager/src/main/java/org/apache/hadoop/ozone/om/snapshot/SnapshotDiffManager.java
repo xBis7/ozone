@@ -47,6 +47,7 @@ import org.apache.hadoop.hdds.utils.NativeConstants;
 import org.apache.hadoop.hdds.utils.NativeLibraryLoader;
 import org.apache.hadoop.hdds.utils.NativeLibraryNotLoadedException;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -765,52 +766,57 @@ public class SnapshotDiffManager implements AutoCloseable {
       Table<String, OmKeyInfo> tsKeyTable = toSnapshot.getMetadataManager()
           .getKeyTable(bucketLayout);
 
+
+      Callable<Void>[] methodCalls = new Callable[]{
+          () -> {
+            getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsKeyTable, tsKeyTable,
+                fromSnapshot, toSnapshot, fsInfo, tsInfo, useFullDiff,
+                tablePrefixes, objectIdToKeyNameMapForFromSnapshot,
+                objectIdToKeyNameMapForToSnapshot, objectIDsToCheckMap,
+                path.toString());
+            return null;
+          },
+          () -> {
+            if (bucketLayout.isFileSystemOptimized()) {
+              validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
+                  toSnapshotName);
+
+              Table<String, OmDirectoryInfo> fsDirTable =
+                  fromSnapshot.getMetadataManager().getDirectoryTable();
+              Table<String, OmDirectoryInfo> tsDirTable =
+                  toSnapshot.getMetadataManager().getDirectoryTable();
+
+              getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsDirTable, tsDirTable,
+                  fromSnapshot, toSnapshot, fsInfo, tsInfo, useFullDiff,
+                  tablePrefixes, objectIdToKeyNameMapForFromSnapshot,
+                  objectIdToKeyNameMapForToSnapshot, objectIDsToCheckMap,
+                  path.toString());
+            }
+            return null;
+          },
+          () -> {
+            validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
+                toSnapshotName);
+
+            long totalDiffEntries = generateDiffReport(jobId,
+                objectIDsToCheckMap,
+                objectIdToKeyNameMapForFromSnapshot,
+                objectIdToKeyNameMapForToSnapshot);
+            if (!snapDiffJobTable.get(jobKey)
+                .getStatus().equals(CANCELED)) {
+              updateJobStatusToDone(jobKey, totalDiffEntries);
+            }
+            return null;
+          }
+      };
+
       try {
-        if (Thread.currentThread().isInterrupted()) {
-          throw new InterruptedException();
-        }
-
-        getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsKeyTable, tsKeyTable,
-            fromSnapshot, toSnapshot, fsInfo, tsInfo, useFullDiff,
-            tablePrefixes, objectIdToKeyNameMapForFromSnapshot,
-            objectIdToKeyNameMapForToSnapshot, objectIDsToCheckMap,
-            path.toString());
-
-        if (bucketLayout.isFileSystemOptimized()) {
-          validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
-              toSnapshotName);
-
-          Table<String, OmDirectoryInfo> fsDirTable =
-              fromSnapshot.getMetadataManager().getDirectoryTable();
-          Table<String, OmDirectoryInfo> tsDirTable =
-              toSnapshot.getMetadataManager().getDirectoryTable();
-
-
+        for (Callable<Void> methodCall : methodCalls) {
           if (Thread.currentThread().isInterrupted()) {
             throw new InterruptedException();
           }
 
-          getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsDirTable, tsDirTable,
-              fromSnapshot, toSnapshot, fsInfo, tsInfo, useFullDiff,
-              tablePrefixes, objectIdToKeyNameMapForFromSnapshot,
-              objectIdToKeyNameMapForToSnapshot, objectIDsToCheckMap,
-              path.toString());
-        }
-
-        validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
-            toSnapshotName);
-
-        if (Thread.currentThread().isInterrupted()) {
-          throw new InterruptedException();
-        }
-
-        long totalDiffEntries = generateDiffReport(jobId,
-            objectIDsToCheckMap,
-            objectIdToKeyNameMapForFromSnapshot,
-            objectIdToKeyNameMapForToSnapshot);
-        if (!snapDiffJobTable.get(jobKey)
-            .getStatus().equals(CANCELED)) {
-          updateJobStatusToDone(jobKey, totalDiffEntries);
+          methodCall.call();
         }
       } catch (InterruptedException exception) {
         LOG.error("Job with jobID: " + jobId +
@@ -819,6 +825,7 @@ public class SnapshotDiffManager implements AutoCloseable {
         // Remove from the table, so that the job can be re-submitted.
         snapDiffJobTable.remove(jobKey);
       }
+
     } catch (ExecutionException | IOException | RocksDBException exception) {
       updateJobStatus(jobKey, IN_PROGRESS, FAILED);
       LOG.error("Caught checked exception during diff report generation for " +
@@ -863,10 +870,6 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     Set<String> deltaFiles = getDeltaFiles(fromSnapshot, toSnapshot,
         tablesToLookUp, fsInfo, tsInfo, useFullDiff, tablePrefixes, diffDir);
-
-    if (Thread.currentThread().isInterrupted()) {
-      throw new InterruptedException();
-    }
 
     // Workaround to handle deletes if native rocksDb tool for reading
     // tombstone is not loaded.
