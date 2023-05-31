@@ -686,6 +686,7 @@ public class SnapshotDiffManager implements AutoCloseable {
     checkSnapshotActive(toSnapInfo);
   }
 
+  @SuppressWarnings("methodlength")
   private void generateSnapshotDiffReport(final String jobKey,
                                           final String jobId,
                                           final String volumeName,
@@ -766,7 +767,6 @@ public class SnapshotDiffManager implements AutoCloseable {
       Table<String, OmKeyInfo> tsKeyTable = toSnapshot.getMetadataManager()
           .getKeyTable(bucketLayout);
 
-
       Callable<Void>[] methodCalls = new Callable[]{
           () -> {
             getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsKeyTable, tsKeyTable,
@@ -778,8 +778,8 @@ public class SnapshotDiffManager implements AutoCloseable {
           },
           () -> {
             if (bucketLayout.isFileSystemOptimized()) {
-              validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
-                  toSnapshotName);
+              validateSnapshotsAreActive(volumeName, bucketName,
+                  fromSnapshotName, toSnapshotName);
 
               Table<String, OmDirectoryInfo> fsDirTable =
                   fromSnapshot.getMetadataManager().getDirectoryTable();
@@ -795,8 +795,8 @@ public class SnapshotDiffManager implements AutoCloseable {
             return null;
           },
           () -> {
-            validateSnapshotsAreActive(volumeName, bucketName, fromSnapshotName,
-                toSnapshotName);
+            validateSnapshotsAreActive(volumeName, bucketName,
+                fromSnapshotName, toSnapshotName);
 
             long totalDiffEntries = generateDiffReport(jobId,
                 objectIDsToCheckMap,

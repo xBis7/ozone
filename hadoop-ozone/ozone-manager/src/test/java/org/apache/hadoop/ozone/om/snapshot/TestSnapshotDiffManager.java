@@ -178,16 +178,16 @@ public class TestSnapshotDiffManager {
     // If the job is resubmitted, will be considered new.
     // Wait until it runs and successfully finishes.
     GenericTestUtils.waitFor(() -> {
-          try {
-            return snapshotDiffManager.getSnapshotDiffReport(
-                volumeName, bucketName, fromSnapshotName,
-                toSnapshotName, 0, 0, false, false)
-                .getJobStatus().equals(JobStatus.DONE);
-          } catch (IOException ignored) {
-          }
-          return null;
-        },
-        100, 80000);
+      try {
+        return snapshotDiffManager
+            .getSnapshotDiffReport(volumeName, bucketName,
+                fromSnapshotName, toSnapshotName,
+                0, 0, false, false)
+            .getJobStatus().equals(JobStatus.DONE);
+      } catch (IOException ignored) {
+      }
+      return null;
+    }, 100, 80000);
   }
 
   private String setUpSnapshotsAndGetSnapDiffKey(
