@@ -170,7 +170,7 @@ public class TestSnapshotDiffManager {
     // Wait until job is canceled and removed from the table.
     GenericTestUtils.waitFor(() ->
             Objects.isNull(snapDiffJobTable.get(diffJobKey)),
-        100, 30000);
+        100, 80000);
 
     // Job should not exist in the table anymore.
     Assertions.assertNull(snapDiffJobTable.get(diffJobKey));

@@ -231,7 +231,7 @@ public class TestOmSnapshot {
         store.snapshotDiff(volumeName, bucketName,
             UUID.randomUUID().toString(),
             UUID.randomUUID().toString(),
-          "", 1000, false));
+          "", 1000, false, false));
     expectFailurePreFinalization(() ->
         store.deleteSnapshot(volumeName, bucketName,
             UUID.randomUUID().toString()));
@@ -673,15 +673,11 @@ public class TestOmSnapshot {
     // In that case, executing the command will submit a new job,
     // cancel is ignored until JobStatus in the table is IN_PROGRESS,
     // and cancel has to be resubmitted.
-    GenericTestUtils.waitFor(() -> {
-      try {
-        return store.snapshotDiff(volume, bucket, snap1, snap2,
-                null, 0, false, false)
-            .getJobStatus().equals(IN_PROGRESS);
-      } catch (IOException ignored) {
-      }
-      return false;
-    }, 100, 80000);
+    do {
+      response = store.snapshotDiff(volume, bucket, snap1,
+          snap2, null, 0, false, false);
+      Thread.sleep(response.getWaitTimeInMs());
+    } while (!response.getJobStatus().equals(IN_PROGRESS));
   }
 
   private SnapshotDiffReportOzone getSnapDiffReport(String volume,
