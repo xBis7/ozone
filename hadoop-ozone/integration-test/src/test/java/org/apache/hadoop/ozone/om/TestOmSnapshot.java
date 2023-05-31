@@ -606,7 +606,7 @@ public class TestOmSnapshot {
             .getJobStatus().equals(DONE);
       } catch (IOException ignored) {
       }
-      return null;
+      return false;
     }, 100, 80000);
   }
 

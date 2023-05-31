@@ -186,7 +186,7 @@ public class TestSnapshotDiffManager {
             .getJobStatus().equals(JobStatus.DONE);
       } catch (IOException ignored) {
       }
-      return null;
+      return false;
     }, 100, 80000);
   }
 
