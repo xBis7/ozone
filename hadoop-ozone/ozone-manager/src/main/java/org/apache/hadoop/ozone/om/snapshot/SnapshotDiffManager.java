@@ -402,7 +402,7 @@ public class SnapshotDiffManager implements AutoCloseable {
     // Check if the job already exists in the table
     // before getting report status.
     if (cancel && Objects.nonNull(snapDiffJobTable.get(snapDiffJobKey)) &&
-    snapDiffJobTable.get(snapDiffJobKey).getStatus().equals(IN_PROGRESS)) {
+        snapDiffJobTable.get(snapDiffJobKey).getStatus().equals(IN_PROGRESS)) {
       LOG.info("Cancelling job with JobID: " +
           snapDiffJobTable.get(snapDiffJobKey).getJobId());
 
@@ -746,6 +746,9 @@ public class SnapshotDiffManager implements AutoCloseable {
       Table<String, OmKeyInfo> tsKeyTable = toSnapshot.getMetadataManager()
           .getKeyTable(bucketLayout);
 
+      // These are the most time and resource consuming method calls.
+      // Split the calls into steps and store them in an array, to avoid
+      // repetition while constantly checking if the job is cancelled.
       Callable<Void>[] methodCalls = new Callable[]{
           () -> {
             getDeltaFilesAndDiffKeysToObjectIdToKeyMap(fsKeyTable, tsKeyTable,
@@ -792,6 +795,7 @@ public class SnapshotDiffManager implements AutoCloseable {
           }
       };
 
+      // Periodically check if the job is cancelled.
       for (Callable<Void> methodCall : methodCalls) {
         if (snapDiffJobTable.get(jobKey).getStatus()
             .equals(CANCELED)) {

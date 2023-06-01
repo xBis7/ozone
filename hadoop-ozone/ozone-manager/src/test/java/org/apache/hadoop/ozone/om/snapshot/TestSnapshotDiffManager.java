@@ -135,7 +135,7 @@ public class TestSnapshotDiffManager {
     Assertions.assertEquals(JobStatus.CANCELED,
         diffJob.getStatus());
 
-    // Run cancel again, job hasn't been removed from the
+    // Job hasn't been removed from the
     // table yet and response should still be canceled.
     snapshotDiffResponse = snapshotDiffManager
         .getSnapshotDiffReport(volumeName, bucketName,

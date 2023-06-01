@@ -92,7 +92,6 @@ import static org.apache.hadoop.ozone.om.helpers.BucketLayout.FILE_SYSTEM_OPTIMI
 import static org.apache.hadoop.ozone.om.helpers.BucketLayout.OBJECT_STORE;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCELED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.DONE;
-import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.QUEUED;
 import static org.awaitility.Awaitility.with;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.IN_PROGRESS;
 import static org.awaitility.Awaitility.await;
@@ -207,7 +206,7 @@ public class TestOmSnapshot {
 
     // stop the deletion services so that keys can still be read
     keyManager.stop();
-//    preFinalizationChecks();
+    preFinalizationChecks();
     finalizeOMUpgrade();
   }
 
@@ -644,7 +643,7 @@ public class TestOmSnapshot {
     createSnapshot(volumeName, bucketName, toSnapName);
 
     // Cancel works only if the job is IN_PROGRESS, and
-    // it's ignored if the job isn't already running.
+    // it's ignored if the job has any other status.
 
     SnapshotDiffResponse response = store.snapshotDiff(
         volumeName, bucketName, fromSnapName, toSnapName,
@@ -658,12 +657,10 @@ public class TestOmSnapshot {
         bucketName, fromSnapName, toSnapName,
         null, 0, false, true);
 
-    // Job will IN_PROGRESS, until the thread is interrupted,
-    // but the JobStatus in the table should be updated
-    // and response should be CANCELED.
+    // Job status should be updated to CANCELED.
     assertEquals(CANCELED, response.getJobStatus());
 
-    // Executing the command again will return CANCELED,
+    // Executing the command again should return CANCELED,
     // until the job is picked up by the SnapshotDiffCleanupService
     // and removed from the snapDiffJobTable.
     response = store.snapshotDiff(volumeName,
