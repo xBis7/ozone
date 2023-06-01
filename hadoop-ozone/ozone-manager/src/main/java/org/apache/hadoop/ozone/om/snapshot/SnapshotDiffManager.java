@@ -795,13 +795,12 @@ public class SnapshotDiffManager implements AutoCloseable {
           }
       };
 
-      // Periodically check if the job is cancelled.
+      // Check if the job is cancelled, before every method call.
       for (Callable<Void> methodCall : methodCalls) {
         if (snapDiffJobTable.get(jobKey).getStatus()
             .equals(CANCELED)) {
           return;
         }
-
         methodCall.call();
       }
     } catch (ExecutionException | IOException | RocksDBException exception) {
