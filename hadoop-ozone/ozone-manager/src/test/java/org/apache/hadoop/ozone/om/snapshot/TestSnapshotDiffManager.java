@@ -17,6 +17,7 @@
 package org.apache.hadoop.ozone.om.snapshot;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
@@ -35,10 +36,11 @@ import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
+import org.apache.ozone.test.GenericTestUtils;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.rocksdb.RocksDBException;
 
 import java.io.File;
@@ -54,7 +56,6 @@ import static org.apache.hadoop.ozone.om.OmSnapshotManager.DELIMITER;
  */
 public class TestSnapshotDiffManager {
 
-  @TempDir
   private static File metaDir;
 
   private static OzoneManager ozoneManager;
@@ -65,6 +66,10 @@ public class TestSnapshotDiffManager {
   @BeforeAll
   public static void init() throws AuthenticationException,
       IOException, RocksDBException {
+    metaDir = GenericTestUtils.getRandomizedTestDir();
+    if (!metaDir.exists()) {
+      Assertions.assertTrue(metaDir.mkdirs());
+    }
     OzoneConfiguration conf = new OzoneConfiguration();
     conf.set(OzoneConfigKeys.OZONE_METADATA_DIRS,
         metaDir.getAbsolutePath());
@@ -76,6 +81,11 @@ public class TestSnapshotDiffManager {
     snapshotDiffManager = ozoneManager
         .getOmSnapshotManager().getSnapshotDiffManager();
     snapDiffJobTable = snapshotDiffManager.getSnapDiffJobTable();
+  }
+
+  @AfterAll
+  public static void cleanUp() {
+    FileUtil.fullyDelete(metaDir);
   }
 
   /**
