@@ -92,6 +92,7 @@ import static org.apache.hadoop.ozone.om.helpers.BucketLayout.FILE_SYSTEM_OPTIMI
 import static org.apache.hadoop.ozone.om.helpers.BucketLayout.OBJECT_STORE;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCELED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.DONE;
+import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.QUEUED;
 import static org.awaitility.Awaitility.with;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.IN_PROGRESS;
 import static org.awaitility.Awaitility.await;
@@ -672,7 +673,8 @@ public class TestOmSnapshot {
           bucketName, fromSnapName, toSnapName,
           null, 0, false, false);
       Thread.sleep(response.getWaitTimeInMs());
-    } while (!response.getJobStatus().equals(IN_PROGRESS));
+    } while (!response.getJobStatus().equals(QUEUED) &&
+        !response.getJobStatus().equals(IN_PROGRESS));
   }
 
   private SnapshotDiffReportOzone getSnapDiffReport(String volume,
