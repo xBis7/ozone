@@ -663,18 +663,13 @@ public class TestOmSnapshot {
     // and response should be CANCELED.
     assertEquals(CANCELED, response.getJobStatus());
 
-    // Executing the command will return CANCELED until the job
-    // is canceled and removed from the snapDiffJobTable.
-    // In that case, executing the command will submit a new job,
-    // cancel is ignored until JobStatus in the table is IN_PROGRESS,
-    // and cancel has to be resubmitted.
-    do {
-      response = store.snapshotDiff(volumeName,
-          bucketName, fromSnapName, toSnapName,
-          null, 0, false, false);
-      Logger.getLogger(TestOmSnapshot.class).info("xbis: status: " + response.getJobStatus());
-    } while (!response.getJobStatus().equals(QUEUED) &&
-        !response.getJobStatus().equals(IN_PROGRESS));
+    // Executing the command again will return CANCELED,
+    // until the job is picked up by the SnapshotDiffCleanupService
+    // and removed from the snapDiffJobTable.
+    response = store.snapshotDiff(volumeName,
+        bucketName, fromSnapName, toSnapName,
+        null, 0, false, true);
+    assertEquals(CANCELED, response.getJobStatus());
   }
 
   private SnapshotDiffReportOzone getSnapDiffReport(String volume,

@@ -35,23 +35,16 @@ import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
-import org.apache.ozone.test.GenericTestUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.rocksdb.RocksDBException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeoutException;
 
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.ONE;
 import static org.apache.hadoop.ozone.om.OmSnapshotManager.DELIMITER;
@@ -64,13 +57,10 @@ public class TestSnapshotDiffManager {
   @TempDir
   private static File metaDir;
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(TestSnapshotDiffManager.class);
   private static OzoneManager ozoneManager;
   private static OMMetadataManager omMetadataManager;
   private static SnapshotDiffManager snapshotDiffManager;
   private static PersistentMap<String, SnapshotDiffJob> snapDiffJobTable;
-  private static Map<String, Future<?>> snapDiffFutures;
 
   @BeforeAll
   public static void init() throws AuthenticationException,
@@ -86,27 +76,20 @@ public class TestSnapshotDiffManager {
     snapshotDiffManager = ozoneManager
         .getOmSnapshotManager().getSnapshotDiffManager();
     snapDiffJobTable = snapshotDiffManager.getSnapDiffJobTable();
-    snapDiffFutures = snapshotDiffManager.getSnapDiffFutures();
   }
 
   /**
    * Test Snapshot Diff job cancellation.
-   * JobStatus transitions for consecutive snapDiff
-   * executions should be:
-   * --
-   * 1st execution (the job is new, cancel is ignored)
-   * QUEUED -> IN_PROGRESS
-   * --
-   * 2nd execution (cancel = true)
-   * IN_PROGRESS -> CANCELED
-   * job removed from the table.
-   * --
-   * 3rd execution (new job)
-   * QUEUED -> IN_PROGRESS
+   * Cancel is ignored unless the job is IN_PROGRESS.
+   *
+   * Once a job is canceled, it stays in the table until
+   * SnapshotDiffCleanupService removes it.
+   *
+   * Job response until that happens, is CANCELED.
    */
   @Test
   public void testCanceledSnapshotDiffReport()
-      throws IOException, InterruptedException, TimeoutException {
+      throws IOException {
     String volumeName = "vol-" + RandomStringUtils.randomNumeric(5);
     String bucketName = "buck-" + RandomStringUtils.randomNumeric(5);
     String fromSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
@@ -117,8 +100,6 @@ public class TestSnapshotDiffManager {
 
     SnapshotDiffJob diffJob = snapDiffJobTable.get(diffJobKey);
     Assertions.assertNull(diffJob);
-
-    Assertions.assertFalse(snapDiffFutures.containsKey(diffJobKey));
 
     // This is a new job, cancel should be ignored.
     SnapshotDiffResponse snapshotDiffResponse = snapshotDiffManager
@@ -171,32 +152,6 @@ public class TestSnapshotDiffManager {
     // Status stored in the table should be CANCELED.
     Assertions.assertEquals(JobStatus.CANCELED,
         diffJob.getStatus());
-
-    // Wait until job is canceled and removed from the table.
-    GenericTestUtils.waitFor(() -> {
-      if (Objects.isNull(snapDiffJobTable.get(diffJobKey))) {
-        LOG.info("xbis: status: null");
-        return true;
-      } else {
-        LOG.info("xbis: status: " + snapDiffJobTable.get(diffJobKey).getStatus());
-        return false;
-      }
-        },
-        1000, 300000);
-
-    // Job should not exist in the table anymore.
-    Assertions.assertNull(snapDiffJobTable.get(diffJobKey));
-
-    // If the job is resubmitted, will be considered new.
-    snapshotDiffManager
-        .getSnapshotDiffReport(volumeName, bucketName,
-            fromSnapshotName, toSnapshotName,
-            0, 0, false, false);
-
-    // Job is stored again in the table as new.
-    Assertions.assertNotNull(snapDiffJobTable.get(diffJobKey));
-    Assertions.assertEquals(JobStatus.IN_PROGRESS,
-        snapDiffJobTable.get(diffJobKey).getStatus());
   }
 
   private String setUpSnapshotsAndGetSnapDiffKey(

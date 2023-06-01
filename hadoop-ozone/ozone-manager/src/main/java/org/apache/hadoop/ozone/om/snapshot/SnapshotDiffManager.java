@@ -48,10 +48,8 @@ import org.apache.hadoop.hdds.utils.NativeLibraryLoader;
 import org.apache.hadoop.hdds.utils.NativeLibraryNotLoadedException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -161,14 +159,6 @@ public class SnapshotDiffManager implements AutoCloseable {
   private ExecutorService sstDumpToolExecutor;
 
   /**
-   * Map that contains all jobs, that are in_progress and
-   * submitted to the ExecutorService, as well as
-   * the associated job key from the snapDiffJobTable.
-   */
-  private final Map<String, Future<?>> snapDiffFutures =
-      new ConcurrentHashMap<>();
-
-  /**
    * Directory to keep hardlinks of SST files for a snapDiff job temporarily.
    * It is to make sure that SST files don't get deleted for the in_progress
    * job/s as part of compaction DAG and SST file pruning
@@ -264,11 +254,6 @@ public class SnapshotDiffManager implements AutoCloseable {
   @VisibleForTesting
   public PersistentMap<String, SnapshotDiffJob> getSnapDiffJobTable() {
     return snapDiffJobTable;
-  }
-
-  @VisibleForTesting
-  public Map<String, Future<?>> getSnapDiffFutures() {
-    return snapDiffFutures;
   }
 
   private Optional<ManagedSSTDumpTool> initSSTDumpTool(
@@ -414,23 +399,14 @@ public class SnapshotDiffManager implements AutoCloseable {
     String snapDiffJobKey = fsInfo.getSnapshotID() + DELIMITER +
         tsInfo.getSnapshotID();
 
-    // Job will exist in snapDiffFutures only if it's IN_PROGRESS.
-    if (cancel && snapDiffFutures.containsKey(snapDiffJobKey)) {
-      Future<?> future = snapDiffFutures.get(snapDiffJobKey);
-      boolean success = future.cancel(true);
+    // Check if the job already exists in the table
+    // before getting report status.
+    if (cancel && Objects.nonNull(snapDiffJobTable.get(snapDiffJobKey)) &&
+    snapDiffJobTable.get(snapDiffJobKey).getStatus().equals(IN_PROGRESS)) {
+      LOG.info("Cancelling job with JobID: " +
+          snapDiffJobTable.get(snapDiffJobKey).getJobId());
 
-      if (success) {
-        LOG.info("Cancelling job with JobID: " +
-            snapDiffJobTable.get(snapDiffJobKey).getJobId());
-
-        // Check that JobStatus is still IN_PROGRESS
-        // and not updated to DONE or any other type
-        // of failure in the meantime.
-        if (snapDiffJobTable.get(snapDiffJobKey)
-            .getStatus().equals(IN_PROGRESS)) {
-          updateJobStatus(snapDiffJobKey, IN_PROGRESS, CANCELED);
-        }
-      }
+      updateJobStatus(snapDiffJobKey, IN_PROGRESS, CANCELED);
     }
 
     SnapshotDiffJob snapDiffJob = getSnapDiffReportStatus(snapDiffJobKey,
@@ -612,11 +588,10 @@ public class SnapshotDiffManager implements AutoCloseable {
     // If executor cannot take any more job, remove the job form DB and return
     // the Rejected Job status with wait time.
     try {
-      Future<?> snapDiffFuture = snapDiffExecutor.submit(() ->
-          generateSnapshotDiffReport(jobKey, jobId, volumeName,
-              bucketName, fromSnapshotName, toSnapshotName, forceFullDiff));
+      snapDiffExecutor.execute(() -> generateSnapshotDiffReport(jobKey, jobId,
+          volumeName, bucketName, fromSnapshotName, toSnapshotName,
+          forceFullDiff));
       updateJobStatus(jobKey, QUEUED, IN_PROGRESS);
-      snapDiffFutures.put(jobKey, snapDiffFuture);
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
@@ -802,34 +777,29 @@ public class SnapshotDiffManager implements AutoCloseable {
             validateSnapshotsAreActive(volumeName, bucketName,
                 fromSnapshotName, toSnapshotName);
 
-            long totalDiffEntries = generateDiffReport(jobId,
+            long totalDiffEntries = generateDiffReport(jobKey,
+                jobId,
                 objectIDsToCheckMap,
                 objectIdToKeyNameMapForFromSnapshot,
                 objectIdToKeyNameMapForToSnapshot);
-            if (!snapDiffJobTable.get(jobKey)
-                .getStatus().equals(CANCELED)) {
+            // If job is canceled, totalDiffEntries will be equal to -1.
+            if (totalDiffEntries >= 0 &&
+                !snapDiffJobTable.get(jobKey)
+                    .getStatus().equals(CANCELED)) {
               updateJobStatusToDone(jobKey, totalDiffEntries);
             }
             return null;
           }
       };
 
-      try {
-        for (Callable<Void> methodCall : methodCalls) {
-          if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedException();
-          }
-
-          methodCall.call();
+      for (Callable<Void> methodCall : methodCalls) {
+        if (snapDiffJobTable.get(jobKey).getStatus()
+            .equals(CANCELED)) {
+          return;
         }
-      } catch (InterruptedException exception) {
-        LOG.error("Job with jobID: " + jobId +
-            ", successfully canceled", exception);
-        snapDiffFutures.remove(jobKey);
-        // Remove from the table, so that the job can be re-submitted.
-        snapDiffJobTable.remove(jobKey);
-      }
 
+        methodCall.call();
+      }
     } catch (ExecutionException | IOException | RocksDBException exception) {
       updateJobStatus(jobKey, IN_PROGRESS, FAILED);
       LOG.error("Caught checked exception during diff report generation for " +
@@ -1055,11 +1025,12 @@ public class SnapshotDiffManager implements AutoCloseable {
   }
 
   private long generateDiffReport(
+      final String jobKey,
       final String jobId,
       final PersistentSet<byte[]> objectIDsToCheck,
       final PersistentMap<byte[], byte[]> oldObjIdToKeyMap,
       final PersistentMap<byte[], byte[]> newObjIdToKeyMap
-  ) throws InterruptedException {
+  ) {
 
     LOG.debug("Starting diff report generation for jobId: {}.", jobId);
     ColumnFamilyHandle deleteDiffColumnFamily = null;
@@ -1092,8 +1063,9 @@ public class SnapshotDiffManager implements AutoCloseable {
       try (ClosableIterator<byte[]>
                objectIdsIterator = objectIDsToCheck.iterator()) {
         while (objectIdsIterator.hasNext()) {
-          if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedException();
+          if (snapDiffJobTable.get(jobKey).getStatus()
+              .equals(CANCELED)) {
+            return -1L;
           }
 
           byte[] id = objectIdsIterator.next();
@@ -1268,7 +1240,6 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     snapshotDiffJob.setStatus(DONE);
     snapshotDiffJob.setTotalDiffEntries(totalNumberOfEntries);
-    snapDiffFutures.remove(jobKey);
     snapDiffJobTable.put(jobKey, snapshotDiffJob);
   }
 
