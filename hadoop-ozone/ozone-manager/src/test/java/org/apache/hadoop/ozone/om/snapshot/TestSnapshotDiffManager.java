@@ -64,7 +64,8 @@ public class TestSnapshotDiffManager {
   @TempDir
   private static File metaDir;
 
-  Logger LOG = LoggerFactory.getLogger(TestSnapshotDiffManager.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(TestSnapshotDiffManager.class);
   private static OzoneManager ozoneManager;
   private static OMMetadataManager omMetadataManager;
   private static SnapshotDiffManager snapshotDiffManager;
@@ -315,11 +316,10 @@ public class TestSnapshotDiffManager {
   }
 
   private OmKeyInfo createOmKeyInfo(String volumeName,
-                                       String bucketName,
-                                       long parentObjectId) {
+                                    String bucketName,
+                                    long parentObjectId) {
     String keyName = "key-" + RandomStringUtils.randomNumeric(5);
     long objectId = ThreadLocalRandom.current().nextLong(100);
-
 
     return new OmKeyInfo.Builder()
         .setVolumeName(volumeName)
