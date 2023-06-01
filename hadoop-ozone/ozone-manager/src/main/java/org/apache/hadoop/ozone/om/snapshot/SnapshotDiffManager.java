@@ -158,10 +158,15 @@ public class SnapshotDiffManager implements AutoCloseable {
    */
   private final PersistentMap<String, SnapshotDiffJob> snapDiffJobTable;
   private final ExecutorService snapDiffExecutor;
+  private ExecutorService sstDumpToolExecutor;
+
+  /**
+   * Map that contains all jobs, that are in_progress and
+   * submitted to the ExecutorService, as well as
+   * the associated job key from the snapDiffJobTable.
+   */
   private final Map<String, Future<?>> snapDiffFutures =
       new ConcurrentHashMap<>();
-
-  private ExecutorService sstDumpToolExecutor;
 
   /**
    * Directory to keep hardlinks of SST files for a snapDiff job temporarily.
@@ -863,7 +868,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       final PersistentMap<byte[], byte[]> newObjIdToKeyMap,
       final PersistentSet<byte[]> objectIDsToCheck,
       final String diffDir
-  ) throws IOException, RocksDBException, InterruptedException {
+  ) throws IOException, RocksDBException {
 
     List<String> tablesToLookUp = Collections.singletonList(fsTable.getName());
 
@@ -918,8 +923,7 @@ public class SnapshotDiffManager implements AutoCloseable {
                                 PersistentMap<byte[], byte[]> newObjIdToKeyMap,
                                 PersistentSet<byte[]> objectIDsToCheck,
                                 Map<String, String> tablePrefixes)
-      throws IOException, NativeLibraryNotLoadedException,
-      RocksDBException, InterruptedException {
+      throws IOException, NativeLibraryNotLoadedException, RocksDBException {
 
     if (deltaFiles.isEmpty()) {
       return;

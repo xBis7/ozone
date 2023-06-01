@@ -17,7 +17,6 @@
 package org.apache.hadoop.ozone.om.snapshot;
 
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
