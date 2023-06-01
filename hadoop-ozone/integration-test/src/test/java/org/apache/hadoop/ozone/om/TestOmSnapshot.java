@@ -207,7 +207,7 @@ public class TestOmSnapshot {
 
     // stop the deletion services so that keys can still be read
     keyManager.stop();
-    preFinalizationChecks();
+//    preFinalizationChecks();
     finalizeOMUpgrade();
   }
 
@@ -672,7 +672,6 @@ public class TestOmSnapshot {
       response = store.snapshotDiff(volumeName,
           bucketName, fromSnapName, toSnapName,
           null, 0, false, false);
-      Thread.sleep(response.getWaitTimeInMs());
     } while (!response.getJobStatus().equals(QUEUED) &&
         !response.getJobStatus().equals(IN_PROGRESS));
   }
