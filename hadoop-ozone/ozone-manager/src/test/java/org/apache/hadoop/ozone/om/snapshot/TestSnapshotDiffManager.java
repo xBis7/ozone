@@ -17,6 +17,7 @@
 package org.apache.hadoop.ozone.om.snapshot;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
@@ -41,6 +42,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.rocksdb.RocksDBException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -62,6 +65,7 @@ public class TestSnapshotDiffManager {
   @TempDir
   private static File metaDir;
 
+  Logger LOG = LoggerFactory.getLogger(TestSnapshotDiffManager.class);
   private static OzoneManager ozoneManager;
   private static OMMetadataManager omMetadataManager;
   private static SnapshotDiffManager snapshotDiffManager;
@@ -74,6 +78,7 @@ public class TestSnapshotDiffManager {
     OzoneConfiguration conf = new OzoneConfiguration();
     conf.set(OzoneConfigKeys.OZONE_METADATA_DIRS,
         metaDir.getAbsolutePath());
+
     OmTestManagers omTestManagers = new OmTestManagers(conf);
     ozoneManager = omTestManagers.getOzoneManager();
     omMetadataManager = omTestManagers.getMetadataManager();
@@ -168,8 +173,15 @@ public class TestSnapshotDiffManager {
         diffJob.getStatus());
 
     // Wait until job is canceled and removed from the table.
-    GenericTestUtils.waitFor(() ->
-            Objects.isNull(snapDiffJobTable.get(diffJobKey)),
+    GenericTestUtils.waitFor(() -> {
+      if (Objects.isNull(snapDiffJobTable.get(diffJobKey))) {
+        LOG.info("xbis: status: null");
+        return true;
+      } else {
+        LOG.info("xbis: status: " + snapDiffJobTable.get(diffJobKey).getStatus());
+        return false;
+      }
+        },
         1000, 300000);
 
     // Job should not exist in the table anymore.
