@@ -159,6 +159,7 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
 import org.apache.hadoop.util.JvmPauseMonitor;
+import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,6 +187,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.hadoop.hdds.HddsUtils.preserveThreadName;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_EVENT_REPORT_EXEC_WAIT_THRESHOLD_DEFAULT;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_EVENT_REPORT_QUEUE_WAIT_THRESHOLD_DEFAULT;
 import static org.apache.hadoop.hdds.security.x509.certificate.authority.CertificateStore.CertType.VALID_CERTS;
@@ -1077,16 +1079,16 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
       BlockingService instance,
       int handlerCount)
       throws IOException {
-    RPC.Server rpcServer =
-        new RPC.Builder(conf)
-            .setProtocol(protocol)
-            .setInstance(instance)
-            .setBindAddress(addr.getHostString())
-            .setPort(addr.getPort())
-            .setNumHandlers(handlerCount)
-            .setVerbose(false)
-            .setSecretManager(null)
-            .build();
+
+    RPC.Server rpcServer = preserveThreadName(() -> new RPC.Builder(conf)
+        .setProtocol(protocol)
+        .setInstance(instance)
+        .setBindAddress(addr.getHostString())
+        .setPort(addr.getPort())
+        .setNumHandlers(handlerCount)
+        .setVerbose(false)
+        .setSecretManager(null)
+        .build());
 
     HddsServerUtil.addPBProtocol(conf, protocol, instance, rpcServer);
     return rpcServer;
@@ -1538,20 +1540,15 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
 
       // Write the primary SCM CA and Root CA during startup.
       for (String cert : pemEncodedCerts) {
-        try {
-          X509Certificate x509Certificate =
-              CertificateCodec.getX509Certificate(cert);
-          if (certificateStore.getCertificateByID(
-              x509Certificate.getSerialNumber(), VALID_CERTS) == null) {
-            LOG.info("Persist certificate serialId {} on Scm Bootstrap Node " +
-                    "{}", x509Certificate.getSerialNumber(),
-                scmStorageConfig.getScmId());
-            certificateStore.storeValidScmCertificate(
-                x509Certificate.getSerialNumber(), x509Certificate);
-          }
-        } catch (CertificateException ex) {
-          LOG.error("Error while decoding CA Certificate", ex);
-          throw new IOException(ex);
+        X509Certificate x509Certificate = CertificateCodec.getX509Certificate(
+            cert, CertificateCodec::toIOException);
+        if (certificateStore.getCertificateByID(
+            x509Certificate.getSerialNumber(), VALID_CERTS) == null) {
+          LOG.info("Persist certificate serialId {} on Scm Bootstrap Node " +
+                  "{}", x509Certificate.getSerialNumber(),
+              scmStorageConfig.getScmId());
+          certificateStore.storeValidScmCertificate(
+              x509Certificate.getSerialNumber(), x509Certificate);
         }
       }
     }
@@ -2056,7 +2053,7 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
   }
 
   @Override
-  public String getScmRatisRoles() throws IOException {
+  public String getScmRatisRoles() {
     final SCMRatisServer server = getScmHAManager().getRatisServer();
     return server != null ?
         HddsUtils.format(server.getRatisRoles()) : "STANDALONE";
@@ -2148,24 +2145,41 @@ public final class StorageContainerManager extends ServiceRuntimeInfoImpl
 
   /**
    * This will remove the given SCM node from HA Ring by removing it from
-   * Ratis Ring and deleting the related certificates from certificate store.
+   * Ratis Ring.
    *
    * @return true if remove was successful, else false.
    */
-  public boolean removePeerFromHARing(RemoveSCMRequest request)
+  public boolean removePeerFromHARing(String scmId)
       throws IOException {
+
+    if (getScmHAManager().getRatisServer() == null) {
+      throw new IOException("Cannot remove SCM " +
+          scmId + " in a non-HA cluster");
+    }
+
     // We cannot remove a node if it's currently leader.
-    if (scmContext.isLeader() && request.getScmId().equals(getScmId())) {
+    if (scmContext.isLeader() && scmId.equals(getScmId())) {
       throw new IOException("Cannot remove current leader.");
     }
 
-    // Currently we don't support removal of primordial node.
-    if (request.getScmId().equals(primaryScmNodeId)) {
-      throw new IOException("Removal of primordial node is not supported.");
+    Preconditions.checkNotNull(getScmHAManager().getRatisServer()
+        .getDivision().getGroup());
+
+    // check valid scmid in ratis peers list
+    if (getScmHAManager().getRatisServer().getDivision()
+        .getGroup().getPeer(RaftPeerId.valueOf(scmId)) == null) {
+      throw new IOException("ScmId " + scmId +
+          " supplied for scm removal not in Ratis Peer list");
     }
 
-    // TODO: Remove the certificate from certificate store.
-    return scmHAManager.removeSCM(request);
+    // create removeSCM request
+    RemoveSCMRequest request = new RemoveSCMRequest(
+        getClusterId(), scmId,
+        getScmHAManager().getRatisServer().getDivision()
+            .getGroup().getPeer(RaftPeerId.valueOf(scmId))
+            .getAddress());
+
+    return getScmHAManager().removeSCM(request);
 
   }
 
