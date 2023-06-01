@@ -63,6 +63,7 @@ import org.apache.hadoop.ozone.om.protocol.S3Auth;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRoleInfo;
 import org.apache.hadoop.ozone.security.OzoneTokenIdentifier;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
+import org.apache.hadoop.ozone.snapshot.ListSnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.security.KerberosInfo;
 import org.apache.hadoop.security.token.Token;
@@ -1071,6 +1072,9 @@ public interface ClientProtocol {
                                     String token, int pageSize,
                                     boolean forceFullDiff)
       throws IOException;
+
+  ListSnapshotDiffResponse listSnapshotDiff(
+      String volumeName, String bucketName, String jobStatus);
 
   /**
    * Time to be set for given Ozone object. This operations updates modification

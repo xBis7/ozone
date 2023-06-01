@@ -45,6 +45,7 @@ import org.apache.hadoop.ozone.om.helpers.TenantUserInfoValue;
 import org.apache.hadoop.ozone.om.helpers.TenantUserList;
 import org.apache.hadoop.ozone.security.OzoneTokenIdentifier;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
+import org.apache.hadoop.ozone.snapshot.ListSnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -610,5 +611,10 @@ public class ObjectStore {
       throws IOException {
     return proxy.snapshotDiff(volumeName, bucketName, fromSnapshot, toSnapshot,
         token, pageSize, forceFullDiff);
+  }
+
+  public ListSnapshotDiffResponse listSnapshotDiff(
+      String volumeName, String bucketName, String jobStatus) {
+    return proxy.
   }
 }

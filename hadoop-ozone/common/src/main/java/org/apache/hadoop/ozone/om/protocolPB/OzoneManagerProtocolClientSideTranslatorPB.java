@@ -192,6 +192,7 @@ import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.security.proto.SecurityProtos.CancelDelegationTokenRequestProto;
 import org.apache.hadoop.ozone.security.proto.SecurityProtos.GetDelegationTokenRequestProto;
 import org.apache.hadoop.ozone.security.proto.SecurityProtos.RenewDelegationTokenRequestProto;
+import org.apache.hadoop.ozone.snapshot.ListSnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffReportOzone;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus;
@@ -1229,6 +1230,18 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
         diffResponse.getSnapshotDiffReport()),
         JobStatus.fromProtobuf(diffResponse.getJobStatus()),
         diffResponse.getWaitTimeInMs());
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public ListSnapshotDiffResponse listSnapshotDiff(String volumeName,
+                                                   String bucketName,
+                                                   String jobStatus) {
+
+    return new ListSnapshotDiffResponse("", "",
+        JobStatus.QUEUED, new ArrayList<>());
   }
 
   /**
