@@ -393,6 +393,9 @@ public class SnapshotDiffManager implements AutoCloseable {
             continue;
           }
 
+          // If provided job status is invalid,
+          // then all jobs on the table will be ignored.
+          // No need to check if getJobStatusFromString doesn't return null.
           if (snapshotDiffJob.getStatus().equals(
               JobStatus.getJobStatusFromString(jobStatus))) {
             jobList.add(snapshotDiffJob);

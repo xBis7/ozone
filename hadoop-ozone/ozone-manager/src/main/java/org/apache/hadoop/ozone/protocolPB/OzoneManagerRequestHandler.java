@@ -309,6 +309,7 @@ public class OzoneManagerRequestHandler implements RequestHandler {
         ListSnapshotDiffJobResponse listSnapDiffResponse =
             listSnapshotDiffJobs(request.getListSnapshotDiffJobRequest());
         responseBuilder.setListSnapshotDiffJobResponse(listSnapDiffResponse);
+        break;
       case EchoRPC:
         EchoRPCResponse echoRPCResponse =
             echoRPC(request.getEchoRPCRequest());
@@ -1254,7 +1255,6 @@ public class OzoneManagerRequestHandler implements RequestHandler {
 
   private ListSnapshotDiffJobResponse listSnapshotDiffJobs(
       ListSnapshotDiffJobRequest listSnapshotDiffJobRequest) {
-
     List<SnapshotDiffJob> snapshotDiffJobs =
         impl.listSnapshotDiffJobs(
             listSnapshotDiffJobRequest.getVolumeName(),

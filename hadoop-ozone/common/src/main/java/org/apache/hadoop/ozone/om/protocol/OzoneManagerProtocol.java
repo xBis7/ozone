@@ -725,6 +725,14 @@ public interface OzoneManagerProtocol
         "this to be implemented");
   }
 
+  /**
+   * Get a list of the SnapshotDiff jobs for a bucket based on the JobStatus.
+   * @param volumeName Name of the volume to which the snapshotted bucket belong
+   * @param bucketName Name of the bucket to which the snapshots belong
+   * @param jobStatus JobStatus to be used to filter the snapshot diff jobs
+   * @return a list of SnapshotDiffJob objects
+   * @throws IOException in case there is a failure while getting a response.
+   */
   default List<SnapshotDiffJob> listSnapshotDiffJobs(String volumeName,
                                                      String bucketName,
                                                      String jobStatus)

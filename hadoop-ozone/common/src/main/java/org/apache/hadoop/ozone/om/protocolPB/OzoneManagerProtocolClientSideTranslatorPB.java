@@ -1240,7 +1240,6 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
                                                     String bucketName,
                                                     String jobStatus)
       throws IOException {
-
     final OzoneManagerProtocolProtos
         .ListSnapshotDiffJobRequest.Builder requestBuilder =
         OzoneManagerProtocolProtos

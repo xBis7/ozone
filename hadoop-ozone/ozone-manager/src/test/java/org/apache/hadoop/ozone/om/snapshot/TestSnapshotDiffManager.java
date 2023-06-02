@@ -163,6 +163,11 @@ public class TestSnapshotDiffManager {
         .getSnapshotDiffJobList(VOLUME, BUCKET, "all");
     Assertions.assertTrue(jobList.contains(diffJob));
 
+    // Providing an invalid jobStatus results in an empty list.
+    jobList = snapshotDiffManager
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "invalid");
+    Assertions.assertTrue(jobList.isEmpty());
+
     // Set up new snapshots to submit a second snapshot diff job.
     String fromSnapshotName2 = "snap-" + RandomStringUtils.randomNumeric(5);
     String toSnapshotName2 = "snap-" + RandomStringUtils.randomNumeric(5);
