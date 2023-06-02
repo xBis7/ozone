@@ -58,8 +58,10 @@ import static org.apache.hadoop.ozone.om.OmSnapshotManager.DELIMITER;
  */
 public class TestSnapshotDiffManager {
 
-  private static File metaDir;
+  private static final String VOLUME = "vol";
+  private static final String BUCKET = "bucket";
 
+  private static File metaDir;
   private static OzoneManager ozoneManager;
   private static OMMetadataManager omMetadataManager;
   private static SnapshotDiffManager snapshotDiffManager;
@@ -83,6 +85,8 @@ public class TestSnapshotDiffManager {
     snapshotDiffManager = ozoneManager
         .getOmSnapshotManager().getSnapshotDiffManager();
     snapDiffJobTable = snapshotDiffManager.getSnapDiffJobTable();
+
+    createVolumeAndBucket();
   }
 
   @AfterAll
@@ -93,13 +97,13 @@ public class TestSnapshotDiffManager {
   @Test
   public void testListSnapshotDiffJobs()
       throws IOException {
-    String volumeName = "vol-" + RandomStringUtils.randomNumeric(5);
-    String bucketName = "buck-" + RandomStringUtils.randomNumeric(5);
     String fromSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
     String toSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
+    String fromSnapshotId = UUID.randomUUID().toString();
+    String toSnapshotId = UUID.randomUUID().toString();
 
-    String diffJobKey = setUpSnapshotsAndGetSnapDiffKey(
-        volumeName, bucketName, fromSnapshotName, toSnapshotName);
+    String diffJobKey = setUpKeysAndSnapshotsAndGetSnapDiffKey(
+        fromSnapshotName, fromSnapshotId, toSnapshotName, toSnapshotId);
 
     SnapshotDiffJob diffJob = snapDiffJobTable.get(diffJobKey);
     Assertions.assertNull(diffJob);
@@ -107,24 +111,24 @@ public class TestSnapshotDiffManager {
     // There are no jobs in the table, therefore
     // the response list should be empty.
     List<SnapshotDiffJob> jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "queued");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "queued");
     Assertions.assertTrue(jobList.isEmpty());
 
     jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "done");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "done");
     Assertions.assertTrue(jobList.isEmpty());
 
     jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "in_progress");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "in_progress");
     Assertions.assertTrue(jobList.isEmpty());
 
     jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "all");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "all");
     Assertions.assertTrue(jobList.isEmpty());
 
-    // Submitting a new job.
+    // Submit a job.
     SnapshotDiffResponse snapshotDiffResponse = snapshotDiffManager
-        .getSnapshotDiffReport(volumeName, bucketName,
+        .getSnapshotDiffReport(VOLUME, BUCKET,
             fromSnapshotName, toSnapshotName,
             0, 0, false);
 
@@ -141,72 +145,57 @@ public class TestSnapshotDiffManager {
 
     // Response list for 'queued' and 'done' should be empty.
     jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "queued");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "queued");
     Assertions.assertTrue(jobList.isEmpty());
 
     jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "done");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "done");
     Assertions.assertTrue(jobList.isEmpty());
 
     // SnapshotDiffJob in the response list should be the same
     // as the one we got from the table.
     jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "in_progress");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "in_progress");
     Assertions.assertTrue(jobList.contains(diffJob));
 
     jobList = snapshotDiffManager
-        .getSnapshotDiffJobList(volumeName, bucketName, "all");
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "all");
     Assertions.assertTrue(jobList.contains(diffJob));
+
+    // Set up new snapshots to submit a second snapshot diff job.
+    String fromSnapshotName2 = "snap-" + RandomStringUtils.randomNumeric(5);
+    String toSnapshotName2 = "snap-" + RandomStringUtils.randomNumeric(5);
+    String fromSnapshotId2 = UUID.randomUUID().toString();
+    String toSnapshotId2 = UUID.randomUUID().toString();
+
+    String diffJobKey2 = setUpKeysAndSnapshotsAndGetSnapDiffKey(
+        fromSnapshotName2, fromSnapshotId2, toSnapshotName2, toSnapshotId2);
+
+    // Submit a second job.
+    snapshotDiffManager.getSnapshotDiffReport(VOLUME, BUCKET,
+        fromSnapshotName2, toSnapshotName2, 0, 0, false);
+    SnapshotDiffJob diffJob2 = snapDiffJobTable.get(diffJobKey2);
+
+    jobList = snapshotDiffManager
+        .getSnapshotDiffJobList(VOLUME, BUCKET, "all");
+
+    Assertions.assertEquals(2, jobList.size());
+    Assertions.assertTrue(jobList.contains(diffJob2));
   }
 
-  private String setUpSnapshotsAndGetSnapDiffKey(
-      String volumeName, String bucketName,
-      String fromSnapshotName, String toSnapshotName)
+  private String setUpKeysAndSnapshotsAndGetSnapDiffKey(
+      String fromSnapshotName, String fromSnapshotId,
+      String toSnapshotName, String toSnapshotId)
       throws IOException {
-    UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
-    // Snapshot IDs.
-    String fromSnapshotId = UUID.randomUUID().toString();
-    String toSnapshotId = UUID.randomUUID().toString();
-
-    // Create volume and put it in VolumeTable.
-    OmVolumeArgs volumeArgs = OmVolumeArgs.newBuilder()
-        .setVolume(volumeName)
-        .setAdminName(ugi.getShortUserName())
-        .setOwnerName(ugi.getShortUserName())
-        .build();
-    String volumeKey = omMetadataManager
-        .getVolumeKey(volumeName);
-    omMetadataManager.getVolumeTable()
-        .addCacheEntry(new CacheKey<>(volumeKey),
-            CacheValue.get(1, volumeArgs));
-    omMetadataManager.getVolumeTable()
-        .put(volumeKey, volumeArgs);
-
-    // Create bucket and put it in BucketTable.
-    OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
-        .setVolumeName(volumeName)
-        .setBucketName(bucketName)
-        .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
-        .setOwner(ugi.getShortUserName())
-        .build();
-    String bucketKey = omMetadataManager
-        .getBucketKey(volumeName, bucketName);
-
-    omMetadataManager.getBucketTable()
-        .addCacheEntry(new CacheKey<>(bucketKey),
-            CacheValue.get(1, bucketInfo));
-    omMetadataManager.getBucketTable()
-        .put(bucketKey, bucketInfo);
-
     // Get IDs.
     long volumeId = omMetadataManager
-        .getVolumeId(volumeName);
+        .getVolumeId(VOLUME);
     long bucketId = omMetadataManager
-        .getBucketId(volumeName, bucketName);
+        .getBucketId(VOLUME, BUCKET);
 
     // Create 5 keys.
     for (int i = 0; i < 5; i++) {
-      OmKeyInfo omKeyInfo = createOmKeyInfo(volumeName, bucketName, bucketId);
+      OmKeyInfo omKeyInfo = createOmKeyInfo(bucketId);
       String tableKey = omMetadataManager.getOzonePathKey(volumeId,
           bucketId, bucketId, omKeyInfo.getFileName());
       omMetadataManager.getFileTable()
@@ -217,7 +206,7 @@ public class TestSnapshotDiffManager {
 
     // Create 1st snapshot and put it in SnapshotTable.
     SnapshotInfo fromSnapshotInfo = SnapshotInfo
-        .newInstance(volumeName, bucketName,
+        .newInstance(VOLUME, BUCKET,
             fromSnapshotName, fromSnapshotId,
             System.currentTimeMillis());
     fromSnapshotInfo.setSnapshotStatus(SnapshotInfo
@@ -227,7 +216,7 @@ public class TestSnapshotDiffManager {
 
     OmSnapshot omSnapshotFrom = new OmSnapshot(
         ozoneManager.getKeyManager(), ozoneManager.getPrefixManager(),
-        ozoneManager, volumeName, bucketName, fromSnapshotName);
+        ozoneManager, VOLUME, BUCKET, fromSnapshotName);
 
     ozoneManager.getOmSnapshotManager().getSnapshotCache()
         .put(fromSnapKey, omSnapshotFrom);
@@ -240,7 +229,7 @@ public class TestSnapshotDiffManager {
 
     // Create 20 keys.
     for (int i = 0; i < 20; i++) {
-      OmKeyInfo omKeyInfo = createOmKeyInfo(volumeName, bucketName, bucketId);
+      OmKeyInfo omKeyInfo = createOmKeyInfo(bucketId);
       String tableKey = omMetadataManager.getOzonePathKey(volumeId,
           bucketId, bucketId, omKeyInfo.getFileName());
       omMetadataManager.getFileTable()
@@ -251,7 +240,7 @@ public class TestSnapshotDiffManager {
 
     // Create 2nd snapshot and put it in SnapshotTable.
     SnapshotInfo toSnapshotInfo = SnapshotInfo
-        .newInstance(volumeName, bucketName,
+        .newInstance(VOLUME, BUCKET,
             toSnapshotName, toSnapshotId,
             System.currentTimeMillis());
     fromSnapshotInfo.setSnapshotStatus(SnapshotInfo
@@ -261,7 +250,7 @@ public class TestSnapshotDiffManager {
 
     OmSnapshot omSnapshotTo = new OmSnapshot(
         ozoneManager.getKeyManager(), ozoneManager.getPrefixManager(),
-        ozoneManager, volumeName, bucketName, toSnapshotName);
+        ozoneManager, VOLUME, BUCKET, toSnapshotName);
 
     ozoneManager.getOmSnapshotManager().getSnapshotCache()
         .put(toSnapKey, omSnapshotTo);
@@ -275,15 +264,46 @@ public class TestSnapshotDiffManager {
     return fromSnapshotId + DELIMITER + toSnapshotId;
   }
 
-  private OmKeyInfo createOmKeyInfo(String volumeName,
-                                    String bucketName,
-                                    long parentObjectId) {
+  private static void createVolumeAndBucket() throws IOException {
+    UserGroupInformation ugi = UserGroupInformation.getCurrentUser();
+    // Create volume and put it in VolumeTable.
+    OmVolumeArgs volumeArgs = OmVolumeArgs.newBuilder()
+        .setVolume(VOLUME)
+        .setAdminName(ugi.getShortUserName())
+        .setOwnerName(ugi.getShortUserName())
+        .build();
+    String volumeKey = omMetadataManager
+        .getVolumeKey(VOLUME);
+    omMetadataManager.getVolumeTable()
+        .addCacheEntry(new CacheKey<>(volumeKey),
+            CacheValue.get(1, volumeArgs));
+    omMetadataManager.getVolumeTable()
+        .put(volumeKey, volumeArgs);
+
+    // Create bucket and put it in BucketTable.
+    OmBucketInfo bucketInfo = OmBucketInfo.newBuilder()
+        .setVolumeName(VOLUME)
+        .setBucketName(BUCKET)
+        .setBucketLayout(BucketLayout.FILE_SYSTEM_OPTIMIZED)
+        .setOwner(ugi.getShortUserName())
+        .build();
+    String bucketKey = omMetadataManager
+        .getBucketKey(VOLUME, BUCKET);
+
+    omMetadataManager.getBucketTable()
+        .addCacheEntry(new CacheKey<>(bucketKey),
+            CacheValue.get(1, bucketInfo));
+    omMetadataManager.getBucketTable()
+        .put(bucketKey, bucketInfo);
+  }
+
+  private OmKeyInfo createOmKeyInfo(long parentObjectId) {
     String keyName = "key-" + RandomStringUtils.randomNumeric(5);
     long objectId = ThreadLocalRandom.current().nextLong(100);
 
     return new OmKeyInfo.Builder()
-        .setVolumeName(volumeName)
-        .setBucketName(bucketName)
+        .setVolumeName(VOLUME)
+        .setBucketName(BUCKET)
         .setKeyName(keyName)
         .setFileName(keyName)
         .setReplicationConfig(
