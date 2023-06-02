@@ -18,6 +18,7 @@
 package org.apache.hadoop.ozone.shell.snapshot;
 
 import org.apache.hadoop.ozone.client.OzoneClient;
+import org.apache.hadoop.ozone.om.helpers.SnapshotDiffJob;
 import org.apache.hadoop.ozone.shell.Handler;
 import org.apache.hadoop.ozone.shell.OzoneAddress;
 import org.apache.hadoop.ozone.shell.bucket.BucketUri;
@@ -25,6 +26,7 @@ import picocli.CommandLine;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * ozone sh snapshot listSnapshotDiff.
@@ -36,12 +38,12 @@ public class ListSnapshotDiffHandler extends Handler {
   @CommandLine.Mixin
   private BucketUri snapshotPath;
 
-  @CommandLine.Parameters(description = "list jobs based on status.\n" +
-      "Accepted values: in_progress, queued, all",
+  @CommandLine.Parameters(description = "List jobs based on status.",
       defaultValue = "in_progress")
   private String jobStatus;
 
-  private static final String[] STATUS_VALUES = {"queued", "in_progress", "all"};
+  private static final String[] STATUS_VALUES =
+      {"queued", "in_progress", "done", "failed", "rejected", "all"};
 
   @Override
   protected OzoneAddress getAddress() {
@@ -57,8 +59,15 @@ public class ListSnapshotDiffHandler extends Handler {
 
     if (Arrays.asList(STATUS_VALUES)
         .contains(jobStatus)) {
-//client.getObjectStore().listSnapshotDiff(volumeName, bucketName, jobStatus);
-      System.out.println("Provided job status: " + jobStatus);
+      List<SnapshotDiffJob> jobList = client.getObjectStore()
+          .listSnapshotDiffJobs(volumeName, bucketName, jobStatus);
+
+      int counter = printAsJsonArray(jobList.iterator(),
+          jobList.size());
+      if (isVerbose()) {
+        System.out.printf("Found : %d snapshot diff jobs for o3://%s/ %s ",
+            counter, volumeName, bucketName);
+      }
     } else {
       System.out.println("Invalid job status, accepted values are: " +
           Arrays.toString(STATUS_VALUES));
