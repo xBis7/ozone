@@ -998,8 +998,10 @@ public class RpcClient implements ClientProtocol {
   }
 
   @Override
-  public List<SnapshotDiffJob> listSnapshotDiffJobs(
-      String volumeName, String bucketName, String jobStatus) throws IOException {
+  public List<SnapshotDiffJob> listSnapshotDiffJobs(String volumeName,
+                                                    String bucketName,
+                                                    String jobStatus)
+      throws IOException {
     Preconditions.checkArgument(Strings.isNotBlank(volumeName),
         "volume can't be null or empty.");
     Preconditions.checkArgument(Strings.isNotBlank(bucketName),

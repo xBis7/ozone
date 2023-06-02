@@ -33,7 +33,6 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos
     .UpgradeFinalizationStatus;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ExcludeList;
 import org.apache.hadoop.hdds.tracing.TracingUtil;
-import org.apache.hadoop.hdfs.tools.snapshot.SnapshotDiff;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.ozone.ClientVersion;
 import org.apache.hadoop.ozone.OzoneAcl;
@@ -1237,8 +1236,10 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
    * {@inheritDoc}
    */
   @Override
-  public List<SnapshotDiffJob> listSnapshotDiffJobs(
-      String volumeName, String bucketName, String jobStatus) throws IOException {
+  public List<SnapshotDiffJob> listSnapshotDiffJobs(String volumeName,
+                                                    String bucketName,
+                                                    String jobStatus)
+      throws IOException {
 
     final OzoneManagerProtocolProtos
         .ListSnapshotDiffJobRequest.Builder requestBuilder =

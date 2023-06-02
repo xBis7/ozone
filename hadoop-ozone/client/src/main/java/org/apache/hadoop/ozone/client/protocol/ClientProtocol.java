@@ -1073,8 +1073,18 @@ public interface ClientProtocol {
                                     boolean forceFullDiff)
       throws IOException;
 
-  List<SnapshotDiffJob> listSnapshotDiffJobs(
-      String volumeName, String bucketName, String jobStatus) throws IOException;
+  /**
+   * Get a list of the SnapshotDiff jobs for a bucket based on the JobStatus.
+   * @param volumeName Name of the volume to which the snapshotted bucket belong
+   * @param bucketName Name of the bucket to which the snapshots belong
+   * @param jobStatus JobStatus to be used to filter the snapshot diff jobs
+   * @return a list of SnapshotDiffJob objects
+   * @throws IOException in case there is a failure while getting a response.
+   */
+  List<SnapshotDiffJob> listSnapshotDiffJobs(String volumeName,
+                                             String bucketName,
+                                             String jobStatus)
+      throws IOException;
 
   /**
    * Time to be set for given Ozone object. This operations updates modification
