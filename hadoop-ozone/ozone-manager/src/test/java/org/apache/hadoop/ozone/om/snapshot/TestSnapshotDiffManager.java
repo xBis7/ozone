@@ -101,9 +101,10 @@ public class TestSnapshotDiffManager {
     String toSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
     String fromSnapshotId = UUID.randomUUID().toString();
     String toSnapshotId = UUID.randomUUID().toString();
+    String diffJobKey = fromSnapshotId + DELIMITER + toSnapshotId;
 
-    String diffJobKey = setUpKeysAndSnapshotsAndGetSnapDiffKey(
-        fromSnapshotName, fromSnapshotId, toSnapshotName, toSnapshotId);
+    setUpKeysAndSnapshots(fromSnapshotName, toSnapshotName,
+        fromSnapshotId, toSnapshotId);
 
     SnapshotDiffJob diffJob = snapDiffJobTable.get(diffJobKey);
     Assertions.assertNull(diffJob);
@@ -167,9 +168,10 @@ public class TestSnapshotDiffManager {
     String toSnapshotName2 = "snap-" + RandomStringUtils.randomNumeric(5);
     String fromSnapshotId2 = UUID.randomUUID().toString();
     String toSnapshotId2 = UUID.randomUUID().toString();
+    String diffJobKey2 = fromSnapshotId2 + DELIMITER + toSnapshotId2;
 
-    String diffJobKey2 = setUpKeysAndSnapshotsAndGetSnapDiffKey(
-        fromSnapshotName2, fromSnapshotId2, toSnapshotName2, toSnapshotId2);
+    setUpKeysAndSnapshots(fromSnapshotName2, toSnapshotName2,
+        fromSnapshotId2, toSnapshotId2);
 
     // Submit a second job.
     snapshotDiffManager.getSnapshotDiffReport(VOLUME, BUCKET,
@@ -183,9 +185,10 @@ public class TestSnapshotDiffManager {
     Assertions.assertTrue(jobList.contains(diffJob2));
   }
 
-  private String setUpKeysAndSnapshotsAndGetSnapDiffKey(
-      String fromSnapshotName, String fromSnapshotId,
-      String toSnapshotName, String toSnapshotId)
+  private void setUpKeysAndSnapshots(String fromSnapshotName,
+                                     String toSnapshotName,
+                                     String fromSnapshotId,
+                                     String toSnapshotId)
       throws IOException {
     // Get IDs.
     long volumeId = omMetadataManager
@@ -260,8 +263,6 @@ public class TestSnapshotDiffManager {
             CacheValue.get(1, toSnapshotInfo));
     omMetadataManager
         .getSnapshotInfoTable().put(toSnapKey, toSnapshotInfo);
-
-    return fromSnapshotId + DELIMITER + toSnapshotId;
   }
 
   private static void createVolumeAndBucket() throws IOException {
