@@ -388,28 +388,19 @@ public class SnapshotDiffManager implements AutoCloseable {
         SnapshotDiffJob snapshotDiffJob = iterator.next().getValue();
         if (snapshotDiffJob.getVolume().equals(volumeName) &&
             snapshotDiffJob.getBucket().equals(bucketName)) {
-          if (jobStatus.equals("all")) {
+          if (jobStatus.equalsIgnoreCase("all")) {
             jobList.add(snapshotDiffJob);
             continue;
           }
 
-          if (snapshotDiffJob.getStatus()
-              .equals(getJobStatusFromString(jobStatus))) {
+          if (snapshotDiffJob.getStatus().equals(
+              JobStatus.getJobStatusFromString(jobStatus))) {
             jobList.add(snapshotDiffJob);
           }
         }
       }
     }
     return jobList;
-  }
-
-  private JobStatus getJobStatusFromString(String jobStatus) {
-    for (JobStatus status : JobStatus.values()) {
-      if (status.toString().equals(jobStatus.toUpperCase())) {
-        return status;
-      }
-    }
-    return null;
   }
 
   public SnapshotDiffResponse getSnapshotDiffReport(

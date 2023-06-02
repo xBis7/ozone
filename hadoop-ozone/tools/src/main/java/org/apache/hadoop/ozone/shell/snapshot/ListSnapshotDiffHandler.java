@@ -38,7 +38,8 @@ public class ListSnapshotDiffHandler extends Handler {
   @CommandLine.Mixin
   private BucketUri snapshotPath;
 
-  @CommandLine.Parameters(description = "List jobs based on status.",
+  @CommandLine.Parameters(description = "List jobs based on status.\n" +
+      "Accepted values are: queued, in_progress, done, failed, rejected, all",
       defaultValue = "in_progress")
   private String jobStatus;
 
@@ -59,8 +60,9 @@ public class ListSnapshotDiffHandler extends Handler {
 
     if (Arrays.asList(STATUS_VALUES)
         .contains(jobStatus)) {
-      List<SnapshotDiffJob> jobList = client.getObjectStore()
-          .listSnapshotDiffJobs(volumeName, bucketName, jobStatus);
+      List<SnapshotDiffJob> jobList =
+          client.getObjectStore().listSnapshotDiffJobs(
+              volumeName, bucketName, jobStatus);
 
       int counter = printAsJsonArray(jobList.iterator(),
           jobList.size());
