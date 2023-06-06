@@ -375,8 +375,7 @@ public class MissingContainerCleanupService extends BackgroundService {
           .append("/keys");
       String containerKeysResponse = "";
       try {
-        containerKeysResponse = makeHttpCall(urlBuilder,
-            isHTTPSEnabled());
+        containerKeysResponse = makeHttpCall(urlBuilder);
       } catch (Exception e) {
         LOG.error("Error getting container keys response from Recon");
       }
@@ -398,14 +397,14 @@ public class MissingContainerCleanupService extends BackgroundService {
           new TypeReference<List<ContainerKey>>() { });
     }
 
-    private String makeHttpCall(StringBuilder url,
-                                      boolean isSpnegoEnabled)
+    private String makeHttpCall(StringBuilder url)
         throws Exception {
 
       System.out.println("Connecting to Recon: " + url + " ...");
       final URLConnectionFactory connectionFactory =
           URLConnectionFactory.newDefaultURLConnectionFactory(conf);
 
+      boolean isSpnegoEnabled = isHTTPSEnabled();
       HttpURLConnection httpURLConnection;
 
       try {

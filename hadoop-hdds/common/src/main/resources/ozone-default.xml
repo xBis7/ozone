@@ -3319,6 +3319,34 @@
   </property>
 
   <property>
+    <name>ozone.container.cleanup.service.interval</name>
+    <value>60s</value>
+    <tag>OZONE, OM, PERFORMANCE</tag>
+    <description>
+      The time interval between successive
+      MissingContainerCleanupService thread runs.
+    </description>
+  </property>
+
+  <property>
+    <name>ozone.container.cleanup.service.timeout</name>
+    <value>300s</value>
+    <tag>OZONE, OM, PERFORMANCE</tag>
+    <description>
+      Timeout value for MissingContainerCleanupService.
+    </description>
+  </property>
+
+  <property>
+    <name>ozone.missing.container.deleting.limit.per.task</name>
+    <value>1000</value>
+    <tag>OZONE, OM, PERFORMANCE</tag>
+    <description>
+      Limit on how many containers can be cleaned up per task.
+    </description>
+  </property>
+
+  <property>
     <name>ozone.scm.event.ContainerReport.thread.pool.size</name>
     <value>10</value>
     <tag>OZONE, SCM</tag>

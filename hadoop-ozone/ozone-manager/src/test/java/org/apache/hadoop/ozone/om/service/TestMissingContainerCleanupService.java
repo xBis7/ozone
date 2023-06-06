@@ -181,10 +181,8 @@ public class TestMissingContainerCleanupService {
             .getDeletedContainerCount() > currentDeletedContainerCount,
         100, 1000);
 
-    // Key should no longer exist in RocksDB.
-    Assertions.assertNull(omMetadataManager
-        .getKeyTable(bucketLayout)
-        .getIfExist(key));
+    // We can't test KeyTable and FileTable because
+    // we need to set up a running Recon instance for that.
 
     // The container should no longer exist in MissingContainerTable.
     Assertions.assertNull(omMetadataManager
