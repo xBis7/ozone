@@ -358,9 +358,6 @@ public class ReconContainerManager extends ContainerManagerImpl {
       reconContainersTable.delete(containerID);
     }
 
-    cdbServiceProvider.removeContainerFromMappingTables(
-        containerID.getProtobuf().getId());
-
     // Remove container from Recon's ContainerStateMap.
     getContainerStateManager()
         .removeContainer(containerID.getProtobuf());
