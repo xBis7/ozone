@@ -438,6 +438,7 @@ public class TestReconContainerMetadataManagerImpl {
     // containerId1 has 2 key prefixes.
     assertEquals(2, reconContainerMetadataManager
         .getKeyPrefixesForContainer(containerId1).size());
+
     // containerId2 has 1 key prefix.
     assertEquals(1, reconContainerMetadataManager
         .getKeyPrefixesForContainer(containerId2).size());

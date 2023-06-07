@@ -537,11 +537,11 @@ public class ReconContainerMetadataManagerImpl
       Map<ContainerKeyPrefix, Integer> keyPrefixesMap =
           getKeyPrefixesForContainer(containerID);
       for (ContainerKeyPrefix keyPrefix : keyPrefixesMap.keySet()) {
-        // Deleting from containerKeyTable
-        containerKeyTable.deleteWithBatch(batchOperation, keyPrefix);
         // Deleting from keyContainerTable
         keyContainerTable.deleteWithBatch(batchOperation,
             keyPrefix.toKeyPrefixContainer());
+        // Deleting from containerKeyTable
+        containerKeyTable.deleteWithBatch(batchOperation, keyPrefix);
       }
       commitBatchOperation(batchOperation);
     }
@@ -569,6 +569,16 @@ public class ReconContainerMetadataManagerImpl
   @Override
   public TableIterator getKeyContainerTableIterator() throws IOException {
     return keyContainerTable.iterator();
+  }
+
+  @Override
+  public Table<ContainerKeyPrefix, Integer> getContainerKeyTable() {
+    return containerKeyTable;
+  }
+
+  @Override
+  public Table<KeyPrefixContainer, Integer> getKeyContainerTable() {
+    return keyContainerTable;
   }
 
   /**

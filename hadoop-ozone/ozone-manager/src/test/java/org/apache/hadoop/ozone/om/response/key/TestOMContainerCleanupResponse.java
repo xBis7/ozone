@@ -94,10 +94,10 @@ public class TestOMContainerCleanupResponse {
     try (TableIterator<Long,
         ? extends Table.KeyValue<Long, ContainerInfo>> iterator =
              omMetadataManager.getMissingContainerTable().iterator()) {
-      while(iterator.hasNext()) {
-        long containerId = iterator.next().getKey();
+      while (iterator.hasNext()) {
+        long id = iterator.next().getKey();
         omMetadataManager.getMissingContainerTable()
-            .deleteWithBatch(batchOperation, containerId);
+            .deleteWithBatch(batchOperation, id);
       }
       omMetadataManager.getStore()
           .commitBatchOperation(batchOperation);
