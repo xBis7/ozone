@@ -23,6 +23,8 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.utils.db.BatchOperation;
+import org.apache.hadoop.hdds.utils.db.Table;
+import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
@@ -31,6 +33,7 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CleanupContainerResponse;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,6 +86,25 @@ public class TestOMContainerCleanupResponse {
         .setStatus(Status.OK)
         .setSuccess(true)
         .setCmdType(Type.CleanupContainer);
+  }
+
+  @AfterEach
+  public void cleanUp() throws IOException {
+    // Clean up the table after each test.
+    try (TableIterator<Long,
+        ? extends Table.KeyValue<Long, ContainerInfo>> iterator =
+             omMetadataManager.getMissingContainerTable().iterator()) {
+      while(iterator.hasNext()) {
+        long containerId = iterator.next().getKey();
+        omMetadataManager.getMissingContainerTable()
+            .deleteWithBatch(batchOperation, containerId);
+      }
+      omMetadataManager.getStore()
+          .commitBatchOperation(batchOperation);
+    }
+
+    Assertions.assertTrue(omMetadataManager
+        .getMissingContainerTable().isEmpty());
   }
 
   @Test
