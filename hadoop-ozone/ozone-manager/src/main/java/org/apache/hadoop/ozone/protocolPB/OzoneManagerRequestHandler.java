@@ -1236,7 +1236,8 @@ public class OzoneManagerRequestHandler implements RequestHandler {
 
     SnapshotDiffResponse.Builder builder = SnapshotDiffResponse.newBuilder()
         .setJobStatus(response.getJobStatus().toProtobuf())
-        .setWaitTimeInMs(response.getWaitTimeInMs());
+        .setWaitTimeInMs(response.getWaitTimeInMs())
+        .setCancelStatus(response.getCancelStatus().toProtobuf());
 
     if (response.getSnapshotDiffReport() != null) {
       builder.setSnapshotDiffReport(

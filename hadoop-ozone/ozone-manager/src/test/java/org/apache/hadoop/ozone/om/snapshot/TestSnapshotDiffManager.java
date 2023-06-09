@@ -120,30 +120,41 @@ public class TestSnapshotDiffManager {
     SnapshotDiffJob diffJob = snapDiffJobTable.get(diffJobKey);
     Assertions.assertNull(diffJob);
 
-    // This is a new job, cancel should be ignored.
-    SnapshotDiffResponse snapshotDiffResponse = snapshotDiffManager
-        .getSnapshotDiffReport(VOLUME, BUCKET,
+    // This is a new job, cancel should fail.
+    SnapshotDiffResponse snapshotDiffResponse = ozoneManager
+        .snapshotDiff(VOLUME, BUCKET,
             fromSnapshotName, toSnapshotName,
-            0, 0, false, true);
+            null, 0, false, true);
 
-    // Response should be IN_PROGRESS
+    Assertions.assertEquals(
+        SnapshotDiffResponse.CancelStatus.NEW_JOB,
+        snapshotDiffResponse.getCancelStatus());
+
+    // Response job status should be CANCEL_FAILED.
+    Assertions.assertEquals(JobStatus.CANCEL_FAILED,
+        snapshotDiffResponse.getJobStatus());
+
+    // Check snapDiffJobTable. Job should exist in the table.
+    diffJob = snapDiffJobTable.get(diffJobKey);
+    Assertions.assertNull(diffJob);
+
+    // Submit a new job.
+    snapshotDiffResponse = ozoneManager
+        .snapshotDiff(VOLUME, BUCKET,
+            fromSnapshotName, toSnapshotName,
+            null, 0, false, false);
+
+    // Response job status should be IN_PROGRESS.
     Assertions.assertEquals(JobStatus.IN_PROGRESS,
         snapshotDiffResponse.getJobStatus());
 
-    // Check snapDiffJobTable.
-    diffJob = snapDiffJobTable.get(diffJobKey);
-    Assertions.assertNotNull(diffJob);
-    // Status stored in the table should be IN_PROGRESS.
-    Assertions.assertEquals(JobStatus.IN_PROGRESS,
-        diffJob.getStatus());
-
-    // Job should be canceled.
-    snapshotDiffResponse = snapshotDiffManager
-        .getSnapshotDiffReport(VOLUME, BUCKET,
+    // Cancel the job.
+    snapshotDiffResponse = ozoneManager
+        .snapshotDiff(VOLUME, BUCKET,
             fromSnapshotName, toSnapshotName,
-            0, 0, false, true);
+            null, 0, false, true);
 
-    // Response should be CANCELED.
+    // Response job status should be CANCELED.
     Assertions.assertEquals(JobStatus.CANCELED,
         snapshotDiffResponse.getJobStatus());
 
@@ -159,7 +170,7 @@ public class TestSnapshotDiffManager {
     snapshotDiffResponse = snapshotDiffManager
         .getSnapshotDiffReport(VOLUME, BUCKET,
             fromSnapshotName, toSnapshotName,
-            0, 0, false, true);
+            0, 0, false);
 
     // Response should be CANCELED.
     Assertions.assertEquals(JobStatus.CANCELED,

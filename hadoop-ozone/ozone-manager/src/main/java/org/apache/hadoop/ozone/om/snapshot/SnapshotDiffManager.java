@@ -78,6 +78,7 @@ import org.apache.hadoop.ozone.snapshot.SnapshotDiffReportOzone;
 import org.apache.hadoop.util.ClosableIterator;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus;
+import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.CancelStatus;
 import org.apache.ozone.rocksdb.util.ManagedSstFileReader;
 import org.apache.ozone.rocksdb.util.RdbUtil;
 import org.apache.ozone.rocksdiff.DifferSnapshotInfo;
@@ -108,6 +109,7 @@ import static org.apache.hadoop.ozone.om.snapshot.SnapshotUtils.dropColumnFamily
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
 import static org.apache.hadoop.ozone.om.snapshot.SnapshotUtils.getSnapshotInfo;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCELED;
+import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCEL_FAILED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.DONE;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.FAILED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.IN_PROGRESS;
@@ -379,7 +381,54 @@ public class SnapshotDiffManager implements AutoCloseable {
         .getPath(), tablesToLookUp);
   }
 
-  @SuppressWarnings("parameternumber")
+  public SnapshotDiffResponse cancelSnapshotDiff(
+      final String volumeName,
+      final String bucketName,
+      final String fromSnapshotName,
+      final String toSnapshotName) throws IOException {
+    SnapshotInfo fsInfo = getSnapshotInfo(ozoneManager,
+        volumeName, bucketName, fromSnapshotName);
+    SnapshotInfo tsInfo = getSnapshotInfo(ozoneManager,
+        volumeName, bucketName, toSnapshotName);
+
+    String snapDiffJobKey = fsInfo.getSnapshotID() + DELIMITER +
+        tsInfo.getSnapshotID();
+
+    CancelStatus cancelStatus;
+    JobStatus jobStatus;
+
+    SnapshotDiffJob diffJob = snapDiffJobTable.get(snapDiffJobKey);
+
+    jobStatus = CANCEL_FAILED;
+
+    if (diffJob == null) {
+      cancelStatus = CancelStatus.NEW_JOB;
+    } else {
+      if (Objects.equals(diffJob.getStatus(), IN_PROGRESS)) {
+        updateJobStatus(snapDiffJobKey, IN_PROGRESS, CANCELED);
+        cancelStatus = CancelStatus.CANCEL_SUCCESS;
+        jobStatus = CANCELED;
+      } else if (Objects.equals(diffJob.getStatus(), CANCELED)) {
+        cancelStatus = CancelStatus.JOB_ALREADY_CANCELED;
+        jobStatus = CANCELED;
+      } else if (Objects.equals(diffJob.getStatus(), DONE)) {
+        cancelStatus = CancelStatus.JOB_DONE;
+      } else {
+        cancelStatus = CancelStatus.INVALID_STATUS_TRANSITION;
+      }
+    }
+
+    OFSPath snapshotRoot = getSnapshotRootPath(volumeName, bucketName);
+    SnapshotDiffReportOzone report = new SnapshotDiffReportOzone(
+        snapshotRoot.toString(), volumeName, bucketName,
+        fromSnapshotName, toSnapshotName, new ArrayList<>(), null);
+
+    // If cancel is a success then return SnapshotDiffReport.
+    // It will check the table and get that the job is canceled,
+    // and return the appropriate response.
+    return new SnapshotDiffResponse(report, jobStatus, 0L, cancelStatus);
+  }
+
   public SnapshotDiffResponse getSnapshotDiffReport(
       final String volumeName,
       final String bucketName,
@@ -387,8 +436,7 @@ public class SnapshotDiffManager implements AutoCloseable {
       final String toSnapshotName,
       final int index,
       final int pageSize,
-      final boolean forceFullDiff,
-      final boolean cancel
+      final boolean forceFullDiff
   ) throws IOException {
 
     SnapshotInfo fsInfo = getSnapshotInfo(ozoneManager,
@@ -398,16 +446,6 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     String snapDiffJobKey = fsInfo.getSnapshotID() + DELIMITER +
         tsInfo.getSnapshotID();
-
-    // Check if the job already exists in the table
-    // before getting report status.
-    if (cancel && Objects.nonNull(snapDiffJobTable.get(snapDiffJobKey)) &&
-        snapDiffJobTable.get(snapDiffJobKey).getStatus().equals(IN_PROGRESS)) {
-      LOG.info("Cancelling job with JobID: " +
-          snapDiffJobTable.get(snapDiffJobKey).getJobId());
-
-      updateJobStatus(snapDiffJobKey, IN_PROGRESS, CANCELED);
-    }
 
     SnapshotDiffJob snapDiffJob = getSnapDiffReportStatus(snapDiffJobKey,
         volumeName, bucketName, fromSnapshotName, toSnapshotName,
@@ -424,30 +462,35 @@ public class SnapshotDiffManager implements AutoCloseable {
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          IN_PROGRESS, defaultWaitTime);
+          IN_PROGRESS, defaultWaitTime,
+          CancelStatus.JOB_NOT_CANCELED);
     case FAILED:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          FAILED, defaultWaitTime);
+          FAILED, defaultWaitTime,
+          CancelStatus.JOB_NOT_CANCELED);
     case DONE:
       SnapshotDiffReportOzone report = createPageResponse(snapDiffJob,
           volumeName, bucketName, fromSnapshotName, toSnapshotName, index,
           pageSize);
-      return new SnapshotDiffResponse(report, DONE, 0L);
+      return new SnapshotDiffResponse(report, DONE, 0L,
+          CancelStatus.JOB_NOT_CANCELED);
     case REJECTED:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          REJECTED, defaultWaitTime);
+          REJECTED, defaultWaitTime,
+          CancelStatus.JOB_NOT_CANCELED);
     case CANCELED:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          CANCELED, 0L);
+          CANCELED, 0L,
+          CancelStatus.CANCEL_SUCCESS);
     default:
       throw new IllegalStateException("Unknown snapshot job status: " +
           snapDiffJob.getStatus());

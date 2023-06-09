@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -195,6 +196,7 @@ import org.apache.hadoop.ozone.security.proto.SecurityProtos.RenewDelegationToke
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffReportOzone;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus;
+import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.CancelStatus;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 import org.apache.hadoop.security.token.Token;
@@ -1227,10 +1229,20 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
     OzoneManagerProtocolProtos.SnapshotDiffResponse diffResponse =
         omResponse.getSnapshotDiffResponse();
 
-    return new SnapshotDiffResponse(SnapshotDiffReportOzone.fromProtobuf(
-        diffResponse.getSnapshotDiffReport()),
-        JobStatus.fromProtobuf(diffResponse.getJobStatus()),
-        diffResponse.getWaitTimeInMs());
+    if (Objects.equals(CancelStatus
+        .fromProtobuf(diffResponse.getCancelStatus()),
+        CancelStatus.JOB_NOT_CANCELED)) {
+      return new SnapshotDiffResponse(SnapshotDiffReportOzone.fromProtobuf(
+          diffResponse.getSnapshotDiffReport()),
+          JobStatus.fromProtobuf(diffResponse.getJobStatus()),
+          diffResponse.getWaitTimeInMs());
+    } else {
+      return new SnapshotDiffResponse(SnapshotDiffReportOzone.fromProtobuf(
+          diffResponse.getSnapshotDiffReport()),
+          JobStatus.fromProtobuf(diffResponse.getJobStatus()),
+          diffResponse.getWaitTimeInMs(),
+          CancelStatus.fromProtobuf(diffResponse.getCancelStatus()));
+    }
   }
 
   /**
