@@ -34,8 +34,7 @@ public class SnapshotDiffResponse {
     DONE,
     REJECTED,
     FAILED,
-    CANCELED,
-    CANCEL_FAILED;
+    CANCELED;
 
     public JobStatusProto toProtobuf() {
       return JobStatusProto.valueOf(this.name());
@@ -120,18 +119,20 @@ public class SnapshotDiffResponse {
   @Override
   public String toString() {
     StringBuilder str = new StringBuilder();
-    if (jobStatus == JobStatus.DONE) {
-      str.append(snapshotDiffReport.toString());
-    } else if (jobStatus == JobStatus.CANCEL_FAILED) {
+    if (cancelStatus == CancelStatus.JOB_NOT_CANCELED) {
+      if (jobStatus == JobStatus.DONE) {
+        str.append(snapshotDiffReport.toString());
+      } else {
+        str.append("Snapshot diff job is ");
+        str.append(jobStatus);
+        str.append("\n");
+        str.append("Please retry after ");
+        str.append(waitTimeInMs);
+        str.append(" ms.\n");
+      }
+    } else {
       str.append(cancelStatus.getDescription());
       str.append("\n");
-    } else {
-      str.append("Snapshot diff job is ");
-      str.append(jobStatus);
-      str.append("\n");
-      str.append("Please retry after ");
-      str.append(waitTimeInMs);
-      str.append(" ms.\n");
     }
     return str.toString();
   }

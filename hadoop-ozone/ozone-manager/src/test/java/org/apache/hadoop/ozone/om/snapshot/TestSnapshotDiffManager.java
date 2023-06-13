@@ -51,6 +51,7 @@ import org.apache.hadoop.ozone.om.helpers.WithObjectID;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffReportOzone;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus;
+import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.CancelStatus;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ozone.rocksdb.util.ManagedSstFileReader;
 import org.apache.ozone.rocksdb.util.RdbUtil;
@@ -62,7 +63,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Matchers;
 import org.mockito.Mock;
@@ -94,6 +97,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static org.apache.hadoop.ozone.om.OmSnapshotManager.DELIMITER;
 
@@ -629,16 +633,13 @@ public class TestSnapshotDiffManager {
   }
 
   /**
-   * Test Snapshot Diff job cancellation.
-   * Cancel is ignored unless the job is IN_PROGRESS.
-   *
    * Once a job is canceled, it stays in the table until
    * SnapshotDiffCleanupService removes it.
    *
    * Job response until that happens, is CANCELED.
    */
   @Test
-  public void testCanceledSnapshotDiffReport()
+  public void testGetSnapshotDiffReportForCanceledJob()
       throws IOException {
     SnapshotDiffManager snapshotDiffManager =
         getMockedSnapshotDiffManager(10);
@@ -664,52 +665,21 @@ public class TestSnapshotDiffManager {
     SnapshotDiffJob diffJob = snapDiffJobTable.get(diffJobKey);
     Assertions.assertNull(diffJob);
 
-    // This is a new job, cancel should be ignored.
-    SnapshotDiffResponse snapshotDiffResponse = ozoneManager
-        .snapshotDiff(volumeName, bucketName,
-            fromSnapshotName, toSnapshotName,
-            null, 0, false, true);
-
-    Assertions.assertEquals(JobStatus.IN_PROGRESS, null);
-    Assertions.assertEquals(SnapshotDiffResponse.CancelStatus.NEW_JOB,
-        snapshotDiffResponse.getCancelStatus());
-
-    // Response job status should be CANCEL_FAILED.
-    Assertions.assertEquals(JobStatus.CANCEL_FAILED,
-        snapshotDiffResponse.getJobStatus());
-
-    // Check snapDiffJobTable.
-    diffJob = snapDiffJobTable.get(diffJobKey);
-    Assertions.assertNotNull(diffJob);
-    Assertions.assertNull(diffJob);
-
     // Submit a new job.
-    snapshotDiffResponse = ozoneManager
-        .snapshotDiff(volumeName, bucketName,
+    SnapshotDiffResponse snapshotDiffResponse = snapshotDiffManager
+        .getSnapshotDiffReport(volumeName, bucketName,
             fromSnapshotName, toSnapshotName,
-            null, 0, false, false);
+            0, 0, false);
 
-    // Response job status should be IN_PROGRESS.
     Assertions.assertEquals(JobStatus.IN_PROGRESS,
-        diffJob.getStatus());
-
-    // Job should be canceled.
-    snapshotDiffResponse = ozoneManager
-        .snapshotDiff(volumeName, bucketName,
-            fromSnapshotName, toSnapshotName,
-            null, 0, false, true);
-
-    Assertions.assertEquals(JobStatus.CANCELED,
         snapshotDiffResponse.getJobStatus());
 
-    // Check snapDiffJobTable.
-    diffJob = snapDiffJobTable.get(diffJobKey);
-    Assertions.assertNotNull(diffJob);
-    Assertions.assertEquals(JobStatus.CANCELED,
-        diffJob.getStatus());
+    // Cancel the job.
+    snapshotDiffManager.cancelSnapshotDiff(volumeName, bucketName,
+        fromSnapshotName, toSnapshotName);
 
-    // Job hasn't been removed from the
-    // table yet and response should still be canceled.
+    // Job status should be canceled until the cleanup
+    // service removes the job from the table.
     snapshotDiffResponse = snapshotDiffManager
         .getSnapshotDiffReport(volumeName, bucketName,
             fromSnapshotName, toSnapshotName,
@@ -723,6 +693,85 @@ public class TestSnapshotDiffManager {
     Assertions.assertNotNull(diffJob);
     Assertions.assertEquals(JobStatus.CANCELED,
         diffJob.getStatus());
+
+    // Response should still be canceled.
+    snapshotDiffResponse = snapshotDiffManager
+        .getSnapshotDiffReport(volumeName, bucketName,
+            fromSnapshotName, toSnapshotName,
+            0, 0, false);
+
+    Assertions.assertEquals(JobStatus.CANCELED,
+        snapshotDiffResponse.getJobStatus());
+
+    // Check snapDiffJobTable.
+    diffJob = snapDiffJobTable.get(diffJobKey);
+    Assertions.assertNotNull(diffJob);
+    Assertions.assertEquals(JobStatus.CANCELED,
+        diffJob.getStatus());
+  }
+
+  private static Stream<Arguments> snapDiffCancelFailureScenarios() {
+    return Stream.of(
+        Arguments.of(JobStatus.IN_PROGRESS,
+            CancelStatus.CANCEL_SUCCESS, true),
+        Arguments.of(JobStatus.CANCELED,
+            CancelStatus.JOB_ALREADY_CANCELED, true),
+        Arguments.of(JobStatus.DONE,
+            CancelStatus.JOB_DONE, false),
+        Arguments.of(JobStatus.QUEUED,
+            CancelStatus.INVALID_STATUS_TRANSITION, false),
+        Arguments.of(JobStatus.FAILED,
+            CancelStatus.INVALID_STATUS_TRANSITION, false),
+        Arguments.of(JobStatus.REJECTED,
+            CancelStatus.INVALID_STATUS_TRANSITION, false)
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("snapDiffCancelFailureScenarios")
+  public void testCancelSnapshotDiffFailure(JobStatus jobStatus,
+                                            CancelStatus cancelStatus,
+                                            boolean jobIsCanceled)
+      throws IOException {
+    SnapshotDiffManager snapshotDiffManager =
+        getMockedSnapshotDiffManager(10);
+
+    String volumeName = "vol-" + RandomStringUtils.randomNumeric(5);
+    String bucketName = "bucket-" + RandomStringUtils.randomNumeric(5);
+
+    String fromSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
+    String toSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
+
+    UUID fromSnapshotUUID = UUID.randomUUID();
+    UUID toSnapshotUUID = UUID.randomUUID();
+
+    setupMocksForRunningASnapDiff(volumeName, bucketName);
+
+    setUpSnapshots(volumeName, bucketName, fromSnapshotName,
+        toSnapshotName, fromSnapshotUUID, toSnapshotUUID);
+
+    PersistentMap<String, SnapshotDiffJob> snapDiffJobTable =
+        snapshotDiffManager.getSnapDiffJobTable();
+    String diffJobKey = fromSnapshotUUID + DELIMITER + toSnapshotUUID;
+
+    String jobId = UUID.randomUUID().toString();
+    SnapshotDiffJob snapshotDiffJob = new SnapshotDiffJob(0L,
+        jobId, jobStatus, volumeName, bucketName,
+        fromSnapshotName, toSnapshotName, true, 10);
+
+    snapDiffJobTable.put(diffJobKey, snapshotDiffJob);
+
+    SnapshotDiffResponse snapshotDiffResponse = snapshotDiffManager
+        .cancelSnapshotDiff(volumeName, bucketName,
+            fromSnapshotName, toSnapshotName);
+
+    Assertions.assertEquals(cancelStatus,
+        snapshotDiffResponse.getCancelStatus());
+
+    if (jobIsCanceled) {
+      Assertions.assertEquals(JobStatus.CANCELED,
+          snapshotDiffResponse.getJobStatus());
+    }
   }
 
   private void setUpSnapshots(String volumeName, String bucketName,

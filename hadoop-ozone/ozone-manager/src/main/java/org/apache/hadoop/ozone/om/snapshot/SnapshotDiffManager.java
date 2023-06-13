@@ -106,7 +106,6 @@ import static org.apache.hadoop.ozone.om.snapshot.SnapshotUtils.dropColumnFamily
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_URI_DELIMITER;
 import static org.apache.hadoop.ozone.om.snapshot.SnapshotUtils.getSnapshotInfo;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCELED;
-import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.CANCEL_FAILED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.DONE;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.FAILED;
 import static org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse.JobStatus.IN_PROGRESS;
@@ -386,31 +385,28 @@ public class SnapshotDiffManager implements AutoCloseable {
     SnapshotInfo tsInfo = getSnapshotInfo(ozoneManager,
         volumeName, bucketName, toSnapshotName);
 
-    String snapDiffJobKey = fsInfo.getSnapshotID() + DELIMITER +
-        tsInfo.getSnapshotID();
+    String snapDiffJobKey = fsInfo.getSnapshotId() + DELIMITER +
+        tsInfo.getSnapshotId();
 
-    CancelStatus cancelStatus;
     JobStatus jobStatus;
-
+    CancelStatus cancelStatus;
     SnapshotDiffJob diffJob = snapDiffJobTable.get(snapDiffJobKey);
-
-    jobStatus = CANCEL_FAILED;
 
     if (diffJob == null) {
       cancelStatus = CancelStatus.NEW_JOB;
+      jobStatus = QUEUED;
     } else {
       if (Objects.equals(diffJob.getStatus(), IN_PROGRESS)) {
         updateJobStatus(snapDiffJobKey, IN_PROGRESS, CANCELED);
         cancelStatus = CancelStatus.CANCEL_SUCCESS;
-        jobStatus = CANCELED;
       } else if (Objects.equals(diffJob.getStatus(), CANCELED)) {
         cancelStatus = CancelStatus.JOB_ALREADY_CANCELED;
-        jobStatus = CANCELED;
       } else if (Objects.equals(diffJob.getStatus(), DONE)) {
         cancelStatus = CancelStatus.JOB_DONE;
       } else {
         cancelStatus = CancelStatus.INVALID_STATUS_TRANSITION;
       }
+      jobStatus = diffJob.getStatus();
     }
 
     OFSPath snapshotRoot = getSnapshotRootPath(volumeName, bucketName);
