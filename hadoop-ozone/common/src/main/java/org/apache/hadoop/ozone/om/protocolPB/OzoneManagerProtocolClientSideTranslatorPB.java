@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -1243,20 +1242,11 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
     OzoneManagerProtocolProtos.SnapshotDiffResponse diffResponse =
         omResponse.getSnapshotDiffResponse();
 
-    if (Objects.equals(CancelStatus
-        .fromProtobuf(diffResponse.getCancelStatus()),
-        CancelStatus.JOB_NOT_CANCELED)) {
-      return new SnapshotDiffResponse(SnapshotDiffReportOzone.fromProtobuf(
-          diffResponse.getSnapshotDiffReport()),
-          JobStatus.fromProtobuf(diffResponse.getJobStatus()),
-          diffResponse.getWaitTimeInMs());
-    } else {
-      return new SnapshotDiffResponse(SnapshotDiffReportOzone.fromProtobuf(
-          diffResponse.getSnapshotDiffReport()),
-          JobStatus.fromProtobuf(diffResponse.getJobStatus()),
-          diffResponse.getWaitTimeInMs(),
-          CancelStatus.fromProtobuf(diffResponse.getCancelStatus()));
-    }
+    return new SnapshotDiffResponse(SnapshotDiffReportOzone.fromProtobuf(
+        diffResponse.getSnapshotDiffReport()),
+        JobStatus.fromProtobuf(diffResponse.getJobStatus()),
+        diffResponse.getWaitTimeInMs(),
+        CancelStatus.fromProtobuf(diffResponse.getCancelStatus()));
   }
 
   /**

@@ -515,15 +515,31 @@ public class TestSnapshotDiffManager {
       String bucketName = "buck";
       String fromSnapName = "fs";
       String toSnapName = "ts";
+      UUID fromSnapId = UUID.randomUUID();
+      UUID toSnapId = UUID.randomUUID();
+
       SnapshotDiffManager snapshotDiffManager =
           getMockedSnapshotDiffManager(10);
+
+      setupMocksForRunningASnapDiff(volumeName, bucketName);
+      setUpSnapshots(volumeName, bucketName,
+          fromSnapName, toSnapName, fromSnapId, toSnapId);
+      String jobKey = fromSnapId + DELIMITER + toSnapId;
+
+      SnapshotDiffJob snapshotDiffJob = new SnapshotDiffJob(0, "jobId",
+          JobStatus.IN_PROGRESS, volumeName,
+          bucketName, fromSnapName, toSnapName,
+          true, diffMap.size());
+
+      snapshotDiffManager.getSnapDiffJobTable().put(jobKey, snapshotDiffJob);
+
       snapshotDiffManager.generateDiffReport("jobId",
           objectIdsToCheck, oldObjectIdKeyMap, newObjectIdKeyMap,
           volumeName, bucketName, fromSnapName, toSnapName);
-      SnapshotDiffJob snapshotDiffJob = new SnapshotDiffJob(0, "jobId",
-          SnapshotDiffResponse.JobStatus.DONE, volumeName,
-          bucketName, fromSnapName, toSnapName,
-          true, diffMap.size());
+
+      snapshotDiffJob.setStatus(JobStatus.DONE);
+      snapshotDiffManager.getSnapDiffJobTable().put(jobKey, snapshotDiffJob);
+
       SnapshotDiffReportOzone snapshotDiffReportOzone =
           snapshotDiffManager.createPageResponse(snapshotDiffJob, volumeName,
           bucketName, fromSnapName, toSnapName,
@@ -776,6 +792,36 @@ public class TestSnapshotDiffManager {
       Assertions.assertEquals(JobStatus.CANCELED,
           snapshotDiffResponse.getJobStatus());
     }
+  }
+
+  @Test
+  public void testCancelNewSnapshotDiff()
+      throws IOException {
+    SnapshotDiffManager snapshotDiffManager =
+        getMockedSnapshotDiffManager(10);
+
+    String volumeName = "vol-" + RandomStringUtils.randomNumeric(5);
+    String bucketName = "bucket-" + RandomStringUtils.randomNumeric(5);
+
+    String fromSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
+    String toSnapshotName = "snap-" + RandomStringUtils.randomNumeric(5);
+
+    UUID fromSnapshotUUID = UUID.randomUUID();
+    UUID toSnapshotUUID = UUID.randomUUID();
+
+    setupMocksForRunningASnapDiff(volumeName, bucketName);
+
+    setUpSnapshots(volumeName, bucketName, fromSnapshotName,
+        toSnapshotName, fromSnapshotUUID, toSnapshotUUID);
+
+    SnapshotDiffResponse snapshotDiffResponse = snapshotDiffManager
+        .cancelSnapshotDiff(volumeName, bucketName,
+            fromSnapshotName, toSnapshotName);
+
+    // The job doesn't exist on the SnapDiffJob table and
+    // trying to cancel it should lead to NEW_JOB cancel status.
+    Assertions.assertEquals(CancelStatus.NEW_JOB,
+        snapshotDiffResponse.getCancelStatus());
   }
 
   private void setUpSnapshots(String volumeName, String bucketName,

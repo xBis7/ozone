@@ -394,6 +394,9 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     if (diffJob == null) {
       cancelStatus = CancelStatus.NEW_JOB;
+      // JobStatus is needed to send a response back to the client.
+      // JobStatus can't be null, so set it to QUEUED.
+      // This won't be printed as part of the response.
       jobStatus = QUEUED;
     } else {
       if (Objects.equals(diffJob.getStatus(), IN_PROGRESS)) {
@@ -406,7 +409,9 @@ public class SnapshotDiffManager implements AutoCloseable {
       } else {
         cancelStatus = CancelStatus.INVALID_STATUS_TRANSITION;
       }
-      jobStatus = diffJob.getStatus();
+      // Get again the status from the table
+      // in case it's updated to CANCELED.
+      jobStatus = snapDiffJobTable.get(snapDiffJobKey).getStatus();
     }
 
     OFSPath snapshotRoot = getSnapshotRootPath(volumeName, bucketName);

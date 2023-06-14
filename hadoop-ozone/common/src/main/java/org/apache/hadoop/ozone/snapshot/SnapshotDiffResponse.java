@@ -54,7 +54,7 @@ public class SnapshotDiffResponse {
     JOB_DONE("Job is DONE, cancel failed"),
     INVALID_STATUS_TRANSITION("Job is not IN_PROGRESS, cancel failed"),
     JOB_ALREADY_CANCELED("Job has already been canceled"),
-    CANCEL_SUCCESS("Job is successfully canceled");
+    CANCEL_SUCCESS("Job has successfully been canceled");
 
     private final String description;
 
@@ -119,7 +119,8 @@ public class SnapshotDiffResponse {
   @Override
   public String toString() {
     StringBuilder str = new StringBuilder();
-    if (cancelStatus == CancelStatus.JOB_NOT_CANCELED) {
+    if (cancelStatus == CancelStatus.JOB_NOT_CANCELED ||
+        cancelStatus == CancelStatus.CANCEL_SUCCESS) {
       if (jobStatus == JobStatus.DONE) {
         str.append(snapshotDiffReport.toString());
       } else {
