@@ -216,7 +216,7 @@ public class TestOmSnapshot {
 
     // stop the deletion services so that keys can still be read
     keyManager.stop();
-//    preFinalizationChecks();
+    preFinalizationChecks();
     finalizeOMUpgrade();
     counter = new AtomicInteger();
   }
@@ -666,8 +666,8 @@ public class TestOmSnapshot {
     // Job status should be updated to CANCELED.
     assertEquals(CANCELED, response.getJobStatus());
 
-    // Executing the command again should return
-    // that the job is JOB_ALREADY_CANCELED,
+    // Executing the command again should return the
+    // CancelStatus that the job is JOB_ALREADY_CANCELED,
     // but the job status should still be CANCELED
     // until the job is picked up by the SnapshotDiffCleanupService
     // and removed from the snapDiffJobTable.

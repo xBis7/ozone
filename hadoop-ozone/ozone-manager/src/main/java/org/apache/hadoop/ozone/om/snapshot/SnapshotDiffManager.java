@@ -387,16 +387,18 @@ public class SnapshotDiffManager implements AutoCloseable {
 
     String snapDiffJobKey = fsInfo.getSnapshotId() + DELIMITER +
         tsInfo.getSnapshotId();
+    SnapshotDiffJob diffJob = snapDiffJobTable.get(snapDiffJobKey);
 
     JobStatus jobStatus;
     CancelStatus cancelStatus;
-    SnapshotDiffJob diffJob = snapDiffJobTable.get(snapDiffJobKey);
 
     if (diffJob == null) {
       cancelStatus = CancelStatus.NEW_JOB;
       // JobStatus is needed to send a response back to the client.
       // JobStatus can't be null, so set it to QUEUED.
-      // This won't be printed as part of the response.
+      // This won't be printed as part of the response
+      // and the job doesn't exist in the SnapDiffJob table,
+      // so submitting again the job, won't make any difference.
       jobStatus = QUEUED;
     } else {
       if (Objects.equals(diffJob.getStatus(), IN_PROGRESS)) {
@@ -458,35 +460,30 @@ public class SnapshotDiffManager implements AutoCloseable {
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          IN_PROGRESS, defaultWaitTime,
-          CancelStatus.JOB_NOT_CANCELED);
+          IN_PROGRESS, defaultWaitTime);
     case FAILED:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          FAILED, defaultWaitTime,
-          CancelStatus.JOB_NOT_CANCELED);
+          FAILED, defaultWaitTime);
     case DONE:
       SnapshotDiffReportOzone report = createPageResponse(snapDiffJob,
           volumeName, bucketName, fromSnapshotName, toSnapshotName, index,
           pageSize);
-      return new SnapshotDiffResponse(report, DONE, 0L,
-          CancelStatus.JOB_NOT_CANCELED);
+      return new SnapshotDiffResponse(report, DONE, 0L);
     case REJECTED:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          REJECTED, defaultWaitTime,
-          CancelStatus.JOB_NOT_CANCELED);
+          REJECTED, defaultWaitTime);
     case CANCELED:
       return new SnapshotDiffResponse(
           new SnapshotDiffReportOzone(snapshotRoot.toString(), volumeName,
               bucketName, fromSnapshotName, toSnapshotName, new ArrayList<>(),
               null),
-          CANCELED, 0L,
-          CancelStatus.CANCEL_SUCCESS);
+          CANCELED, 0L, CancelStatus.CANCEL_SUCCESS);
     default:
       throw new IllegalStateException("Unknown snapshot job status: " +
           snapDiffJob.getStatus());
