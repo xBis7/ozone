@@ -1801,7 +1801,6 @@ message SnapshotDiffResponse {
     REJECTED = 4;
     FAILED = 5;
     CANCELED = 6;
-    CANCEL_FAILED = 7;
   }
 
   enum CancelStatusProto {
