@@ -28,8 +28,8 @@ import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.client.OzoneClientException;
 import org.apache.hadoop.ozone.client.OzoneClientFactory;
 import org.apache.hadoop.ozone.client.protocol.ClientProtocol;
-import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
 import org.apache.hadoop.ozone.om.protocolPB.OmTransportFactory;
+import org.apache.hadoop.ozone.om.protocolPB.OmTransport;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolClientSideTranslatorPB;
 import org.apache.hadoop.ozone.om.protocolPB.OzoneManagerProtocolPB;
 
@@ -60,6 +60,7 @@ import java.util.Collection;
         DecommissionOMSubcommand.class,
         UpdateRangerSubcommand.class,
         TransferOmLeaderSubCommand.class,
+        FetchKeySubCommand.class,
         ContainerCleanupSubCommand.class
     })
 @MetaInfServices(SubcommandWithParent.class)
