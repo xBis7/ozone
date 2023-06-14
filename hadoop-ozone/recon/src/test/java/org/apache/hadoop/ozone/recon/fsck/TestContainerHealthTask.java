@@ -64,7 +64,6 @@ import org.hadoop.ozone.recon.schema.tables.pojos.ReconTaskStatus;
 import org.hadoop.ozone.recon.schema.tables.pojos.UnhealthyContainers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 /**
  * Class to test a single run of the Container Health Task.
@@ -362,7 +361,7 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
           .getContainerReplicas(containerInfo.containerID()))
           .thenReturn(Collections.emptySet());
 
-      Pipeline pipeline = Mockito.mock(Pipeline.class);
+      Pipeline pipeline = mock(Pipeline.class);
       ContainerWithPipeline containerWithPipeline =
           new ContainerWithPipeline(containerInfo, pipeline);
       when(scmClientMock

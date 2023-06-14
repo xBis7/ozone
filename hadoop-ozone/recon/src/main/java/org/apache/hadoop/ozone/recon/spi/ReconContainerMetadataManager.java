@@ -25,6 +25,7 @@ import java.util.UUID;
 import org.apache.hadoop.hdds.annotation.InterfaceStability;
 import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.hdds.utils.db.RDBBatchOperation;
+import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.recon.api.types.ContainerKeyPrefix;
 import org.apache.hadoop.ozone.recon.api.types.ContainerMetadata;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
@@ -260,4 +261,14 @@ public interface ReconContainerMetadataManager {
    */
   Map<KeyPrefixContainer, Integer> getContainerForKeyPrefixes(
       String prevKeyPrefix, long keyVersion) throws IOException;
+
+  /**
+   * Get ContainerKeyTable.
+   */
+  Table<ContainerKeyPrefix, Integer> getContainerKeyTable();
+
+  /**
+   * Get KeyContainerTable.
+   */
+  Table<KeyPrefixContainer, Integer> getKeyContainerTable();
 }

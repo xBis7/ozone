@@ -126,7 +126,7 @@ public class TestContainerStateManagerIntegration {
 
   @Test
   public void testDeleteContainer()
-      throws IOException, ReconfigurationException {
+      throws IOException {
     // Allocate a container
     ContainerWithPipeline containerWithPipeline = scm.getClientProtocolServer()
         .allocateContainer(HddsProtos.ReplicationType.STAND_ALONE,
@@ -144,7 +144,8 @@ public class TestContainerStateManagerIntegration {
 
     // Make the user an SCM admin
     conf.set(OZONE_ADMINISTRATORS, ozoneUser);
-    scm.reconfigurePropertyImpl(OZONE_ADMINISTRATORS, ozoneUser);
+    scm.getReconfigurationHandler()
+        .reconfigurePropertyImpl(OZONE_ADMINISTRATORS, ozoneUser);
 
     // DeleteContainer gets the remote user from Server.getCurCall(),
     // so set the remote user there.
