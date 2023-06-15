@@ -392,14 +392,15 @@ public class ReconStorageContainerManagerFacade
     // between SCM container cache and recon container cache.
     scheduler.scheduleWithFixedDelay(() -> {
       try {
-        boolean isSuccess = syncWithSCMContainerInfo();
-        if (!isSuccess) {
-          LOG.debug("SCM container info sync is already running.");
-        }
+        LOG.info("xbis: scheduler");
+//        boolean isSuccess = syncWithSCMContainerInfo();
+//        if (!isSuccess) {
+//          LOG.debug("SCM container info sync is already running.");
+//        }
       } catch (Throwable t) {
         LOG.error("Unexpected exception while syncing data from SCM.", t);
       } finally {
-        isSyncDataFromSCMRunning.compareAndSet(true, false);
+//        isSyncDataFromSCMRunning.compareAndSet(true, false);
       }
     },
         initialDelay,
@@ -511,7 +512,9 @@ public class ReconStorageContainerManagerFacade
 
   public boolean syncWithSCMContainerInfo()
       throws IOException {
-    if (isSyncDataFromSCMRunning.compareAndSet(false, true)) {
+    LOG.info("xbis: sync: out of if");
+//    if (isSyncDataFromSCMRunning.compareAndSet(false, true)) {
+      LOG.info("xbis: sync: inside if");
       try {
         List<ContainerInfo> containers = containerManager.getContainers();
 
@@ -523,6 +526,7 @@ public class ReconStorageContainerManagerFacade
         long retrievedContainerCount = 0;
         if (totalContainerCount > 0) {
           while (retrievedContainerCount < totalContainerCount) {
+            LOG.info("xbis: while loop");
             List<ContainerInfo> listOfContainers = scmServiceProvider.
                 getListOfContainers(startContainerId,
                     Long.valueOf(containerCountPerCall).intValue(),
@@ -562,10 +566,11 @@ public class ReconStorageContainerManagerFacade
         LOG.error("Unable to refresh Recon SCM DB Snapshot. ", e);
         return false;
       }
-    } else {
-      LOG.debug("SCM DB sync is already running.");
-      return false;
-    }
+//    } else {
+//      LOG.debug("SCM DB sync is already running.");
+//      return false;
+//    }
+    LOG.info("xbis: sync: out of if, end of method");
     return true;
   }
 
