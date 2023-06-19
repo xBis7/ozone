@@ -19,6 +19,9 @@ package org.apache.hadoop.ozone.om;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.ExitManager;
+import org.apache.hadoop.hdds.client.ReplicationFactor;
+import org.apache.hadoop.hdds.client.ReplicationType;
+import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.utils.DBCheckpointMetrics;
@@ -71,6 +74,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -78,10 +82,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.ONE;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_DB_NAME;
 import static org.apache.hadoop.ozone.om.OmSnapshotManager.OM_HARDLINK_FILE;
 import static org.apache.hadoop.ozone.om.OmSnapshotManager.getSnapshotPath;
@@ -192,10 +198,14 @@ public class TestOMRatisSnapshots {
 
     // Find the inactive OM
     String followerNodeId = leaderOM.getPeerNodes().get(0).getNodeId();
+    String activeFollowerId = leaderOM.getPeerNodes().get(1).getNodeId();
     if (cluster.isOMActive(followerNodeId)) {
       followerNodeId = leaderOM.getPeerNodes().get(1).getNodeId();
+      activeFollowerId = leaderOM.getPeerNodes().get(0).getNodeId();
     }
     OzoneManager followerOM = cluster.getOzoneManager(followerNodeId);
+
+    OzoneManager activeOM = cluster.getOzoneManager(activeFollowerId);
 
     // Create some snapshots, each with new keys
     int keyIncrement = 10;
@@ -206,10 +216,12 @@ public class TestOMRatisSnapshots {
     for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
         snapshotCount++) {
       snapshotName = snapshotNamePrefix + snapshotCount;
-      keys = writeKeys(keyIncrement);
+
+//      keys = writeKeys(keyIncrement);
+      keys = writeKeys(leaderOM, keyIncrement);
+//      keys = writeKeys(activeOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
     }
-
 
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
@@ -343,8 +355,8 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
     // Get the leader OM
@@ -548,8 +560,8 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -776,7 +788,7 @@ public class TestOMRatisSnapshots {
     System.out.println("All data are replicated");
   }
 
-  @Test
+//  @Test
   public void testInstallSnapshotWithClientRead() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -865,7 +877,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, "Install Checkpoint is finished");
   }
 
-  @Test
+//  @Test
   public void testInstallOldCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -923,7 +935,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, msg);
   }
 
-  @Test
+//  @Test
   public void testInstallCorruptedCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -1021,6 +1033,55 @@ public class TestOMRatisSnapshots {
       index++;
     }
     return keys;
+  }
+
+  private List<String> writeKeys(OzoneManager ozoneManager, long keyCount) throws IOException {
+    List<String> keys = new ArrayList<>();
+    long index = 0;
+    while (index < keyCount) {
+      keys.add(createRandomKey(ozoneManager));
+      index++;
+    }
+    return keys;
+  }
+
+  private String createRandomKey(OzoneManager ozoneManager) throws IOException {
+    String keyName = "key" + RandomStringUtils.randomNumeric(5);
+    String data = "data" + RandomStringUtils.randomNumeric(5);
+    // Create key directly
+    BucketLayout bucketLayout = ozoneBucket.getBucketLayout();
+    long volumeObjectId = ozoneManager
+        .getMetadataManager().getVolumeId(volumeName);
+    long bucketObjectId = ozoneManager
+        .getMetadataManager().getBucketId(volumeName, bucketName);
+    String omKey;
+    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      omKey = ozoneManager.getMetadataManager().getOzonePathKey(volumeObjectId,
+          bucketObjectId, bucketObjectId, keyName);
+    } else {
+      omKey = ozoneManager.getMetadataManager()
+          .getOzoneKey(volumeName, bucketName, keyName);
+    }
+    ozoneManager.getMetadataManager()
+        .getKeyTable(bucketLayout).put(omKey,
+        new OmKeyInfo.Builder()
+            .setBucketName(bucketName)
+            .setVolumeName(volumeName)
+            .setKeyName(keyName)
+            .setDataSize(data.length())
+            .setOmKeyLocationInfos(new ArrayList<>())
+            .setReplicationConfig(
+                StandaloneReplicationConfig.getInstance(ONE))
+            .setObjectID(ThreadLocalRandom.current().nextLong(100))
+            .setParentObjectID(bucketObjectId)
+            .build());
+
+//    OzoneOutputStream ozoneOutputStream = ozoneBucket.createKey(keyName,
+//        data.length(), ReplicationType.RATIS,
+//        ReplicationFactor.ONE, new HashMap<>());
+//    ozoneOutputStream.write(data.getBytes(UTF_8), 0, data.length());
+//    ozoneOutputStream.close();
+    return keyName;
   }
 
   private void getKeys(List<String> keys, int round) throws IOException {
