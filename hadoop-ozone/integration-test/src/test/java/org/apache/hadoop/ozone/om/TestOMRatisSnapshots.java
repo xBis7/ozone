@@ -19,8 +19,6 @@ package org.apache.hadoop.ozone.om;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.ExitManager;
-import org.apache.hadoop.hdds.client.ReplicationFactor;
-import org.apache.hadoop.hdds.client.ReplicationType;
 import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.conf.StorageUnit;
@@ -74,7 +72,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -355,8 +352,8 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-//  @Test
-//  @Timeout(300)
+  @Test
+  @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
     // Get the leader OM
@@ -560,8 +557,8 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-//  @Test
-//  @Timeout(300)
+  @Test
+  @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -788,7 +785,7 @@ public class TestOMRatisSnapshots {
     System.out.println("All data are replicated");
   }
 
-//  @Test
+  @Test
   public void testInstallSnapshotWithClientRead() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -877,7 +874,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, "Install Checkpoint is finished");
   }
 
-//  @Test
+  @Test
   public void testInstallOldCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -935,7 +932,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, msg);
   }
 
-//  @Test
+  @Test
   public void testInstallCorruptedCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -1076,11 +1073,6 @@ public class TestOMRatisSnapshots {
             .setParentObjectID(bucketObjectId)
             .build());
 
-//    OzoneOutputStream ozoneOutputStream = ozoneBucket.createKey(keyName,
-//        data.length(), ReplicationType.RATIS,
-//        ReplicationFactor.ONE, new HashMap<>());
-//    ozoneOutputStream.write(data.getBytes(UTF_8), 0, data.length());
-//    ozoneOutputStream.close();
     return keyName;
   }
 
