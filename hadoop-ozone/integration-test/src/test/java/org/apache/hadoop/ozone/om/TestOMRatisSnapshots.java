@@ -215,8 +215,8 @@ public class TestOMRatisSnapshots {
       snapshotName = snapshotNamePrefix + snapshotCount;
 
 //      keys = writeKeys(keyIncrement);
-      keys = writeKeys(leaderOM, keyIncrement);
-//      keys = writeKeys(activeOM, keyIncrement);
+//      keys = writeKeys(leaderOM, keyIncrement);
+      keys = writeKeys(activeOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
     }
 
