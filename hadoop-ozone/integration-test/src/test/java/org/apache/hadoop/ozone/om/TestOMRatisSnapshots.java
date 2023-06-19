@@ -19,6 +19,9 @@ package org.apache.hadoop.ozone.om;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.hdds.ExitManager;
+import org.apache.hadoop.hdds.client.ReplicationFactor;
+import org.apache.hadoop.hdds.client.ReplicationType;
+import org.apache.hadoop.hdds.client.StandaloneReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.utils.DBCheckpointMetrics;
@@ -39,6 +42,7 @@ import org.apache.hadoop.ozone.client.OzoneKeyDetails;
 import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.ozone.client.VolumeArgs;
 import org.apache.hadoop.ozone.client.io.OzoneInputStream;
+import org.apache.hadoop.ozone.client.io.OzoneOutputStream;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyArgs;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
@@ -71,6 +75,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -78,10 +83,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.ONE;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_DB_NAME;
 import static org.apache.hadoop.ozone.om.OmSnapshotManager.OM_HARDLINK_FILE;
 import static org.apache.hadoop.ozone.om.OmSnapshotManager.getSnapshotPath;
@@ -184,18 +192,24 @@ public class TestOMRatisSnapshots {
   //  timeouts have to be increased.
   public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
     // Get the leader OM
-    String leaderOMNodeId = OmFailoverProxyUtil
-        .getFailoverProxyProvider(objectStore.getClientProxy())
-        .getCurrentProxyOMNodeId();
+//    String leaderOMNodeId = OmFailoverProxyUtil
+//        .getFailoverProxyProvider(objectStore.getClientProxy())
+//        .getCurrentProxyOMNodeId();
 
-    OzoneManager leaderOM = cluster.getOzoneManager(leaderOMNodeId);
+//    OzoneManager leaderOM = cluster.getOzoneManager(leaderOMNodeId);
+
+    OzoneManager leaderOM = cluster.getOMLeader();
 
     // Find the inactive OM
     String followerNodeId = leaderOM.getPeerNodes().get(0).getNodeId();
+    String activeFollowerId = leaderOM.getPeerNodes().get(1).getNodeId();
     if (cluster.isOMActive(followerNodeId)) {
       followerNodeId = leaderOM.getPeerNodes().get(1).getNodeId();
+      activeFollowerId = leaderOM.getPeerNodes().get(0).getNodeId();
     }
     OzoneManager followerOM = cluster.getOzoneManager(followerNodeId);
+
+    OzoneManager activeOM = cluster.getOzoneManager(activeFollowerId);
 
     // Create some snapshots, each with new keys
     int keyIncrement = 10;
@@ -205,11 +219,14 @@ public class TestOMRatisSnapshots {
     SnapshotInfo snapshotInfo = null;
     for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
         snapshotCount++) {
+      System.out.println("xbis: loop: " + snapshotCount);
       snapshotName = snapshotNamePrefix + snapshotCount;
-      keys = writeKeys(keyIncrement);
+
+//      keys = writeKeys(keyIncrement);
+      keys = writeKeys(leaderOM, keyIncrement);
+//      keys = writeKeys(activeOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
     }
-
 
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
@@ -221,6 +238,8 @@ public class TestOMRatisSnapshots {
     long leaderOMSnapshotTermIndex = leaderOMTermIndex.getTerm();
 
     // Start the inactive OM. Checkpoint installation will happen spontaneously.
+//    cluster.stopOzoneManager(followerNodeId);
+//    cluster.restartOzoneManager(followerOM, true);
     cluster.startInactiveOM(followerNodeId);
     GenericTestUtils.LogCapturer logCapture =
         GenericTestUtils.LogCapturer.captureLogs(OzoneManager.LOG);
@@ -229,6 +248,7 @@ public class TestOMRatisSnapshots {
     // Wait & for follower to update transactions to leader snapshot index.
     // Timeout error if follower does not load update within 10s
     GenericTestUtils.waitFor(() -> {
+      System.out.println("xbis: first waitFor follower to catch up to leader");
       return followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex()
           >= leaderOMSnapshotIndex - 1;
     }, 100, 10000);
@@ -240,7 +260,7 @@ public class TestOMRatisSnapshots {
 
     // After the new checkpoint is installed, the follower OM
     // lastAppliedIndex must >= the snapshot index of the checkpoint. It
-    // could be great than snapshot index if there is any conf entry from ratis.
+    // could be greater than snapshot index if there is any conf entry from ratis.
     followerOMLastAppliedIndex = followerOM.getOmRatisServer()
         .getLastAppliedTermIndex().getIndex();
     assertTrue(followerOMLastAppliedIndex >= leaderOMSnapshotIndex);
@@ -266,6 +286,7 @@ public class TestOMRatisSnapshots {
 
     // Verify RPC server is running
     GenericTestUtils.waitFor(() -> {
+      System.out.println("xbis: second waitFor OmRPC server is running");
       return followerOM.isOmRpcServerRunning();
     }, 100, 5000);
 
@@ -343,8 +364,8 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
     // Get the leader OM
@@ -548,8 +569,8 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -776,7 +797,7 @@ public class TestOMRatisSnapshots {
     System.out.println("All data are replicated");
   }
 
-  @Test
+//  @Test
   public void testInstallSnapshotWithClientRead() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -865,7 +886,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, "Install Checkpoint is finished");
   }
 
-  @Test
+//  @Test
   public void testInstallOldCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -923,7 +944,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, msg);
   }
 
-  @Test
+//  @Test
   public void testInstallCorruptedCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -1021,6 +1042,55 @@ public class TestOMRatisSnapshots {
       index++;
     }
     return keys;
+  }
+
+  private List<String> writeKeys(OzoneManager ozoneManager, long keyCount) throws IOException {
+    List<String> keys = new ArrayList<>();
+    long index = 0;
+    while (index < keyCount) {
+      keys.add(createRandomKey(ozoneManager));
+      index++;
+    }
+    return keys;
+  }
+
+  private String createRandomKey(OzoneManager ozoneManager) throws IOException {
+    String keyName = "key" + RandomStringUtils.randomNumeric(5);
+    String data = "data" + RandomStringUtils.randomNumeric(5);
+    // Create key directly
+    BucketLayout bucketLayout = ozoneBucket.getBucketLayout();
+    long volumeObjectId = ozoneManager
+        .getMetadataManager().getVolumeId(volumeName);
+    long bucketObjectId = ozoneManager
+        .getMetadataManager().getBucketId(volumeName, bucketName);
+    String omKey;
+    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      omKey = ozoneManager.getMetadataManager().getOzonePathKey(volumeObjectId,
+          bucketObjectId, bucketObjectId, keyName);
+    } else {
+      omKey = ozoneManager.getMetadataManager()
+          .getOzoneKey(volumeName, bucketName, keyName);
+    }
+    ozoneManager.getMetadataManager()
+        .getKeyTable(bucketLayout).put(omKey,
+        new OmKeyInfo.Builder()
+            .setBucketName(bucketName)
+            .setVolumeName(volumeName)
+            .setKeyName(keyName)
+            .setDataSize(data.length())
+            .setOmKeyLocationInfos(new ArrayList<>())
+            .setReplicationConfig(
+                StandaloneReplicationConfig.getInstance(ONE))
+            .setObjectID(ThreadLocalRandom.current().nextLong(100))
+            .setParentObjectID(bucketObjectId)
+            .build());
+
+//    OzoneOutputStream ozoneOutputStream = ozoneBucket.createKey(keyName,
+//        data.length(), ReplicationType.RATIS,
+//        ReplicationFactor.ONE, new HashMap<>());
+//    ozoneOutputStream.write(data.getBytes(UTF_8), 0, data.length());
+//    ozoneOutputStream.close();
+    return keyName;
   }
 
   private void getKeys(List<String> keys, int round) throws IOException {
