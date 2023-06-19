@@ -53,16 +53,13 @@ import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.storage.BlockLocationInfo;
 import org.apache.hadoop.hdds.utils.BackgroundService;
-import org.apache.hadoop.hdds.utils.db.CodecRegistry;
-import org.apache.hadoop.hdds.utils.db.RDBStore;
+import org.apache.hadoop.hdds.utils.db.StringCodec;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
 import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
 import org.apache.hadoop.hdds.utils.db.cache.CacheValue;
-import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneAcl;
-import org.apache.hadoop.ozone.common.BlockGroup;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes;
 import org.apache.hadoop.ozone.om.helpers.BucketEncryptionKeyInfo;
@@ -94,7 +91,6 @@ import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.security.acl.RequestContext;
 import org.apache.hadoop.security.SecurityUtil;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -107,6 +103,7 @@ import static org.apache.hadoop.fs.CommonConfigurationKeysPublic.HADOOP_SECURITY
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_BLOCK_TOKEN_ENABLED;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_BLOCK_TOKEN_ENABLED_DEFAULT;
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.BlockTokenSecretProto.AccessModeProto.READ;
+import static org.apache.hadoop.hdds.utils.HddsServerUtil.getRemoteUser;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_INTERVAL;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_INTERVAL_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_BLOCK_DELETING_SERVICE_TIMEOUT;
@@ -329,14 +326,6 @@ public class KeyManagerImpl implements KeyManager {
       throws IOException {
     String bucketKey = metadataManager.getBucketKey(volumeName, bucketName);
     return metadataManager.getBucketTable().get(bucketKey);
-  }
-
-  /* Optimize ugi lookup for RPC operations to avoid a trip through
-   * UGI.getCurrentUser which is synch'ed.
-   */
-  public static UserGroupInformation getRemoteUser() throws IOException {
-    UserGroupInformation ugi = Server.getRemoteUser();
-    return (ugi != null) ? ugi : UserGroupInformation.getCurrentUser();
   }
 
   private EncryptedKeyVersion generateEDEK(
@@ -610,7 +599,7 @@ public class KeyManagerImpl implements KeyManager {
   }
 
   @Override
-  public List<BlockGroup> getPendingDeletionKeys(final int count)
+  public PendingKeysDeletion getPendingDeletionKeys(final int count)
       throws IOException {
     OmMetadataManagerImpl omMetadataManager =
         (OmMetadataManagerImpl) metadataManager;
@@ -1703,12 +1692,11 @@ public class KeyManagerImpl implements KeyManager {
     // Increment the last character of the string and return the new ozone key.
     Preconditions.checkArgument(!Strings.isNullOrEmpty(keyPrefix),
         "Key prefix is null or empty");
-    CodecRegistry codecRegistry =
-        ((RDBStore) metadataManager.getStore()).getCodecRegistry();
-    byte[] keyPrefixInBytes = codecRegistry.asRawData(keyPrefix);
+    final StringCodec codec = StringCodec.get();
+    final byte[] keyPrefixInBytes = codec.toPersistedFormat(keyPrefix);
     keyPrefixInBytes[keyPrefixInBytes.length - 1]++;
-    String nextPrefix = codecRegistry.asObject(keyPrefixInBytes, String.class);
-    return metadataManager.getOzoneKey(volumeName, bucketName, nextPrefix);
+    return metadataManager.getOzoneKey(volumeName, bucketName,
+        codec.fromPersistedFormat(keyPrefixInBytes));
   }
 
   private FileEncryptionInfo getFileEncryptionInfo(OmBucketInfo bucketInfo)

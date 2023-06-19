@@ -37,6 +37,7 @@ import org.apache.hadoop.hdds.utils.db.managed.ManagedWriteOptions;
 import org.rocksdb.ColumnFamilyDescriptor;
 import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.Holder;
+import org.rocksdb.KeyMayExist;
 import org.rocksdb.LiveFileMetaData;
 import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
@@ -671,6 +672,26 @@ public final class RocksDatabase implements Closeable {
     }
   }
 
+  Supplier<Integer> keyMayExist(ColumnFamily family,
+      ByteBuffer key, ByteBuffer out) throws IOException {
+    assertClose();
+    try {
+      counter.incrementAndGet();
+      final KeyMayExist result = db.get().keyMayExist(
+          family.getHandle(), key, out);
+      switch (result.exists) {
+      case kNotExist: return null;
+      case kExistsWithValue: return () -> result.valueLength;
+      case kExistsWithoutValue: return () -> null;
+      default:
+        throw new IllegalStateException(
+            "Unexpected KeyMayExistEnum case " + result.exists);
+      }
+    } finally {
+      counter.decrementAndGet();
+    }
+  }
+
   public ColumnFamily getColumnFamily(String key) {
     return columnFamilies.get(key);
   }
@@ -858,6 +879,20 @@ public final class RocksDatabase implements Closeable {
     try {
       counter.incrementAndGet();
       db.get().delete(family.getHandle(), key);
+    } catch (RocksDBException e) {
+      closeOnError(e, true);
+      final String message = "delete " + bytes2String(key) + " from " + family;
+      throw toIOException(this, message, e);
+    } finally {
+      counter.decrementAndGet();
+    }
+  }
+
+  public void delete(ColumnFamily family, ByteBuffer key) throws IOException {
+    assertClose();
+    try {
+      counter.incrementAndGet();
+      db.get().delete(family.getHandle(), writeOptions, key);
     } catch (RocksDBException e) {
       closeOnError(e, true);
       final String message = "delete " + bytes2String(key) + " from " + family;
