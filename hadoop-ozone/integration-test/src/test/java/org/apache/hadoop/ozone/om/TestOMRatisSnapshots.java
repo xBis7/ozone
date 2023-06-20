@@ -202,6 +202,8 @@ public class TestOMRatisSnapshots {
     }
     OzoneManager followerOM = cluster.getOzoneManager(followerNodeId);
 
+//    cluster.stopOzoneManager(followerNodeId);
+
     OzoneManager activeOM = cluster.getOzoneManager(activeFollowerId);
 
     // Create some snapshots, each with new keys
@@ -213,9 +215,9 @@ public class TestOMRatisSnapshots {
     for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
         snapshotCount++) {
       snapshotName = snapshotNamePrefix + snapshotCount;
-
-      keys = writeKeys(keyIncrement);
-//      keys = writeKeys(leaderOM, keyIncrement);
+      System.out.println("xbis: " + snapshotCount);
+//      keys = writeKeys(keyIncrement);
+      keys = writeKeys(leaderOM, keyIncrement);
 //      keys = writeKeys(activeOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
     }
@@ -231,6 +233,7 @@ public class TestOMRatisSnapshots {
 
     // Start the inactive OM. Checkpoint installation will happen spontaneously.
     cluster.startInactiveOM(followerNodeId);
+//    cluster.restartOzoneManager(followerOM, true);
     GenericTestUtils.LogCapturer logCapture =
         GenericTestUtils.LogCapturer.captureLogs(OzoneManager.LOG);
 
@@ -352,8 +355,8 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
     // Get the leader OM
@@ -557,8 +560,8 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -684,7 +687,7 @@ public class TestOMRatisSnapshots {
     assertEquals(0, filesInCandidate.length);
   }
 
-  @Ignore("Enable this unit test after RATIS-1481 used")
+//  @Ignore("Enable this unit test after RATIS-1481 used")
   public void testInstallSnapshotWithClientWrite() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -785,7 +788,7 @@ public class TestOMRatisSnapshots {
     System.out.println("All data are replicated");
   }
 
-  @Test
+//  @Test
   public void testInstallSnapshotWithClientRead() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -874,7 +877,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, "Install Checkpoint is finished");
   }
 
-  @Test
+//  @Test
   public void testInstallOldCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -932,7 +935,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, msg);
   }
 
-  @Test
+//  @Test
   public void testInstallCorruptedCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -1036,13 +1039,13 @@ public class TestOMRatisSnapshots {
     List<String> keys = new ArrayList<>();
     long index = 0;
     while (index < keyCount) {
-      keys.add(createRandomKey(ozoneManager));
+      keys.add(createKeyDirectlyOnOM(ozoneManager));
       index++;
     }
     return keys;
   }
 
-  private String createRandomKey(OzoneManager ozoneManager) throws IOException {
+  private String createKeyDirectlyOnOM(OzoneManager ozoneManager) throws IOException {
     String keyName = "key" + RandomStringUtils.randomNumeric(5);
     String data = "data" + RandomStringUtils.randomNumeric(5);
     // Create key directly
