@@ -51,6 +51,7 @@ import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.assertj.core.api.Fail;
+import org.jooq.meta.derby.sys.Sys;
 import org.junit.Ignore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -65,13 +66,17 @@ import org.slf4j.Logger;
 import org.slf4j.event.Level;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -186,6 +191,15 @@ public class TestOMRatisSnapshots {
   // tried up to 1000 snapshots and this test works, but some of the
   //  timeouts have to be increased.
   public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
+    String initialTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
+    String initStr = initialTimeStamp + "\n";
+
+    File file = new File("/home/xbis/time.txt");
+    FileOutputStream outputStream = new FileOutputStream(file);
+
+    byte[] strToBytes = initStr.getBytes();
+    outputStream.write(strToBytes);
+
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
         .getFailoverProxyProvider(objectStore.getClientProxy())
@@ -215,12 +229,30 @@ public class TestOMRatisSnapshots {
     for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
         snapshotCount++) {
       snapshotName = snapshotNamePrefix + snapshotCount;
-      System.out.println("xbis: " + snapshotCount);
-//      keys = writeKeys(keyIncrement);
-      keys = writeKeys(leaderOM, keyIncrement);
+      String lbkC = "\nbefore key write";
+      strToBytes = lbkC.getBytes();
+      outputStream.write(strToBytes);
+
+      keys = writeKeys(keyIncrement);
+      String lbsC = "\nbefore snapshot write";
+      strToBytes = lbsC.getBytes();
+      outputStream.write(strToBytes);
+//      keys = writeKeys(leaderOM, keyIncrement);
 //      keys = writeKeys(activeOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
+      String lC = "\nxbis: " + snapshotCount;
+
+      strToBytes = lC.getBytes();
+      outputStream.write(strToBytes);
     }
+    String secondTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
+
+    String secTime = "\n" + secondTimeStamp;
+
+    strToBytes = secTime.getBytes();
+    outputStream.write(strToBytes);
+
+    outputStream.close();
 
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
@@ -295,6 +327,10 @@ public class TestOMRatisSnapshots {
      */
 
     checkSnapshot(leaderOM, followerOM, snapshotName, keys, snapshotInfo);
+
+    System.out.println("xbis: leader: " + leaderOMNodeId);
+    System.out.println("xbis: inactive: " + followerNodeId);
+    System.out.println("xbis: active: " + activeFollowerId);
   }
 
   private void checkSnapshot(OzoneManager leaderOM, OzoneManager followerOM,
@@ -1049,32 +1085,41 @@ public class TestOMRatisSnapshots {
     String keyName = "key" + RandomStringUtils.randomNumeric(5);
     String data = "data" + RandomStringUtils.randomNumeric(5);
     // Create key directly
-    BucketLayout bucketLayout = ozoneBucket.getBucketLayout();
-    long volumeObjectId = ozoneManager
-        .getMetadataManager().getVolumeId(volumeName);
-    long bucketObjectId = ozoneManager
-        .getMetadataManager().getBucketId(volumeName, bucketName);
-    String omKey;
-    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
-      omKey = ozoneManager.getMetadataManager().getOzonePathKey(volumeObjectId,
-          bucketObjectId, bucketObjectId, keyName);
-    } else {
-      omKey = ozoneManager.getMetadataManager()
-          .getOzoneKey(volumeName, bucketName, keyName);
-    }
-    ozoneManager.getMetadataManager()
-        .getKeyTable(bucketLayout).put(omKey,
-        new OmKeyInfo.Builder()
-            .setBucketName(bucketName)
-            .setVolumeName(volumeName)
-            .setKeyName(keyName)
-            .setDataSize(data.length())
-            .setOmKeyLocationInfos(new ArrayList<>())
-            .setReplicationConfig(
-                StandaloneReplicationConfig.getInstance(ONE))
-            .setObjectID(ThreadLocalRandom.current().nextLong(100))
-            .setParentObjectID(bucketObjectId)
-            .build());
+//    BucketLayout bucketLayout = ozoneBucket.getBucketLayout();
+//    long volumeObjectId = ozoneManager
+//        .getMetadataManager().getVolumeId(volumeName);
+//    long bucketObjectId = ozoneManager
+//        .getMetadataManager().getBucketId(volumeName, bucketName);
+//    String omKey;
+//    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+//      omKey = ozoneManager.getMetadataManager().getOzonePathKey(volumeObjectId,
+//          bucketObjectId, bucketObjectId, keyName);
+//    } else {
+//      omKey = ozoneManager.getMetadataManager()
+//          .getOzoneKey(volumeName, bucketName, keyName);
+//    }
+//    ozoneManager.getMetadataManager()
+//        .getKeyTable(bucketLayout).put(omKey,
+//        new OmKeyInfo.Builder()
+//            .setBucketName(bucketName)
+//            .setVolumeName(volumeName)
+//            .setKeyName(keyName)
+//            .setDataSize(data.length())
+//            .setOmKeyLocationInfos(new ArrayList<>())
+//            .setReplicationConfig(
+//                StandaloneReplicationConfig.getInstance(ONE))
+//            .setObjectID(ThreadLocalRandom.current().nextLong(100))
+//            .setParentObjectID(bucketObjectId)
+//            .build());
+
+    objectStore.getClientProxy()
+             .createKey(
+                 volumeName,
+                 bucketName,
+                 keyName,
+                 data.length(),
+                 StandaloneReplicationConfig.getInstance(ONE),
+                 new HashMap<>());
 
     return keyName;
   }
