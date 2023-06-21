@@ -146,10 +146,10 @@ public class TestOMRatisSnapshots {
     scmId = UUID.randomUUID().toString();
     omServiceId = "om-service-test1";
     conf.setInt(OMConfigKeys.OZONE_OM_RATIS_LOG_PURGE_GAP, LOG_PURGE_GAP);
-    conf.setStorageSize(OMConfigKeys.OZONE_OM_RATIS_SEGMENT_SIZE_KEY, 16,
+    conf.setStorageSize(OMConfigKeys.OZONE_OM_RATIS_SEGMENT_SIZE_KEY, 16000,
         StorageUnit.KB);
     conf.setStorageSize(OMConfigKeys.
-        OZONE_OM_RATIS_SEGMENT_PREALLOCATED_SIZE_KEY, 16, StorageUnit.KB);
+        OZONE_OM_RATIS_SEGMENT_PREALLOCATED_SIZE_KEY, 16000, StorageUnit.KB);
     conf.setLong(
         OMConfigKeys.OZONE_OM_RATIS_SNAPSHOT_AUTO_TRIGGER_THRESHOLD_KEY,
         SNAPSHOT_THRESHOLD);
