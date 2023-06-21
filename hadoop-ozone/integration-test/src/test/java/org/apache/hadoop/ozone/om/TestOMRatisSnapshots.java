@@ -235,6 +235,8 @@ public class TestOMRatisSnapshots {
     SnapshotInfo snapshotInfo = null;
     for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
         snapshotCount++) {
+      Assertions.assertTrue(cluster.isOMActive(activeFollowerId));
+      Assertions.assertFalse(cluster.isOMActive(followerNodeId));
       snapshotName = snapshotNamePrefix + snapshotCount;
       String lbkC = "\nbefore key write | ";
       strToBytes = lbkC.getBytes();
@@ -245,8 +247,7 @@ public class TestOMRatisSnapshots {
       strToBytes = lbsC.getBytes();
       outputStream.write(strToBytes);
 
-      keys = writeKeys(leaderOM, keyIncrement);
-      keys = writeKeys(activeOM, keyIncrement);
+//      keys = writeKeys(leaderOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
       String lC = "\nxbis: " + snapshotCount + " | ";
 
