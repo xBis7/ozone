@@ -32,6 +32,7 @@ import org.apache.hadoop.hdds.utils.db.DBCheckpoint;
 import org.apache.hadoop.hdds.utils.db.RDBCheckpointUtils;
 import org.apache.hadoop.ozone.MiniOzoneCluster;
 import org.apache.hadoop.ozone.MiniOzoneHAClusterImpl;
+import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.ozone.client.BucketArgs;
 import org.apache.hadoop.ozone.client.ObjectStore;
 import org.apache.hadoop.ozone.client.OzoneBucket;
@@ -50,7 +51,10 @@ import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.tag.Flaky;
+import org.apache.ratis.grpc.server.GrpcLogAppender;
+import org.apache.ratis.server.leader.FollowerInfo;
 import org.apache.ratis.server.protocol.TermIndex;
+import org.apache.ratis.util.FileUtils;
 import org.assertj.core.api.Fail;
 import org.jooq.meta.derby.sys.Sys;
 import org.junit.Ignore;
@@ -142,10 +146,10 @@ public class TestOMRatisSnapshots {
     scmId = UUID.randomUUID().toString();
     omServiceId = "om-service-test1";
     conf.setInt(OMConfigKeys.OZONE_OM_RATIS_LOG_PURGE_GAP, LOG_PURGE_GAP);
-    conf.setStorageSize(OMConfigKeys.OZONE_OM_RATIS_SEGMENT_SIZE_KEY, 1024,
+    conf.setStorageSize(OMConfigKeys.OZONE_OM_RATIS_SEGMENT_SIZE_KEY, 16,
         StorageUnit.KB);
     conf.setStorageSize(OMConfigKeys.
-        OZONE_OM_RATIS_SEGMENT_PREALLOCATED_SIZE_KEY, 1024, StorageUnit.KB);
+        OZONE_OM_RATIS_SEGMENT_PREALLOCATED_SIZE_KEY, 16, StorageUnit.KB);
     conf.setLong(
         OMConfigKeys.OZONE_OM_RATIS_SNAPSHOT_AUTO_TRIGGER_THRESHOLD_KEY,
         SNAPSHOT_THRESHOLD);
@@ -174,6 +178,8 @@ public class TestOMRatisSnapshots {
     retVolumeinfo.createBucket(bucketName,
         BucketArgs.newBuilder().setBucketLayout(TEST_BUCKET_LAYOUT).build());
     ozoneBucket = retVolumeinfo.getBucket(bucketName);
+
+    FileUtils.deleteFully(new File("./time.txt"));
   }
 
   /**
@@ -195,11 +201,11 @@ public class TestOMRatisSnapshots {
     String initialTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
     String initStr = initialTimeStamp + "\n";
 
-//    File file = new File("/home/xbis/time.txt");
-//    FileOutputStream outputStream = new FileOutputStream(file);
+    File file = new File("./time.txt");
+    FileOutputStream outputStream = new FileOutputStream(file);
 
-//    byte[] strToBytes = initStr.getBytes();
-//    outputStream.write(strToBytes);
+    byte[] strToBytes = initStr.getBytes();
+    outputStream.write(strToBytes);
 
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -231,30 +237,30 @@ public class TestOMRatisSnapshots {
         snapshotCount++) {
       snapshotName = snapshotNamePrefix + snapshotCount;
       String lbkC = "\nbefore key write | ";
-//      strToBytes = lbkC.getBytes();
-//      outputStream.write(strToBytes);
+      strToBytes = lbkC.getBytes();
+      outputStream.write(strToBytes);
 
       keys = writeKeys(keyIncrement);
       String lbsC = "\nbefore snapshot write | ";
-//      strToBytes = lbsC.getBytes();
-//      outputStream.write(strToBytes);
+      strToBytes = lbsC.getBytes();
+      outputStream.write(strToBytes);
 
-//      keys = writeKeys(leaderOM, keyIncrement);
-//      keys = writeKeys(activeOM, keyIncrement);
+      keys = writeKeys(leaderOM, keyIncrement);
+      keys = writeKeys(activeOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
       String lC = "\nxbis: " + snapshotCount + " | ";
 
-//      strToBytes = lC.getBytes();
-//      outputStream.write(strToBytes);
+      strToBytes = lC.getBytes();
+      outputStream.write(strToBytes);
     }
     String secondTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
 
     String secTime = "\n" + secondTimeStamp;
 
-//    strToBytes = secTime.getBytes();
-//    outputStream.write(strToBytes);
+    strToBytes = secTime.getBytes();
+    outputStream.write(strToBytes);
 
-//    outputStream.close();
+    outputStream.close();
 
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
