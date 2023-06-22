@@ -241,18 +241,23 @@ public class TestOMRatisSnapshots {
       String lbkC = "\nbefore key write | ";
       strToBytes = lbkC.getBytes();
       outputStream.write(strToBytes);
-
+System.out.println("xbis: before key write");
       keys = writeKeys(keyIncrement);
+
+      Assertions.assertTrue(cluster.isOMActive(activeFollowerId));
+      Assertions.assertFalse(cluster.isOMActive(followerNodeId));
+
       String lbsC = "\nbefore snapshot write | ";
       strToBytes = lbsC.getBytes();
       outputStream.write(strToBytes);
-
+      System.out.println("xbis: before snapshot write");
 //      keys = writeKeys(leaderOM, keyIncrement);
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
       String lC = "\nxbis: " + snapshotCount + " | ";
 
       strToBytes = lC.getBytes();
       outputStream.write(strToBytes);
+      System.out.println("xbis: " + snapshotCount);
     }
     String secondTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
 
@@ -260,7 +265,7 @@ public class TestOMRatisSnapshots {
 
     strToBytes = secTime.getBytes();
     outputStream.write(strToBytes);
-
+    System.out.println("xbis: " + secondTimeStamp);
     outputStream.close();
 
     // Get the latest db checkpoint from the leader OM.

@@ -620,6 +620,7 @@ public final class OzoneManagerDoubleBuffer {
   private synchronized boolean canFlush() {
     try {
       while (currentBuffer.size() == 0) {
+        LOG.info("xbis: trying to flush | flushIter: " + flushIterations);
         // canFlush() only gets called when the readyBuffer is empty.
         // Since both buffers are empty, notify once for each.
         flushNotifier.notifyFlush();

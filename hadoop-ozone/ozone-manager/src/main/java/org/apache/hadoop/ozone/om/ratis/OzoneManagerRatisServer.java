@@ -25,12 +25,15 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -248,7 +251,8 @@ public final class OzoneManagerRatisServer {
       RaftClientRequest raftClientRequest =
           createWriteRaftClientRequest(omRequest);
       RaftClientReply raftClientReply = submitRequestToRatis(raftClientRequest);
-
+      System.out.println("xbis: request type: " + omRequest.getCmdType() +
+          " | " + raftClientReply.toString());
       return processReply(omRequest, raftClientReply);
     } else {
       LOG.info("Rejecting write request on OM {} because it is in prepare " +
@@ -451,6 +455,7 @@ public final class OzoneManagerRatisServer {
     // when client is submitting request to OM.
 
     if (!reply.isSuccess()) {
+      System.out.println("xbis: reply not success");
       NotLeaderException notLeaderException = reply.getNotLeaderException();
       if (notLeaderException != null) {
         throw new ServiceException(
@@ -468,6 +473,7 @@ public final class OzoneManagerRatisServer {
       StateMachineException stateMachineException =
           reply.getStateMachineException();
       if (stateMachineException != null) {
+        System.out.println("xbis: state machine ex: " + stateMachineException);
         OMResponse.Builder omResponse = OMResponse.newBuilder()
             .setCmdType(omRequest.getCmdType())
             .setSuccess(false)
