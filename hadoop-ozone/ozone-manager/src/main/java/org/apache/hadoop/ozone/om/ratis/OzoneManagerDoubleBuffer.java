@@ -325,7 +325,7 @@ public final class OzoneManagerDoubleBuffer {
 
   private void flushBatch(Queue<DoubleBufferEntry<OMClientResponse>> buffer)
       throws IOException {
-
+    System.out.println("xbis: double buf: flushBatch");
     Map<String, List<Long>> cleanupEpochs = new HashMap<>();
     List<Long> flushedEpochs;
 
@@ -399,6 +399,7 @@ public final class OzoneManagerDoubleBuffer {
   private String addToBatch(Queue<DoubleBufferEntry<OMClientResponse>> buffer,
                             BatchOperation batchOperation) {
     String lastTraceId = null;
+    System.out.println("xbis: double buf: addToBatch");
     for (DoubleBufferEntry<OMClientResponse> entry: buffer) {
       OMClientResponse response = entry.getResponse();
       OMResponse omResponse = response.getOMResponse();
@@ -620,7 +621,7 @@ public final class OzoneManagerDoubleBuffer {
   private synchronized boolean canFlush() {
     try {
       while (currentBuffer.size() == 0) {
-        LOG.info("xbis: trying to flush | flushIter: " + flushIterations);
+        System.out.println("xbis: trying to flush | flushIter: " + flushIterations);
         // canFlush() only gets called when the readyBuffer is empty.
         // Since both buffers are empty, notify once for each.
         flushNotifier.notifyFlush();
@@ -680,6 +681,7 @@ public final class OzoneManagerDoubleBuffer {
   }
 
   void awaitFlush() throws InterruptedException {
+    System.out.println("xbis: double buffer awaitFlush");
     flushNotifier.await();
   }
 
@@ -688,7 +690,7 @@ public final class OzoneManagerDoubleBuffer {
         ConcurrentHashMap.newKeySet();
 
     void await() throws InterruptedException {
-
+      System.out.println("xbis: double buf: await");
       // Wait until both the current and ready buffers are flushed.
       CountDownLatch latch = new CountDownLatch(2);
       flushLatches.add(latch);

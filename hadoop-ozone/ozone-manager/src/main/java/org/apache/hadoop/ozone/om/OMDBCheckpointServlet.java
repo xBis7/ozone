@@ -390,9 +390,10 @@ public class OMDBCheckpointServlet extends DBCheckpointServlet
       sstFilteringService.getBootstrapStateLock().lock();
       rocksDbCheckpointDiffer.getBootstrapStateLock().lock();
       snapshotDeletingService.getBootstrapStateLock().lock();
-
+      System.out.println("xbis: OMDBCheckpoint: lock before wait");
       // Then wait for the double buffer to be flushed.
       om.getOmRatisServer().getOmStateMachine().awaitDoubleBufferFlush();
+      System.out.println("xbis: OMDBCheckpoint: lock after wait");
       return this;
     }
 

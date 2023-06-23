@@ -201,11 +201,11 @@ public class TestOMRatisSnapshots {
     String initialTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
     String initStr = initialTimeStamp + "\n";
 
-    File file = new File("./time.txt");
-    FileOutputStream outputStream = new FileOutputStream(file);
+//    File file = new File("./time.txt");
+//    FileOutputStream outputStream = new FileOutputStream(file);
 
-    byte[] strToBytes = initStr.getBytes();
-    outputStream.write(strToBytes);
+//    byte[] strToBytes = initStr.getBytes();
+//    outputStream.write(strToBytes);
 
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -239,34 +239,36 @@ public class TestOMRatisSnapshots {
       Assertions.assertFalse(cluster.isOMActive(followerNodeId));
       snapshotName = snapshotNamePrefix + snapshotCount;
       String lbkC = "\nbefore key write | ";
-      strToBytes = lbkC.getBytes();
-      outputStream.write(strToBytes);
+//      strToBytes = lbkC.getBytes();
+//      outputStream.write(strToBytes);
 System.out.println("xbis: before key write");
-      keys = writeKeys(keyIncrement);
+//      keys = writeKeys(keyIncrement);
 
       Assertions.assertTrue(cluster.isOMActive(activeFollowerId));
       Assertions.assertFalse(cluster.isOMActive(followerNodeId));
 
       String lbsC = "\nbefore snapshot write | ";
-      strToBytes = lbsC.getBytes();
-      outputStream.write(strToBytes);
+//      strToBytes = lbsC.getBytes();
+//      outputStream.write(strToBytes);
       System.out.println("xbis: before snapshot write");
-//      keys = writeKeys(leaderOM, keyIncrement);
+
+      keys = writeKeys(leaderOM, keyIncrement);
+
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
       String lC = "\nxbis: " + snapshotCount + " | ";
 
-      strToBytes = lC.getBytes();
-      outputStream.write(strToBytes);
+//      strToBytes = lC.getBytes();
+//      outputStream.write(strToBytes);
       System.out.println("xbis: " + snapshotCount);
     }
     String secondTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
 
     String secTime = "\n" + secondTimeStamp;
 
-    strToBytes = secTime.getBytes();
-    outputStream.write(strToBytes);
+//    strToBytes = secTime.getBytes();
+//    outputStream.write(strToBytes);
     System.out.println("xbis: " + secondTimeStamp);
-    outputStream.close();
+//    outputStream.close();
 
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
@@ -1099,41 +1101,32 @@ System.out.println("xbis: before key write");
     String keyName = "key" + RandomStringUtils.randomNumeric(5);
     String data = "data" + RandomStringUtils.randomNumeric(5);
     // Create key directly
-//    BucketLayout bucketLayout = ozoneBucket.getBucketLayout();
-//    long volumeObjectId = ozoneManager
-//        .getMetadataManager().getVolumeId(volumeName);
-//    long bucketObjectId = ozoneManager
-//        .getMetadataManager().getBucketId(volumeName, bucketName);
-//    String omKey;
-//    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
-//      omKey = ozoneManager.getMetadataManager().getOzonePathKey(volumeObjectId,
-//          bucketObjectId, bucketObjectId, keyName);
-//    } else {
-//      omKey = ozoneManager.getMetadataManager()
-//          .getOzoneKey(volumeName, bucketName, keyName);
-//    }
-//    ozoneManager.getMetadataManager()
-//        .getKeyTable(bucketLayout).put(omKey,
-//        new OmKeyInfo.Builder()
-//            .setBucketName(bucketName)
-//            .setVolumeName(volumeName)
-//            .setKeyName(keyName)
-//            .setDataSize(data.length())
-//            .setOmKeyLocationInfos(new ArrayList<>())
-//            .setReplicationConfig(
-//                StandaloneReplicationConfig.getInstance(ONE))
-//            .setObjectID(ThreadLocalRandom.current().nextLong(100))
-//            .setParentObjectID(bucketObjectId)
-//            .build());
-
-    objectStore.getClientProxy()
-             .createKey(
-                 volumeName,
-                 bucketName,
-                 keyName,
-                 data.length(),
-                 StandaloneReplicationConfig.getInstance(ONE),
-                 new HashMap<>());
+    BucketLayout bucketLayout = ozoneBucket.getBucketLayout();
+    long volumeObjectId = ozoneManager
+        .getMetadataManager().getVolumeId(volumeName);
+    long bucketObjectId = ozoneManager
+        .getMetadataManager().getBucketId(volumeName, bucketName);
+    String omKey;
+    if (bucketLayout.equals(BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      omKey = ozoneManager.getMetadataManager().getOzonePathKey(volumeObjectId,
+          bucketObjectId, bucketObjectId, keyName);
+    } else {
+      omKey = ozoneManager.getMetadataManager()
+          .getOzoneKey(volumeName, bucketName, keyName);
+    }
+    ozoneManager.getMetadataManager()
+        .getKeyTable(bucketLayout).put(omKey,
+        new OmKeyInfo.Builder()
+            .setBucketName(bucketName)
+            .setVolumeName(volumeName)
+            .setKeyName(keyName)
+            .setDataSize(data.length())
+            .setOmKeyLocationInfos(new ArrayList<>())
+            .setReplicationConfig(
+                StandaloneReplicationConfig.getInstance(ONE))
+            .setObjectID(ThreadLocalRandom.current().nextLong(100))
+            .setParentObjectID(bucketObjectId)
+            .build());
 
     return keyName;
   }

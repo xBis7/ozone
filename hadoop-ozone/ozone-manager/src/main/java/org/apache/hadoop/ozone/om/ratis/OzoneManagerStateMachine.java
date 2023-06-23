@@ -154,6 +154,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
 
   @Override
   public SnapshotInfo getLatestSnapshot() {
+    System.out.println("xbis: state machine getLatestSnap");
     LOG.debug("Latest Snapshot Info {}", snapshotInfo);
     return snapshotInfo;
   }
@@ -266,6 +267,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   @Override
   public TransactionContext preAppendTransaction(TransactionContext trx)
       throws IOException {
+    System.out.println("xbis: state machine: preAppendTransaction");
     OMRequest request = OMRatisHelper.convertByteStringToOMRequest(
         trx.getStateMachineLogEntry().getLogData());
     OzoneManagerProtocolProtos.Type cmdType = request.getCmdType();
@@ -409,6 +411,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
    */
   @Override
   public CompletableFuture<Message> query(Message request) {
+    System.out.println("xbis: state machine: query");
     try {
       OMRequest omRequest = OMRatisHelper.convertByteStringToOMRequest(
           request.getContent());
@@ -580,6 +583,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
    * @param flushedEpochs
    */
   public void updateLastAppliedIndex(List<Long> flushedEpochs) {
+    System.out.println("xbis: state machine update last applied index: ");
     Preconditions.checkArgument(flushedEpochs.size() > 0);
     computeAndUpdateLastAppliedIndex(
         flushedEpochs.get(flushedEpochs.size() - 1), -1L, flushedEpochs, true);
@@ -598,6 +602,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   private synchronized void computeAndUpdateLastAppliedIndex(
       long lastFlushedIndex, long currentTerm, List<Long> flushedEpochs,
       boolean checkMap) {
+    System.out.println("xbis: state machine: computeAndUpdateLastAppliedIndex");
     if (checkMap) {
       List<Long> flushedTrans = new ArrayList<>(flushedEpochs);
       Long appliedTerm = null;
@@ -651,6 +656,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
         }
       }
     }
+    System.out.println("xbis: state machine: exit computeAndUpdateLastAppliedIndex");
   }
 
   public void loadSnapshotInfoFromDB() throws IOException {
@@ -683,6 +689,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   }
 
   private static <T> CompletableFuture<T> completeExceptionally(Exception e) {
+    System.out.println("xbis: state machine: ex: " + e.getClass());
     final CompletableFuture<T> future = new CompletableFuture<>();
     future.completeExceptionally(e);
     return future;

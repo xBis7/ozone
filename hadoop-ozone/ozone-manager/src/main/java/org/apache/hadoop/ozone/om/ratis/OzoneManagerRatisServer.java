@@ -453,9 +453,9 @@ public final class OzoneManagerRatisServer {
     // NotLeader exception is thrown only when the raft server to which the
     // request is submitted is not the leader. This can happen first time
     // when client is submitting request to OM.
-
+    System.out.println("xbis: process reply");
     if (!reply.isSuccess()) {
-      System.out.println("xbis: reply not success");
+      System.out.println("xbis: reply not success: | " + reply);
       NotLeaderException notLeaderException = reply.getNotLeaderException();
       if (notLeaderException != null) {
         throw new ServiceException(
