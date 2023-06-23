@@ -154,7 +154,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
 
   @Override
   public SnapshotInfo getLatestSnapshot() {
-    System.out.println("xbis: state machine getLatestSnap");
+    System.out.println("xbis: state machine getLatestSnap: om: " + ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
     LOG.debug("Latest Snapshot Info {}", snapshotInfo);
     return snapshotInfo;
   }
@@ -267,7 +267,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   @Override
   public TransactionContext preAppendTransaction(TransactionContext trx)
       throws IOException {
-    System.out.println("xbis: state machine: preAppendTransaction");
+    System.out.println("xbis: state machine: preAppendTransaction: om: " + ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
     OMRequest request = OMRatisHelper.convertByteStringToOMRequest(
         trx.getStateMachineLogEntry().getLogData());
     OzoneManagerProtocolProtos.Type cmdType = request.getCmdType();
@@ -411,7 +411,6 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
    */
   @Override
   public CompletableFuture<Message> query(Message request) {
-    System.out.println("xbis: state machine: query");
     try {
       OMRequest omRequest = OMRatisHelper.convertByteStringToOMRequest(
           request.getContent());
@@ -460,6 +459,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
         .getInt(OMConfigKeys.OZONE_OM_UNFLUSHED_TRANSACTION_MAX_COUNT,
             OMConfigKeys.OZONE_OM_UNFLUSHED_TRANSACTION_MAX_COUNT_DEFAULT);
     return new OzoneManagerDoubleBuffer.Builder()
+        .setOzoneManager(ozoneManager)
         .setOmMetadataManager(ozoneManager.getMetadataManager())
         .setOzoneManagerRatisSnapShot(this::updateLastAppliedIndex)
         .setmaxUnFlushedTransactionCount(maxUnflushedTransactionSize)
@@ -583,7 +583,8 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
    * @param flushedEpochs
    */
   public void updateLastAppliedIndex(List<Long> flushedEpochs) {
-    System.out.println("xbis: state machine update last applied index: ");
+    System.out.println("xbis: state machine update last applied index: om: " +
+        ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
     Preconditions.checkArgument(flushedEpochs.size() > 0);
     computeAndUpdateLastAppliedIndex(
         flushedEpochs.get(flushedEpochs.size() - 1), -1L, flushedEpochs, true);
@@ -602,7 +603,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   private synchronized void computeAndUpdateLastAppliedIndex(
       long lastFlushedIndex, long currentTerm, List<Long> flushedEpochs,
       boolean checkMap) {
-    System.out.println("xbis: state machine: computeAndUpdateLastAppliedIndex");
+    System.out.println("xbis: state machine: computeAndUpdateLastAppliedIndex: om: " + ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
     if (checkMap) {
       List<Long> flushedTrans = new ArrayList<>(flushedEpochs);
       Long appliedTerm = null;
@@ -656,7 +657,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
         }
       }
     }
-    System.out.println("xbis: state machine: exit computeAndUpdateLastAppliedIndex");
+    System.out.println("xbis: state machine: exit computeAndUpdateLastAppliedIndex: om: " + ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
   }
 
   public void loadSnapshotInfoFromDB() throws IOException {
@@ -689,7 +690,6 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   }
 
   private static <T> CompletableFuture<T> completeExceptionally(Exception e) {
-    System.out.println("xbis: state machine: ex: " + e.getClass());
     final CompletableFuture<T> future = new CompletableFuture<>();
     future.completeExceptionally(e);
     return future;

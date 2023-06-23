@@ -102,6 +102,7 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       handler = new OzoneManagerRequestHandler(impl, null);
     } else {
       this.ozoneManagerDoubleBuffer = new OzoneManagerDoubleBuffer.Builder()
+          .setOzoneManager(ozoneManager)
           .setOmMetadataManager(ozoneManager.getMetadataManager())
           // Do nothing.
           // For OM NON-HA code, there is no need to save transaction index.

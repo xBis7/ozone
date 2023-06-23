@@ -57,6 +57,7 @@ import org.apache.ratis.server.protocol.TermIndex;
 import org.apache.ratis.util.FileUtils;
 import org.assertj.core.api.Fail;
 import org.jooq.meta.derby.sys.Sys;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -178,8 +179,6 @@ public class TestOMRatisSnapshots {
     retVolumeinfo.createBucket(bucketName,
         BucketArgs.newBuilder().setBucketLayout(TEST_BUCKET_LAYOUT).build());
     ozoneBucket = retVolumeinfo.getBucket(bucketName);
-
-    FileUtils.deleteFully(new File("./time.txt"));
   }
 
   /**
@@ -198,15 +197,6 @@ public class TestOMRatisSnapshots {
   // tried up to 1000 snapshots and this test works, but some of the
   //  timeouts have to be increased.
   public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
-    String initialTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
-    String initStr = initialTimeStamp + "\n";
-
-//    File file = new File("./time.txt");
-//    FileOutputStream outputStream = new FileOutputStream(file);
-
-//    byte[] strToBytes = initStr.getBytes();
-//    outputStream.write(strToBytes);
-
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
         .getFailoverProxyProvider(objectStore.getClientProxy())
@@ -216,16 +206,10 @@ public class TestOMRatisSnapshots {
 
     // Find the inactive OM
     String followerNodeId = leaderOM.getPeerNodes().get(0).getNodeId();
-    String activeFollowerId = leaderOM.getPeerNodes().get(1).getNodeId();
     if (cluster.isOMActive(followerNodeId)) {
       followerNodeId = leaderOM.getPeerNodes().get(1).getNodeId();
-      activeFollowerId = leaderOM.getPeerNodes().get(0).getNodeId();
     }
     OzoneManager followerOM = cluster.getOzoneManager(followerNodeId);
-
-//    cluster.stopOzoneManager(followerNodeId);
-
-    OzoneManager activeOM = cluster.getOzoneManager(activeFollowerId);
 
     // Create some snapshots, each with new keys
     int keyIncrement = 10;
@@ -235,40 +219,19 @@ public class TestOMRatisSnapshots {
     SnapshotInfo snapshotInfo = null;
     for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
         snapshotCount++) {
-      Assertions.assertTrue(cluster.isOMActive(activeFollowerId));
-      Assertions.assertFalse(cluster.isOMActive(followerNodeId));
       snapshotName = snapshotNamePrefix + snapshotCount;
-      String lbkC = "\nbefore key write | ";
-//      strToBytes = lbkC.getBytes();
-//      outputStream.write(strToBytes);
-System.out.println("xbis: before key write");
-//      keys = writeKeys(keyIncrement);
+      System.out.println("xbis: before key write");
 
-      Assertions.assertTrue(cluster.isOMActive(activeFollowerId));
-      Assertions.assertFalse(cluster.isOMActive(followerNodeId));
+      keys = writeKeys(keyIncrement);
 
-      String lbsC = "\nbefore snapshot write | ";
-//      strToBytes = lbsC.getBytes();
-//      outputStream.write(strToBytes);
       System.out.println("xbis: before snapshot write");
 
-      keys = writeKeys(leaderOM, keyIncrement);
+//      keys = writeKeys(leaderOM, keyIncrement);
 
       snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
-      String lC = "\nxbis: " + snapshotCount + " | ";
 
-//      strToBytes = lC.getBytes();
-//      outputStream.write(strToBytes);
       System.out.println("xbis: " + snapshotCount);
     }
-    String secondTimeStamp = new SimpleDateFormat("dd.MM.yyyy.HH.mm.ss").format(new java.util.Date());
-
-    String secTime = "\n" + secondTimeStamp;
-
-//    strToBytes = secTime.getBytes();
-//    outputStream.write(strToBytes);
-    System.out.println("xbis: " + secondTimeStamp);
-//    outputStream.close();
 
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
@@ -281,7 +244,6 @@ System.out.println("xbis: before key write");
 
     // Start the inactive OM. Checkpoint installation will happen spontaneously.
     cluster.startInactiveOM(followerNodeId);
-//    cluster.restartOzoneManager(followerOM, true);
     GenericTestUtils.LogCapturer logCapture =
         GenericTestUtils.LogCapturer.captureLogs(OzoneManager.LOG);
 
@@ -343,10 +305,6 @@ System.out.println("xbis: before key write");
      */
 
     checkSnapshot(leaderOM, followerOM, snapshotName, keys, snapshotInfo);
-
-    System.out.println("xbis: leader: " + leaderOMNodeId);
-    System.out.println("xbis: inactive: " + followerNodeId);
-    System.out.println("xbis: active: " + activeFollowerId);
   }
 
   private void checkSnapshot(OzoneManager leaderOM, OzoneManager followerOM,
