@@ -460,7 +460,9 @@ public class TestOMRatisSnapshots {
     assertEquals(2, dbMetrics.getNumIncrementalCheckpoints());
 
     // Verify RPC server is running
-    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 5000);
+    GenericTestUtils.waitFor(() -> {
+      return followerOM.isOmRpcServerRunning();
+    }, 100, 5000);
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
@@ -674,6 +676,10 @@ public class TestOMRatisSnapshots {
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
 
+    // downloadDBSnapshotFromLeader should have already run a second time.
+    // 1/10 it doesn't create a second checkpoint before the following assertions.
+    // We need to add a wait check here.
+
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
         getDBCheckpointMetrics();
@@ -682,7 +688,9 @@ public class TestOMRatisSnapshots {
     assertTrue(dbMetrics.getNumCheckpoints() >= 3);
 
     // Verify RPC server is running
-    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 10000);
+    GenericTestUtils.waitFor(() -> {
+      return followerOM.isOmRpcServerRunning();
+    }, 100, 5000);
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
@@ -690,7 +698,7 @@ public class TestOMRatisSnapshots {
     GenericTestUtils.waitFor(() ->
         leaderRatisServer.getLastAppliedTermIndex().getIndex() ==
             followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex(),
-        100, 5000);
+        100, 10000);
     assertNotNull(followerOMMetaMngr.getKeyTable(
         TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
         volumeName, bucketName, newKeys.get(0))));
