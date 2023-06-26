@@ -63,6 +63,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
@@ -365,7 +366,7 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-  @Test
+  @RepeatedTest(10)
   @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
@@ -466,6 +467,10 @@ public class TestOMRatisSnapshots {
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
     readKeys(newKeys);
+    GenericTestUtils.waitFor(() ->
+        leaderRatisServer.getLastAppliedTermIndex().getIndex() ==
+            followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex(),
+        100, 5000);
     assertNotNull(followerOMMetaMngr.getKeyTable(
         TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
         volumeName, bucketName, newKeys.get(0))));
@@ -570,7 +575,7 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-  @Test
+  @RepeatedTest(10)
   @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
@@ -679,13 +684,15 @@ public class TestOMRatisSnapshots {
     assertTrue(dbMetrics.getNumCheckpoints() >= 3);
 
     // Verify RPC server is running
-    GenericTestUtils.waitFor(() -> {
-      return followerOM.isOmRpcServerRunning();
-    }, 100, 5000);
+    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 5000);
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
     readKeys(newKeys);
+    GenericTestUtils.waitFor(() ->
+        leaderRatisServer.getLastAppliedTermIndex().getIndex() ==
+            followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex(),
+        100, 5000);
     assertNotNull(followerOMMetaMngr.getKeyTable(
         TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
         volumeName, bucketName, newKeys.get(0))));
