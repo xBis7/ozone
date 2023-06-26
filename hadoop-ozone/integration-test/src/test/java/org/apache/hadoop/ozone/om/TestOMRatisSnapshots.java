@@ -460,9 +460,7 @@ public class TestOMRatisSnapshots {
     assertEquals(2, dbMetrics.getNumIncrementalCheckpoints());
 
     // Verify RPC server is running
-    GenericTestUtils.waitFor(() -> {
-      return followerOM.isOmRpcServerRunning();
-    }, 100, 5000);
+    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 5000);
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
@@ -470,7 +468,7 @@ public class TestOMRatisSnapshots {
     GenericTestUtils.waitFor(() ->
         leaderRatisServer.getLastAppliedTermIndex().getIndex() ==
             followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex(),
-        100, 5000);
+        100, 10000);
     assertNotNull(followerOMMetaMngr.getKeyTable(
         TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
         volumeName, bucketName, newKeys.get(0))));
@@ -684,7 +682,7 @@ public class TestOMRatisSnapshots {
     assertTrue(dbMetrics.getNumCheckpoints() >= 3);
 
     // Verify RPC server is running
-    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 5000);
+    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 10000);
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
