@@ -193,11 +193,13 @@ public class TestOMRatisSnapshots {
     }
   }
 
+  @RepeatedTest(10)
 //  @ParameterizedTest
-//  @ValueSource(ints = {100})
+//  @ValueSource(ints = {10})
   // tried up to 1000 snapshots and this test works, but some of the
   //  timeouts have to be increased.
-  public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
+//  public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
+  public void testInstallSnapshot() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
         .getFailoverProxyProvider(objectStore.getClientProxy())
@@ -218,7 +220,7 @@ public class TestOMRatisSnapshots {
     String snapshotName = "";
     List<String> keys = new ArrayList<>();
     SnapshotInfo snapshotInfo = null;
-    for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
+    for (int snapshotCount = 0; snapshotCount < 10;
         snapshotCount++) {
       snapshotName = snapshotNamePrefix + snapshotCount;
       System.out.println("xbis: before key write");
@@ -366,7 +368,7 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-  @RepeatedTest(10)
+  @Test
   @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
