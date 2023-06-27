@@ -681,7 +681,7 @@ public class TestOMRatisSnapshots {
     // Add this wait check here, to avoid flakiness.
     GenericTestUtils.waitFor(() ->
         followerOM.getOmSnapshotProvider().getNumDownloaded() > 2,
-        1000, 10000);
+        1000, 30000);
 
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
@@ -713,7 +713,7 @@ public class TestOMRatisSnapshots {
     assertEquals(0, filesInCandidate.length);
   }
 
-//  @Ignore("Enable this unit test after RATIS-1481 used")
+  @Ignore("Enable this unit test after RATIS-1481 used")
   public void testInstallSnapshotWithClientWrite() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -814,7 +814,7 @@ public class TestOMRatisSnapshots {
     System.out.println("All data are replicated");
   }
 
-//  @Test
+  @Test
   public void testInstallSnapshotWithClientRead() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -903,7 +903,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, "Install Checkpoint is finished");
   }
 
-//  @Test
+  @Test
   public void testInstallOldCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -961,7 +961,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, msg);
   }
 
-//  @Test
+  @Test
   public void testInstallCorruptedCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
