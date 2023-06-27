@@ -679,10 +679,16 @@ public class TestOMRatisSnapshots {
     // downloadDBSnapshotFromLeader should have already run a second time.
     // 1/10 it doesn't create a second checkpoint before the following assertions.
     // We need to add a wait check here.
+    GenericTestUtils.waitFor(() ->
+        followerOM.getOmSnapshotProvider().getNumDownloaded() > 2,
+        1000, 10000);
 
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
         getDBCheckpointMetrics();
+//    System.out.println("xbis: num of checkpoints: " + dbMetrics.getNumCheckpoints());
+//    System.out.println("xbis: follower num of snap downloads: " + followerOM.getOmSnapshotProvider().getNumDownloaded());
+
     assertEquals(0, dbMetrics.getLastCheckpointStreamingNumSSTExcluded());
     assertTrue(dbMetrics.getNumIncrementalCheckpoints() >= 1);
     assertTrue(dbMetrics.getNumCheckpoints() >= 3);
