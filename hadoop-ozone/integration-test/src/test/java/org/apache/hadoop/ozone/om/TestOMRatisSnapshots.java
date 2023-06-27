@@ -366,7 +366,7 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-  @RepeatedTest(10)
+  @Test
   @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
@@ -575,7 +575,7 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-  @RepeatedTest(10)
+  @Test
   @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
@@ -676,9 +676,9 @@ public class TestOMRatisSnapshots {
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
 
-    // downloadDBSnapshotFromLeader should have already run a second time.
-    // 1/10 it doesn't create a second checkpoint before the following assertions.
-    // We need to add a wait check here.
+    // There is a chance we end up checking the DBCheckpointMetrics before
+    // the follower had time to install another snapshot from the leader.
+    // Add this wait check here, to avoid flakiness.
     GenericTestUtils.waitFor(() ->
         followerOM.getOmSnapshotProvider().getNumDownloaded() > 2,
         1000, 10000);
@@ -686,9 +686,6 @@ public class TestOMRatisSnapshots {
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
         getDBCheckpointMetrics();
-//    System.out.println("xbis: num of checkpoints: " + dbMetrics.getNumCheckpoints());
-//    System.out.println("xbis: follower num of snap downloads: " + followerOM.getOmSnapshotProvider().getNumDownloaded());
-
     assertEquals(0, dbMetrics.getLastCheckpointStreamingNumSSTExcluded());
     assertTrue(dbMetrics.getNumIncrementalCheckpoints() >= 1);
     assertTrue(dbMetrics.getNumCheckpoints() >= 3);
