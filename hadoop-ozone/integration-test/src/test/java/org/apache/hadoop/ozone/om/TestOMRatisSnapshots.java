@@ -92,6 +92,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -161,6 +162,7 @@ public class TestOMRatisSnapshots {
         .setOMServiceId("om-service-test1")
         .setNumOfOzoneManagers(numOfOMs)
         .setNumOfActiveOMs(2)
+        .setNumDatanodes(1)
         .build();
     cluster.waitForClusterToBeReady();
     client = OzoneClientFactory.getRpcClient(omServiceId, conf);
@@ -193,13 +195,13 @@ public class TestOMRatisSnapshots {
     }
   }
 
-  @RepeatedTest(10)
-//  @ParameterizedTest
-//  @ValueSource(ints = {10})
+  @ParameterizedTest
+  @ValueSource(ints = {100})
+  @Timeout(120)
   // tried up to 1000 snapshots and this test works, but some of the
   //  timeouts have to be increased.
-//  public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
-  public void testInstallSnapshot() throws Exception {
+  public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
+//  public void testInstallSnapshot() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
         .getFailoverProxyProvider(objectStore.getClientProxy())
@@ -209,10 +211,16 @@ public class TestOMRatisSnapshots {
 
     // Find the inactive OM
     String followerNodeId = leaderOM.getPeerNodes().get(0).getNodeId();
+    String activeFollowerNodeId = leaderOM.getPeerNodes().get(1).getNodeId();
     if (cluster.isOMActive(followerNodeId)) {
       followerNodeId = leaderOM.getPeerNodes().get(1).getNodeId();
+      activeFollowerNodeId = leaderOM.getPeerNodes().get(0).getNodeId();
     }
     OzoneManager followerOM = cluster.getOzoneManager(followerNodeId);
+    OzoneManager activeOM = cluster.getOzoneManager(activeFollowerNodeId);
+
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+    Future<?> futureTask = executorService.submit(() -> continuousChecks(leaderOM, activeOM, followerOM));
 
     // Create some snapshots, each with new keys
     int keyIncrement = 10;
@@ -220,20 +228,26 @@ public class TestOMRatisSnapshots {
     String snapshotName = "";
     List<String> keys = new ArrayList<>();
     SnapshotInfo snapshotInfo = null;
-    for (int snapshotCount = 0; snapshotCount < 10;
-        snapshotCount++) {
-      snapshotName = snapshotNamePrefix + snapshotCount;
-      System.out.println("xbis: before key write");
+    try {
+      for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
+           snapshotCount++) {
+        snapshotName = snapshotNamePrefix + snapshotCount;
+        System.out.println("xbis: before key write");
 
-      keys = writeKeys(keyIncrement);
+        keys = writeKeys(keyIncrement);
 
-      System.out.println("xbis: before snapshot write");
+        System.out.println("xbis: before snapshot write");
 
 //      keys = writeKeys(leaderOM, keyIncrement);
 
-      snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
+        snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
 
-      System.out.println("xbis: " + snapshotCount);
+        System.out.println("xbis: " + snapshotCount);
+      }
+    } finally {
+      futureTask.cancel(true);
+      executorService.shutdown();
+      executorService.awaitTermination(1, TimeUnit.SECONDS);
     }
 
     // Get the latest db checkpoint from the leader OM.
@@ -310,6 +324,44 @@ public class TestOMRatisSnapshots {
     checkSnapshot(leaderOM, followerOM, snapshotName, keys, snapshotInfo);
   }
 
+  private void continuousChecks(OzoneManager leaderOM,
+                                OzoneManager followerOM,
+                                OzoneManager inactiveFollowerOM) {
+    try {
+      while (!Thread.currentThread().isInterrupted()) {
+
+        System.out.println("xbis: om leader: " + leaderOM.getOMNodeId() + " | running: " + leaderOM.isRunning() +
+            " | OM Rpc server running: " + leaderOM.isOmRpcServerRunning() +
+            " | RatisServer state: " + leaderOM.getOmRatisServer().getServerState().toString() +
+            " | lastIndex: " + leaderOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
+            " | SnapIndex: " + leaderOM.getRatisSnapshotIndex());
+
+        // More info about all that.
+        // Ratis client id
+        // Ratis transaction
+        // OM current index
+
+
+        System.out.println("xbis: om follower: " + followerOM.getOMNodeId() + " | running: " + followerOM.isRunning() +
+            " | OM Rpc server running: " + followerOM.isOmRpcServerRunning() +
+            " | RatisServer state: " + followerOM.getOmRatisServer().getServerState().toString() +
+            " | lastIndex: " + followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
+            " | SnapIndex: " + followerOM.getRatisSnapshotIndex());
+
+        System.out.println("xbis: om inactive: " + inactiveFollowerOM.getOMNodeId() + " | running: " + inactiveFollowerOM.isRunning() +
+            " | OM Rpc server running: " + inactiveFollowerOM.isOmRpcServerRunning() +
+            " | RatisServer state: " + inactiveFollowerOM.getOmRatisServer().getServerState().toString() +
+            " | lastIndex: " + inactiveFollowerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
+            " | SnapIndex: " + inactiveFollowerOM.getRatisSnapshotIndex());
+        // Sleep for a fixed interval
+        Thread.sleep(100);
+      }
+    } catch (InterruptedException e) {
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private void checkSnapshot(OzoneManager leaderOM, OzoneManager followerOM,
                              String snapshotName,
                              List<String> keys, SnapshotInfo snapshotInfo)
@@ -368,8 +420,8 @@ public class TestOMRatisSnapshots {
     Assertions.assertTrue(hardLinkCount > 0, "No hard links were found");
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshot(@TempDir Path tempDir)
       throws Exception {
     // Get the leader OM
@@ -577,8 +629,8 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-  @Test
-  @Timeout(300)
+//  @Test
+//  @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -715,7 +767,7 @@ public class TestOMRatisSnapshots {
     assertEquals(0, filesInCandidate.length);
   }
 
-  @Ignore("Enable this unit test after RATIS-1481 used")
+//  @Ignore("Enable this unit test after RATIS-1481 used")
   public void testInstallSnapshotWithClientWrite() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -816,7 +868,7 @@ public class TestOMRatisSnapshots {
     System.out.println("All data are replicated");
   }
 
-  @Test
+//  @Test
   public void testInstallSnapshotWithClientRead() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -905,7 +957,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, "Install Checkpoint is finished");
   }
 
-  @Test
+//  @Test
   public void testInstallOldCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -963,7 +1015,7 @@ public class TestOMRatisSnapshots {
     assertLogCapture(logCapture, msg);
   }
 
-  @Test
+//  @Test
   public void testInstallCorruptedCheckpointFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil

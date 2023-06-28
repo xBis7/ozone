@@ -63,6 +63,7 @@ public final class OMRatisHelper {
 
   public static OMResponse getOMResponseFromRaftClientReply(
       RaftClientReply reply) throws InvalidProtocolBufferException {
+    System.out.println("xbis: RatisHelper reply: " + reply.toString());
     byte[] bytes = reply.getMessage().getContent().toByteArray();
     return OMResponse.newBuilder(OMResponse.parseFrom(bytes))
         .setLeaderOMNodeId(reply.getReplierId())

@@ -267,7 +267,8 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   @Override
   public TransactionContext preAppendTransaction(TransactionContext trx)
       throws IOException {
-    System.out.println("xbis: state machine: preAppendTransaction: om: " + ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
+    System.out.println("xbis: state machine: preAppendTransaction: om: " + ozoneManager.getOMNodeId() +
+        " | latestIndex: " + ozoneManager.getOmRatisServer().getLastAppliedTermIndex().getIndex());
     OMRequest request = OMRatisHelper.convertByteStringToOMRequest(
         trx.getStateMachineLogEntry().getLogData());
     OzoneManagerProtocolProtos.Type cmdType = request.getCmdType();
@@ -315,6 +316,10 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   @Override
   public CompletableFuture<Message> applyTransaction(TransactionContext trx) {
     try {
+      System.out.println("xbis: state machine applyTransaction: om: " + ozoneManager.getOMNodeId() +
+          " | latestIndex: " + ozoneManager.getOmRatisServer().getLastAppliedTermIndex().getIndex());
+      System.out.println("xbis: applyTransaction: transaction: " +
+          trx.getStateMachineLogEntry().getStateMachineEntry().getStateMachineData().toString());
       OMRequest request = OMRatisHelper.convertByteStringToOMRequest(
           trx.getStateMachineLogEntry().getLogData());
       long trxLogIndex = trx.getLogEntry().getIndex();
@@ -603,7 +608,8 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
   private synchronized void computeAndUpdateLastAppliedIndex(
       long lastFlushedIndex, long currentTerm, List<Long> flushedEpochs,
       boolean checkMap) {
-    System.out.println("xbis: state machine: computeAndUpdateLastAppliedIndex: om: " + ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
+    System.out.println("xbis: state machine: computeAndUpdateLastAppliedIndex: om: " +
+        ozoneManager.getOMNodeId() + " | latestIndex: " + ozoneManager.getOmRatisServer().getLastAppliedTermIndex().getIndex());
     if (checkMap) {
       List<Long> flushedTrans = new ArrayList<>(flushedEpochs);
       Long appliedTerm = null;
@@ -657,7 +663,6 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
         }
       }
     }
-    System.out.println("xbis: state machine: exit computeAndUpdateLastAppliedIndex: om: " + ozoneManager.getOMNodeId() + " | running: " + ozoneManager.isRunning());
   }
 
   public void loadSnapshotInfoFromDB() throws IOException {
