@@ -145,12 +145,18 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       throw new ServiceException(e);
     }
 
-    OMResponse response = dispatcher.processRequest(validatedRequest,
-        this::processRequest,
-        request.getCmdType(),
-        request.getTraceID());
+    try {
 
-    return requestValidations.validateResponse(request, response);
+      OMResponse response = dispatcher.processRequest(validatedRequest,
+          this::processRequest,
+          request.getCmdType(),
+          request.getTraceID());
+
+      return requestValidations.validateResponse(request, response);
+    } catch (Exception e) {
+      LOG.error("xbis: ex: " + e);
+      throw e;
+    }
   }
 
   private OMResponse processRequest(OMRequest request) throws ServiceException {

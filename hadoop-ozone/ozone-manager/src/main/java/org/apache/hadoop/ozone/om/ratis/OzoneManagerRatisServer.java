@@ -25,21 +25,19 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ServiceException;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.TimeUnit;
@@ -288,12 +286,23 @@ public final class OzoneManagerRatisServer {
   private RaftClientReply submitRequestToRatis(
       RaftClientRequest raftClientRequest) throws ServiceException {
     try {
-      return server.submitClientRequestAsync(raftClientRequest)
-          .get();
+
+      CompletableFuture<RaftClientReply> future =
+          server.submitClientRequestAsync(raftClientRequest);
+
+//      while(!future.isDone()) {
+//        System.out.println("xbis: submitRequestToRatis: ");
+//      }
+
+      return future.get();
+//      return server.submitClientRequestAsync(raftClientRequest)
+//          .get();
     } catch (ExecutionException | IOException ex) {
+      System.out.println("xbis: submitRequestToRatis: exec ex");
       throw new ServiceException(ex.getMessage(), ex);
     } catch (InterruptedException ex) {
       Thread.currentThread().interrupt();
+      System.out.println("xbis: submitRequestToRatis: thread interrupted");
       throw new ServiceException(ex.getMessage(), ex);
     }
   }
