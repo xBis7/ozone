@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.TimeUnit;
@@ -286,23 +285,12 @@ public final class OzoneManagerRatisServer {
   private RaftClientReply submitRequestToRatis(
       RaftClientRequest raftClientRequest) throws ServiceException {
     try {
-
-      CompletableFuture<RaftClientReply> future =
-          server.submitClientRequestAsync(raftClientRequest);
-
-//      while(!future.isDone()) {
-//        System.out.println("xbis: submitRequestToRatis: ");
-//      }
-
-      return future.get();
-//      return server.submitClientRequestAsync(raftClientRequest)
-//          .get();
+      return server.submitClientRequestAsync(raftClientRequest)
+          .get();
     } catch (ExecutionException | IOException ex) {
-      System.out.println("xbis: submitRequestToRatis: exec ex");
       throw new ServiceException(ex.getMessage(), ex);
     } catch (InterruptedException ex) {
       Thread.currentThread().interrupt();
-      System.out.println("xbis: submitRequestToRatis: thread interrupted");
       throw new ServiceException(ex.getMessage(), ex);
     }
   }
