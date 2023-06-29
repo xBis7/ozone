@@ -53,6 +53,7 @@ import org.junit.Ignore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
@@ -404,9 +405,15 @@ public class TestOMRatisSnapshots {
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
     readKeys(newKeys);
-    assertNotNull(followerOMMetaMngr.getKeyTable(
-        TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
-        volumeName, bucketName, newKeys.get(0))));
+    GenericTestUtils.waitFor(() -> {
+      try {
+        return followerOMMetaMngr.getKeyTable(
+            TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
+            volumeName, bucketName, newKeys.get(0))) != null;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }, 100, 10000);
 
     // Verify follower candidate directory get cleaned
     String[] filesInCandidate = followerOM.getOmSnapshotProvider().
@@ -516,6 +523,13 @@ public class TestOMRatisSnapshots {
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
 
+    // There is a chance we end up checking the DBCheckpointMetrics before
+    // the follower had time to install another snapshot from the leader.
+    // Add this wait check here, to avoid flakiness.
+    GenericTestUtils.waitFor(() ->
+            followerOM.getOmSnapshotProvider().getNumDownloaded() > 2,
+        1000, 30000);
+
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
         getDBCheckpointMetrics();
@@ -531,9 +545,15 @@ public class TestOMRatisSnapshots {
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
     readKeys(newKeys);
-    assertNotNull(followerOMMetaMngr.getKeyTable(
-        TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
-        volumeName, bucketName, newKeys.get(0))));
+    GenericTestUtils.waitFor(() -> {
+      try {
+        return followerOMMetaMngr.getKeyTable(
+            TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
+                volumeName, bucketName, newKeys.get(0))) != null;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }, 100, 10000);
 
     // Verify follower candidate directory get cleaned
     String[] filesInCandidate = followerOM.getOmSnapshotProvider().
