@@ -28,10 +28,13 @@ import org.apache.hadoop.hdds.utils.TransactionInfo;
 import org.apache.hadoop.hdds.utils.db.RDBCheckpointUtils;
 import org.apache.hadoop.ozone.MiniOzoneCluster;
 import org.apache.hadoop.ozone.MiniOzoneHAClusterImpl;
+import org.apache.hadoop.ozone.client.BucketArgs;
 import org.apache.hadoop.ozone.client.ObjectStore;
 import org.apache.hadoop.ozone.client.OzoneBucket;
 import org.apache.hadoop.ozone.client.OzoneClient;
+import org.apache.hadoop.ozone.client.OzoneClientFactory;
 import org.apache.hadoop.ozone.client.OzoneKeyDetails;
+import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.ozone.client.VolumeArgs;
 import org.apache.hadoop.ozone.client.io.OzoneInputStream;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
@@ -45,8 +48,6 @@ import org.apache.ratis.server.protocol.TermIndex;
 import org.assertj.core.api.Fail;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -78,25 +79,74 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public abstract class TestOmHARatis {
 
-  protected MiniOzoneCluster.Builder clusterBuilder = null;
-  protected MiniOzoneHAClusterImpl cluster = null;
-  protected ObjectStore objectStore;
-  protected OzoneConfiguration conf;
-  protected String clusterId;
-  protected String scmId;
-  protected String omServiceId;
-  protected int numOfOMs = 3;
-  protected OzoneBucket ozoneBucket;
-  protected String volumeName;
-  protected String bucketName;
-  protected VolumeArgs createVolumeArgs;
-  protected OzoneClient client;
+  private MiniOzoneHAClusterImpl cluster = null;
+  private ObjectStore objectStore;
+  private OzoneConfiguration conf;
+  private String clusterId;
+  private String scmId;
+  private String omServiceId;
+  private OzoneBucket ozoneBucket;
+  private String volumeName;
+  private String bucketName;
+  private OzoneClient client;
 
-  protected static final int LOG_PURGE_GAP = 50;
-  // This test depends on direct RocksDB checks that are easier done with OBS
+  private static final int OM_NUM = 3;
+  private static final int LOG_PURGE_GAP = 50;
+  // Tests depend on direct RocksDB checks that are easier done with OBS
   // buckets.
   protected static final BucketLayout TEST_BUCKET_LAYOUT =
       BucketLayout.OBJECT_STORE;
+
+  public MiniOzoneHAClusterImpl getCluster() {
+    return cluster;
+  }
+
+  public ObjectStore getObjectStore() {
+    return objectStore;
+  }
+
+  public OzoneConfiguration getConf() {
+    return conf;
+  }
+
+  public String getClusterId() {
+    return clusterId;
+  }
+
+  public String getScmId() {
+    return scmId;
+  }
+
+  public String getOmServiceId() {
+    return omServiceId;
+  }
+
+  public OzoneBucket getOzoneBucket() {
+    return ozoneBucket;
+  }
+
+  public String getVolumeName() {
+    return volumeName;
+  }
+
+  public String getBucketName() {
+    return bucketName;
+  }
+
+  public OzoneClient getClient() {
+    return client;
+  }
+
+  /**
+   * Shutdown MiniDFSCluster.
+   */
+  @AfterEach
+  public void shutdown() {
+    IOUtils.closeQuietly(client);
+    if (cluster != null) {
+      cluster.shutdown();
+    }
+  }
 
   /**
    * Create a MiniOzoneCluster for testing. The cluster initially has one
@@ -105,8 +155,8 @@ public abstract class TestOmHARatis {
    *
    * @throws IOException
    */
-  @BeforeEach
-  public void setUp() throws Exception {
+  protected void setUpMiniOzoneHAClusterWithInactiveOM(long snapshotThreshold)
+      throws Exception {
     conf = new OzoneConfiguration();
     clusterId = UUID.randomUUID().toString();
     scmId = UUID.randomUUID().toString();
@@ -116,32 +166,34 @@ public abstract class TestOmHARatis {
         StorageUnit.KB);
     conf.setStorageSize(OMConfigKeys.
         OZONE_OM_RATIS_SEGMENT_PREALLOCATED_SIZE_KEY, 16, StorageUnit.KB);
-    clusterBuilder = MiniOzoneCluster.newOMHABuilder(conf)
+    conf.setLong(
+        OMConfigKeys.OZONE_OM_RATIS_SNAPSHOT_AUTO_TRIGGER_THRESHOLD_KEY,
+        snapshotThreshold);
+    cluster = (MiniOzoneHAClusterImpl) MiniOzoneCluster.newOMHABuilder(conf)
         .setClusterId(clusterId)
         .setScmId(scmId)
         .setOMServiceId("om-service-test1")
-        .setNumOfOzoneManagers(numOfOMs)
-        .setNumOfActiveOMs(2);
+        .setNumOfOzoneManagers(OM_NUM)
+        .setNumOfActiveOMs(2)
+        .build();
+    cluster.waitForClusterToBeReady();
+    client = OzoneClientFactory.getRpcClient(omServiceId, conf);
+    objectStore = client.getObjectStore();
 
     volumeName = "volume" + RandomStringUtils.randomNumeric(5);
     bucketName = "bucket" + RandomStringUtils.randomNumeric(5);
 
-    createVolumeArgs = VolumeArgs.newBuilder()
+    VolumeArgs createVolumeArgs = VolumeArgs.newBuilder()
         .setOwner("user" + RandomStringUtils.randomNumeric(5))
         .setAdmin("admin" + RandomStringUtils.randomNumeric(5))
         .build();
-  }
 
-  /**
-   * Shutdown MiniDFSCluster.
-   */
-  @AfterEach
-  public void shutdown() {
-    System.out.println("xbis: shutdown");
-    IOUtils.closeQuietly(client);
-    if (cluster != null) {
-      cluster.shutdown();
-    }
+    objectStore.createVolume(volumeName, createVolumeArgs);
+    OzoneVolume retVolumeinfo = objectStore.getVolume(volumeName);
+
+    retVolumeinfo.createBucket(bucketName,
+        BucketArgs.newBuilder().setBucketLayout(TEST_BUCKET_LAYOUT).build());
+    ozoneBucket = retVolumeinfo.getBucket(bucketName);
   }
 
   protected void checkSnapshot(OzoneManager leaderOM, OzoneManager followerOM,
