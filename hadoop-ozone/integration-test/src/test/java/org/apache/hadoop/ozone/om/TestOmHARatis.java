@@ -89,14 +89,14 @@ public abstract class TestOmHARatis {
   protected OzoneBucket ozoneBucket;
   protected String volumeName;
   protected String bucketName;
-  protected static VolumeArgs createVolumeArgs;
+  protected VolumeArgs createVolumeArgs;
+  protected OzoneClient client;
 
   protected static final int LOG_PURGE_GAP = 50;
   // This test depends on direct RocksDB checks that are easier done with OBS
   // buckets.
   protected static final BucketLayout TEST_BUCKET_LAYOUT =
       BucketLayout.OBJECT_STORE;
-  protected OzoneClient client;
 
   /**
    * Create a MiniOzoneCluster for testing. The cluster initially has one
