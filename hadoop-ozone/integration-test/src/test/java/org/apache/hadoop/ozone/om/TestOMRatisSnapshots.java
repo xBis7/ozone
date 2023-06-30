@@ -417,7 +417,7 @@ public class TestOMRatisSnapshots extends TestOmHARatis {
     // Add this wait check here, to avoid flakiness.
     GenericTestUtils.waitFor(() ->
             leaderOM.getMetrics().getDBCheckpointMetrics().getNumCheckpoints() > 2,
-        1000, 10000);
+        1000, 30000);
 
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().

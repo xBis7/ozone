@@ -133,6 +133,7 @@ public class TestOmHARatis {
    */
   @AfterEach
   public void shutdown() {
+    System.out.println("xbis: shutdown");
     IOUtils.closeQuietly(client);
     if (cluster != null) {
       cluster.shutdown();

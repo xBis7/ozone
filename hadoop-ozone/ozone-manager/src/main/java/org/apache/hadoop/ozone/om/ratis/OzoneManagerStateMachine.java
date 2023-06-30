@@ -457,7 +457,6 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
         .getInt(OMConfigKeys.OZONE_OM_UNFLUSHED_TRANSACTION_MAX_COUNT,
             OMConfigKeys.OZONE_OM_UNFLUSHED_TRANSACTION_MAX_COUNT_DEFAULT);
     return new OzoneManagerDoubleBuffer.Builder()
-        .setOzoneManager(ozoneManager)
         .setOmMetadataManager(ozoneManager.getMetadataManager())
         .setOzoneManagerRatisSnapShot(this::updateLastAppliedIndex)
         .setmaxUnFlushedTransactionCount(maxUnflushedTransactionSize)

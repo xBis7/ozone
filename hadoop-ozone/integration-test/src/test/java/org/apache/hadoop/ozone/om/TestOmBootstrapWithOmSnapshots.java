@@ -25,6 +25,7 @@ import org.apache.hadoop.ozone.om.helpers.SnapshotInfo;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -142,7 +143,7 @@ public class TestOmBootstrapWithOmSnapshots extends TestOmHARatis {
 
     // Verify checkpoint installation was happened.
     String msg = "Reloaded OM state";
-//    assertLogCapture(logCapture, msg);
+    assertLogCapture(logCapture, msg);
 
     // Verify that the follower OM's DB contains the transactions which were
     // made while it was inactive.
@@ -162,8 +163,8 @@ public class TestOmBootstrapWithOmSnapshots extends TestOmHARatis {
       return followerOM.isOmRpcServerRunning();
     }, 100, 5000);
 
-//    assertLogCapture(logCapture,
-//        "Install Checkpoint is finished");
+    assertLogCapture(logCapture,
+        "Install Checkpoint is finished");
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
