@@ -72,19 +72,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class TestOmHARatis {
+/**
+ * Class used to share common setup and methdods between
+ * classes that test Ratis snapshots with OM HA.
+ */
+public abstract class TestOmHARatis {
 
-  protected static MiniOzoneCluster.Builder clusterBuilder = null;
-  protected static MiniOzoneHAClusterImpl cluster = null;
-  protected static ObjectStore objectStore;
-  protected static OzoneConfiguration conf;
-  protected static String clusterId;
-  protected static String scmId;
-  protected static String omServiceId;
-  protected static int numOfOMs = 3;
-  protected static OzoneBucket ozoneBucket;
-  protected static String volumeName;
-  protected static String bucketName;
+  protected MiniOzoneCluster.Builder clusterBuilder = null;
+  protected MiniOzoneHAClusterImpl cluster = null;
+  protected ObjectStore objectStore;
+  protected OzoneConfiguration conf;
+  protected String clusterId;
+  protected String scmId;
+  protected String omServiceId;
+  protected int numOfOMs = 3;
+  protected OzoneBucket ozoneBucket;
+  protected String volumeName;
+  protected String bucketName;
   protected static VolumeArgs createVolumeArgs;
 
   protected static final int LOG_PURGE_GAP = 50;
@@ -101,8 +105,8 @@ public class TestOmHARatis {
    *
    * @throws IOException
    */
-  @BeforeAll
-  public static void setUp() throws Exception {
+  @BeforeEach
+  public void setUp() throws Exception {
     conf = new OzoneConfiguration();
     clusterId = UUID.randomUUID().toString();
     scmId = UUID.randomUUID().toString();
@@ -141,8 +145,8 @@ public class TestOmHARatis {
   }
 
   protected void checkSnapshot(OzoneManager leaderOM, OzoneManager followerOM,
-                             String snapshotName,
-                             List<String> keys, SnapshotInfo snapshotInfo)
+                               String snapshotName, List<String> keys,
+                               SnapshotInfo snapshotInfo)
       throws IOException {
     // Read back data from snapshot.
     OmKeyArgs omKeyArgs = new OmKeyArgs.Builder()
