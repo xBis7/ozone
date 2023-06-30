@@ -34,11 +34,14 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.event.Level;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -59,6 +62,113 @@ public class TestOMRatisSnapshots extends TestOmHARatis {
   @BeforeEach
   public void init() throws Exception {
     setUpMiniOzoneHAClusterWithInactiveOM(50);
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {100})
+  // tried up to 1000 snapshots and this test works, but some of the
+  //  timeouts have to be increased.
+  public void testInstallSnapshot(int numSnapshotsToCreate) throws Exception {
+    // Get the leader OM
+    String leaderOMNodeId = OmFailoverProxyUtil
+        .getFailoverProxyProvider(getObjectStore().getClientProxy())
+        .getCurrentProxyOMNodeId();
+
+    OzoneManager leaderOM = getCluster().getOzoneManager(leaderOMNodeId);
+
+    // Find the inactive OM
+    String followerNodeId = leaderOM.getPeerNodes().get(0).getNodeId();
+    if (getCluster().isOMActive(followerNodeId)) {
+      followerNodeId = leaderOM.getPeerNodes().get(1).getNodeId();
+    }
+    OzoneManager followerOM = getCluster().getOzoneManager(followerNodeId);
+
+    // Create some snapshots, each with new keys
+    int keyIncrement = 10;
+    String snapshotNamePrefix = "snapshot";
+    String snapshotName = "";
+    List<String> keys = new ArrayList<>();
+    SnapshotInfo snapshotInfo = null;
+    for (int snapshotCount = 0; snapshotCount < numSnapshotsToCreate;
+        snapshotCount++) {
+      snapshotName = snapshotNamePrefix + snapshotCount;
+      keys = writeKeys(keyIncrement);
+      snapshotInfo = createOzoneSnapshot(leaderOM, snapshotName);
+    }
+
+
+    // Get the latest db checkpoint from the leader OM.
+    TransactionInfo transactionInfo =
+        TransactionInfo.readTransactionInfo(leaderOM.getMetadataManager());
+    TermIndex leaderOMTermIndex =
+        TermIndex.valueOf(transactionInfo.getTerm(),
+            transactionInfo.getTransactionIndex());
+    long leaderOMSnapshotIndex = leaderOMTermIndex.getIndex();
+    long leaderOMSnapshotTermIndex = leaderOMTermIndex.getTerm();
+
+    // Start the inactive OM. Checkpoint installation will happen spontaneously.
+    getCluster().startInactiveOM(followerNodeId);
+    GenericTestUtils.LogCapturer logCapture =
+        GenericTestUtils.LogCapturer.captureLogs(OzoneManager.LOG);
+
+    // The recently started OM should be lagging behind the leader OM.
+    // Wait & for follower to update transactions to leader snapshot index.
+    // Timeout error if follower does not load update within 10s
+    GenericTestUtils.waitFor(() -> {
+      return followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex()
+          >= leaderOMSnapshotIndex - 1;
+    }, 100, 10000);
+
+    long followerOMLastAppliedIndex =
+        followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex();
+    assertTrue(
+        followerOMLastAppliedIndex >= leaderOMSnapshotIndex - 1);
+
+    // After the new checkpoint is installed, the follower OM
+    // lastAppliedIndex must >= the snapshot index of the checkpoint. It
+    // could be great than snapshot index if there is any conf entry from ratis.
+    followerOMLastAppliedIndex = followerOM.getOmRatisServer()
+        .getLastAppliedTermIndex().getIndex();
+    assertTrue(followerOMLastAppliedIndex >= leaderOMSnapshotIndex);
+    assertTrue(followerOM.getOmRatisServer().getLastAppliedTermIndex()
+        .getTerm() >= leaderOMSnapshotTermIndex);
+
+    // Verify checkpoint installation was happened.
+    String msg = "Reloaded OM state";
+    assertLogCapture(logCapture, msg);
+
+    // Verify that the follower OM's DB contains the transactions which were
+    // made while it was inactive.
+    OMMetadataManager followerOMMetaMngr = followerOM.getMetadataManager();
+    assertNotNull(followerOMMetaMngr.getVolumeTable().get(
+        followerOMMetaMngr.getVolumeKey(getVolumeName())));
+    assertNotNull(followerOMMetaMngr.getBucketTable().get(
+        followerOMMetaMngr.getBucketKey(getVolumeName(), getBucketName())));
+    for (String key : keys) {
+      assertNotNull(followerOMMetaMngr.getKeyTable(
+          TEST_BUCKET_LAYOUT)
+          .get(followerOMMetaMngr.getOzoneKey(getVolumeName(), getBucketName(), key)));
+    }
+
+    // Verify RPC server is running
+    GenericTestUtils.waitFor(() -> {
+      return followerOM.isOmRpcServerRunning();
+    }, 100, 5000);
+
+    assertLogCapture(logCapture,
+        "Install Checkpoint is finished");
+
+    // Read & Write after snapshot installed.
+    List<String> newKeys = writeKeys(1);
+    readKeys(newKeys);
+    // TODO: Enable this part after RATIS-1481 used
+    /*
+    Assert.assertNotNull(followerOMMetaMngr.getKeyTable(
+        TEST_BUCKET_LAYOUT).get(followerOMMetaMngr.getOzoneKey(
+        volumeName, bucketName, newKeys.get(0))));
+     */
+
+    checkSnapshot(leaderOM, followerOM, snapshotName, keys, snapshotInfo);
   }
 
   @Test

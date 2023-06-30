@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.TimeUnit;
 
@@ -283,15 +284,25 @@ public final class OzoneManagerRatisServer {
 
   private RaftClientReply submitRequestToRatis(
       RaftClientRequest raftClientRequest) throws ServiceException {
-    try {
-      return server.submitClientRequestAsync(raftClientRequest)
-          .get();
-    } catch (ExecutionException | IOException ex) {
-      throw new ServiceException(ex.getMessage(), ex);
-    } catch (InterruptedException ex) {
-      Thread.currentThread().interrupt();
-      throw new ServiceException(ex.getMessage(), ex);
+    int retryCount = 0;
+    int maxRetryNum = 3;
+
+    while(retryCount < maxRetryNum) {
+      System.out.println("xbis: retry: " + retryCount);
+      try {
+        return server.submitClientRequestAsync(raftClientRequest)
+            .get(15, TimeUnit.SECONDS);
+      } catch (ExecutionException | IOException ex) {
+        throw new ServiceException(ex.getMessage(), ex);
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        throw new ServiceException(ex.getMessage(), ex);
+      } catch (TimeoutException e) {
+        retryCount++;
+      }
     }
+
+    throw new ServiceException("Request timed out after multiple retries.");
   }
 
   /**
