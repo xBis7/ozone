@@ -504,9 +504,6 @@ public class TestOMRatisSnapshots {
           >= leaderOMSnapshotIndex - 1;
     }, 1000, 10000);
 
-    System.out.println("xbis: follower index: " +
-        followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
-        " | snap num: " + followerOM.getRatisSnapshotIndex());
     // Verify that the follower OM's DB contains the transactions which were
     // made while it was inactive.
     OMMetadataManager followerOMMetaMngr = followerOM.getMetadataManager();
@@ -527,15 +524,11 @@ public class TestOMRatisSnapshots {
     }
 
     // There is a chance we end up checking the DBCheckpointMetrics before
-    // the follower had time to install another snapshot from the leader.
+    // the follower had time to get another checkpoint from the leader.
     // Add this wait check here, to avoid flakiness.
-//    GenericTestUtils.waitFor(() ->
-//            followerOM.getOmSnapshotProvider().getNumDownloaded() > 2,
-//        1000, 30000);
-
-    System.out.println("xbis: follower index: " +
-        followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
-        " | snap num: " + followerOM.getRatisSnapshotIndex());
+    GenericTestUtils.waitFor(() ->
+            leaderOM.getMetrics().getDBCheckpointMetrics().getNumCheckpoints() > 2,
+        1000, 10000);
 
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
