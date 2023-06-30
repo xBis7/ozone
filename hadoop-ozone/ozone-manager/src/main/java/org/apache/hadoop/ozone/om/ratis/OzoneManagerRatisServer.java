@@ -248,8 +248,7 @@ public final class OzoneManagerRatisServer {
       RaftClientRequest raftClientRequest =
           createWriteRaftClientRequest(omRequest);
       RaftClientReply raftClientReply = submitRequestToRatis(raftClientRequest);
-      System.out.println("xbis: request type: " + omRequest.getCmdType() +
-          " | " + raftClientReply.toString());
+
       return processReply(omRequest, raftClientReply);
     } else {
       LOG.info("Rejecting write request on OM {} because it is in prepare " +
@@ -450,9 +449,8 @@ public final class OzoneManagerRatisServer {
     // NotLeader exception is thrown only when the raft server to which the
     // request is submitted is not the leader. This can happen first time
     // when client is submitting request to OM.
-    System.out.println("xbis: process reply");
+
     if (!reply.isSuccess()) {
-      System.out.println("xbis: reply not success: | " + reply);
       NotLeaderException notLeaderException = reply.getNotLeaderException();
       if (notLeaderException != null) {
         throw new ServiceException(
@@ -470,7 +468,6 @@ public final class OzoneManagerRatisServer {
       StateMachineException stateMachineException =
           reply.getStateMachineException();
       if (stateMachineException != null) {
-        System.out.println("xbis: state machine ex: " + stateMachineException);
         OMResponse.Builder omResponse = OMResponse.newBuilder()
             .setCmdType(omRequest.getCmdType())
             .setSuccess(false)

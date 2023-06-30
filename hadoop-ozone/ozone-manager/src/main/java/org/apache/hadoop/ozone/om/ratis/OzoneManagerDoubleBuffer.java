@@ -45,7 +45,6 @@ import org.apache.hadoop.hdds.utils.TransactionInfo;
 import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.hdds.utils.db.DBColumnFamilyDefinition;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
-import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.codec.OMDBDefinition;
 import org.apache.hadoop.ozone.om.ratis.helpers.DoubleBufferEntry;
 import org.apache.hadoop.ozone.om.ratis.metrics.OzoneManagerDoubleBufferMetrics;
@@ -97,7 +96,6 @@ public final class OzoneManagerDoubleBuffer {
 
   private final Daemon daemon;
   private final OMMetadataManager omMetadataManager;
-  private final OzoneManager ozoneManager;
   private final AtomicLong flushedTransactionCount = new AtomicLong(0);
   private final AtomicLong flushIterations = new AtomicLong(0);
   private final AtomicBoolean isRunning = new AtomicBoolean(false);
@@ -120,7 +118,6 @@ public final class OzoneManagerDoubleBuffer {
    *  Builder for creating OzoneManagerDoubleBuffer.
    */
   public static class Builder {
-    private OzoneManager om;
     private OMMetadataManager mm;
     private OzoneManagerRatisSnapshot rs;
     private boolean isRatisEnabled = false;
@@ -128,11 +125,6 @@ public final class OzoneManagerDoubleBuffer {
     private Function<Long, Long> indexToTerm = null;
     private int maxUnFlushedTransactionCount = 0;
     private FlushNotifier flushNotifier;
-
-    public Builder setOzoneManager(OzoneManager om) {
-      this.om = om;
-      return this;
-    }
 
     public Builder setOmMetadataManager(OMMetadataManager omm) {
       this.mm = omm;
@@ -184,18 +176,17 @@ public final class OzoneManagerDoubleBuffer {
         flushNotifier = new FlushNotifier();
       }
 
-      return new OzoneManagerDoubleBuffer(om, mm, rs, isRatisEnabled,
+      return new OzoneManagerDoubleBuffer(mm, rs, isRatisEnabled,
           isTracingEnabled, indexToTerm, maxUnFlushedTransactionCount,
           flushNotifier);
     }
   }
 
-  private OzoneManagerDoubleBuffer(OzoneManager ozoneManager, OMMetadataManager omMetadataManager,
+  private OzoneManagerDoubleBuffer(OMMetadataManager omMetadataManager,
       OzoneManagerRatisSnapshot ozoneManagerRatisSnapShot,
       boolean isRatisEnabled, boolean isTracingEnabled,
       Function<Long, Long> indexToTerm, int maxUnFlushedTransactions,
       FlushNotifier flushNotifier) {
-    this.ozoneManager = ozoneManager;
     this.currentBuffer = new ConcurrentLinkedQueue<>();
     this.readyBuffer = new ConcurrentLinkedQueue<>();
     this.isRatisEnabled = isRatisEnabled;
@@ -296,7 +287,6 @@ public final class OzoneManagerDoubleBuffer {
    */
   @VisibleForTesting
   void flushCurrentBuffer() {
-    System.out.println("xbis: double buf: flushCurrentBuffer: om: " + ozoneManager.getOMNodeId() + " | isRunning: " + ozoneManager.isRunning());
     try {
       swapCurrentAndReadyBuffer();
 
@@ -335,7 +325,7 @@ public final class OzoneManagerDoubleBuffer {
 
   private void flushBatch(Queue<DoubleBufferEntry<OMClientResponse>> buffer)
       throws IOException {
-    System.out.println("xbis: double buf: flushBatch: om: " + ozoneManager.getOMNodeId() + " | isRunning: " + ozoneManager.isRunning());
+
     Map<String, List<Long>> cleanupEpochs = new HashMap<>();
     List<Long> flushedEpochs;
 
@@ -409,7 +399,6 @@ public final class OzoneManagerDoubleBuffer {
   private String addToBatch(Queue<DoubleBufferEntry<OMClientResponse>> buffer,
                             BatchOperation batchOperation) {
     String lastTraceId = null;
-    System.out.println("xbis: double buf: addToBatch: om: " + ozoneManager.getOMNodeId() + " | isRunning: " + ozoneManager.isRunning());
     for (DoubleBufferEntry<OMClientResponse> entry: buffer) {
       OMClientResponse response = entry.getResponse();
       OMResponse omResponse = response.getOMResponse();
@@ -630,12 +619,7 @@ public final class OzoneManagerDoubleBuffer {
    */
   private synchronized boolean canFlush() {
     try {
-      System.out.println("xbis: double buf: canFlush: size: " + currentBuffer.size());
       while (currentBuffer.size() == 0) {
-        System.out.println("xbis: double buf: canFlush: om: " +
-            ozoneManager.getOMNodeId() + " | isRunning: " +
-            ozoneManager.isRunning() + " | ratisServerState: " + ozoneManager.getOmRatisServerState() +
-            " | latestIndex: " + ozoneManager.getRatisSnapshotIndex());
         // canFlush() only gets called when the readyBuffer is empty.
         // Since both buffers are empty, notify once for each.
         flushNotifier.notifyFlush();
@@ -654,8 +638,6 @@ public final class OzoneManagerDoubleBuffer {
       LOG.info("OMDoubleBuffer flush thread {} is interrupted and will "
           + "exit.", Thread.currentThread().getName());
       return false;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
     }
   }
 
@@ -697,7 +679,6 @@ public final class OzoneManagerDoubleBuffer {
   }
 
   void awaitFlush() throws InterruptedException {
-    System.out.println("xbis: double buf: awaitFlush: om: " + ozoneManager.getOMNodeId() + " | isRunning: " + ozoneManager.isRunning());
     flushNotifier.await();
   }
 
@@ -706,6 +687,7 @@ public final class OzoneManagerDoubleBuffer {
         ConcurrentHashMap.newKeySet();
 
     void await() throws InterruptedException {
+
       // Wait until both the current and ready buffers are flushed.
       CountDownLatch latch = new CountDownLatch(2);
       flushLatches.add(latch);

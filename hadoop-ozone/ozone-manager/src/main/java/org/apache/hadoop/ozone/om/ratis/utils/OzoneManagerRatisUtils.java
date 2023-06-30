@@ -471,12 +471,8 @@ public final class OzoneManagerRatisUtils {
       throws ServiceException {
     try {
       ozoneManager.checkLeaderStatus();
-      System.out.println("xbis: checkLeaderStatus: om: " + ozoneManager.getOMNodeId() + " | running: " +
-          ozoneManager.isRunning() + " | last index: " +
-          ozoneManager.getOmRatisServer().getLastAppliedTermIndex().getIndex());
     } catch (OMNotLeaderException | OMLeaderNotReadyException e) {
       LOG.debug(e.getMessage());
-      System.out.println("xbis: exception: " + e);
       throw new ServiceException(e);
     }
   }

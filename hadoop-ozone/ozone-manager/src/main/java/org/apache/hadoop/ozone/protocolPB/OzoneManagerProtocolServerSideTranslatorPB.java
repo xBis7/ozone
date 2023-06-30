@@ -102,7 +102,6 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       handler = new OzoneManagerRequestHandler(impl, null);
     } else {
       this.ozoneManagerDoubleBuffer = new OzoneManagerDoubleBuffer.Builder()
-          .setOzoneManager(ozoneManager)
           .setOmMetadataManager(ozoneManager.getMetadataManager())
           // Do nothing.
           // For OM NON-HA code, there is no need to save transaction index.
@@ -145,18 +144,12 @@ public class OzoneManagerProtocolServerSideTranslatorPB implements
       throw new ServiceException(e);
     }
 
-    try {
+    OMResponse response = dispatcher.processRequest(validatedRequest,
+        this::processRequest,
+        request.getCmdType(),
+        request.getTraceID());
 
-      OMResponse response = dispatcher.processRequest(validatedRequest,
-          this::processRequest,
-          request.getCmdType(),
-          request.getTraceID());
-
-      return requestValidations.validateResponse(request, response);
-    } catch (Exception e) {
-      LOG.error("xbis: ex: " + e);
-      throw e;
-    }
+    return requestValidations.validateResponse(request, response);
   }
 
   private OMResponse processRequest(OMRequest request) throws ServiceException {
