@@ -97,7 +97,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 @Timeout(5000)
 @Flaky("HDDS-8876")
-@Disabled("HDDS-8880")
 public class TestOMRatisSnapshots {
 
   private MiniOzoneHAClusterImpl cluster = null;
@@ -178,6 +177,7 @@ public class TestOMRatisSnapshots {
     }
   }
 
+  @Disabled("HDDS-8880")
   @ParameterizedTest
   @ValueSource(ints = {100})
   // tried up to 1000 snapshots and this test works, but some of the
