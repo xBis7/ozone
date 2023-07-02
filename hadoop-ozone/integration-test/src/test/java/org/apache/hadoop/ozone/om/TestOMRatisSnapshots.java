@@ -96,7 +96,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * Tests the Ratis snapshots feature in OM.
  */
 @Timeout(5000)
-@Flaky("HDDS-8876")
 public class TestOMRatisSnapshots {
 
   private MiniOzoneHAClusterImpl cluster = null;
@@ -177,6 +176,7 @@ public class TestOMRatisSnapshots {
     }
   }
 
+  @Flaky("HDDS-8876")
   @Disabled("HDDS-8880")
   @ParameterizedTest
   @ValueSource(ints = {100})
@@ -550,6 +550,7 @@ public class TestOMRatisSnapshots {
 
   @Test
   @Timeout(300)
+  @Flaky("HDDS-8876")
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
