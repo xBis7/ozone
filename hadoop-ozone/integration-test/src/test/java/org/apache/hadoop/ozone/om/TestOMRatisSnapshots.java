@@ -676,7 +676,7 @@ public class TestOMRatisSnapshots {
     assertEquals(0, filesInCandidate.length);
   }
 
-  @Ignore("Enable this unit test after RATIS-1481 used")
+  @Test
   public void testInstallSnapshotWithClientWrite() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
