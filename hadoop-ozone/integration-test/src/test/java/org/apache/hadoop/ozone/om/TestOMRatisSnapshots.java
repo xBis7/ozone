@@ -47,7 +47,6 @@ import org.apache.hadoop.ozone.om.ratis.OzoneManagerRatisServer;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.ozone.test.GenericTestUtils;
-import org.apache.ozone.test.tag.Flaky;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.assertj.core.api.Fail;
 import org.junit.jupiter.api.AfterEach;
@@ -182,7 +181,6 @@ public class TestOMRatisSnapshots {
     }
   }
 
-  @Flaky("HDDS-8876")
   @ParameterizedTest
   @ValueSource(ints = {100})
   // tried up to 1000 snapshots and this test works, but some of the
@@ -561,7 +559,6 @@ public class TestOMRatisSnapshots {
 
   @Test
   @Timeout(300)
-  @Flaky("HDDS-8876")
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -660,13 +657,6 @@ public class TestOMRatisSnapshots {
       assertNotNull(followerOMMetaMngr.getKeyTable(TEST_BUCKET_LAYOUT)
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
-
-    // There is a chance we end up checking the DBCheckpointMetrics before
-    // the follower had time to get another checkpoint from the leader.
-    // Add this wait check here, to avoid flakiness.
-//    GenericTestUtils.waitFor(
-//        () -> leaderOM.getMetrics().getDBCheckpointMetrics()
-//            .getNumCheckpoints() > 2, 1000, 30000);
 
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
