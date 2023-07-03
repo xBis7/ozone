@@ -47,12 +47,12 @@ import org.apache.hadoop.ozone.om.ratis.OzoneManagerRatisServer;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerRatisUtils;
 import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.ozone.test.GenericTestUtils;
+import org.apache.ozone.test.tag.Flaky;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.assertj.core.api.Fail;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.Timeout;
@@ -558,8 +558,9 @@ public class TestOMRatisSnapshots {
     return id;
   }
 
-  @RepeatedTest(40)
+  @Test
   @Timeout(300)
+  @Flaky("HDDS-8876")
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
@@ -624,10 +625,7 @@ public class TestOMRatisSnapshots {
     // Resume the follower thread, it would download the full snapshot again
     // as the installation will fail for the corruption detected.
     faultInjector.resume();
-    System.out.println("xbis: leader snap: " + leaderOM.getRatisSnapshotIndex() +
-        " | follower snap: " + followerOM.getRatisSnapshotIndex());
-    System.out.println("xbis: leader index: " + leaderOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
-        " | follower index: " + followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex());
+
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
         TransactionInfo.readTransactionInfo(leaderOM.getMetadataManager());
@@ -635,20 +633,14 @@ public class TestOMRatisSnapshots {
         TermIndex.valueOf(transactionInfo.getTerm(),
             transactionInfo.getTransactionIndex());
     long leaderOMSnapshotIndex = leaderOMTermIndex.getIndex();
-    System.out.println("xbis: leader snap: " + leaderOM.getRatisSnapshotIndex() +
-        " | follower snap: " + followerOM.getRatisSnapshotIndex());
-    System.out.println("xbis: leader index: " + leaderOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
-        " | follower index: " + followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex());
+
     // Wait & for follower to update transactions to leader snapshot index.
     // Timeout error if follower does not load update within 10s
     GenericTestUtils.waitFor(() -> {
       return followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex()
           >= leaderOMSnapshotIndex - 1;
     }, 1000, 10000);
-    System.out.println("xbis: leader snap: " + leaderOM.getRatisSnapshotIndex() +
-        " | follower snap: " + followerOM.getRatisSnapshotIndex());
-    System.out.println("xbis: leader index: " + leaderOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
-        " | follower index: " + followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex());
+
     // Verify that the follower OM's DB contains the transactions which were
     // made while it was inactive.
     OMMetadataManager followerOMMetaMngr = followerOM.getMetadataManager();
@@ -668,17 +660,9 @@ public class TestOMRatisSnapshots {
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
 
-    System.out.println("xbis: leader snap: " + leaderOM.getRatisSnapshotIndex() +
-        " | follower snap: " + followerOM.getRatisSnapshotIndex());
-    System.out.println("xbis: leader index: " + leaderOM.getOmRatisServer().getLastAppliedTermIndex().getIndex() +
-        " | follower index: " + followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex());
-
     // There is a chance we end up checking the DBCheckpointMetrics before
     // the follower sends another request to the leader to generate a checkpoint.
-    // Add this wait check here, to avoid flakiness.
-    GenericTestUtils.waitFor(
-        () -> leaderOM.getMetrics().getDBCheckpointMetrics()
-            .getNumCheckpoints() > 2, 1000, 30000);
+    // TODO: Add wait check here, to avoid flakiness.
 
     // Verify the metrics
     DBCheckpointMetrics dbMetrics = leaderOM.getMetrics().
