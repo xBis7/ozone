@@ -135,7 +135,7 @@ public class TestOMRatisSnapshots {
     conf.setStorageSize(OMConfigKeys.
         OZONE_OM_RATIS_SEGMENT_PREALLOCATED_SIZE_KEY, 16, StorageUnit.KB);
     long snapshotThreshold = SNAPSHOT_THRESHOLD;
-    // Todo: remove this once HDDS-8880 is resolved.
+    // TODO: refactor tests to run under a new class with different configs.
     if (testInfo.getTestMethod().isPresent() &&
         testInfo.getTestMethod().get().getName()
             .equals("testInstallSnapshot")) {
