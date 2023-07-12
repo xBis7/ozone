@@ -236,7 +236,7 @@ public class DatanodeConfiguration {
   }
 
   @Config(key = "periodic.disk.check.interval.minutes",
-      defaultValue = "60",
+      defaultValue = "2",
       type = ConfigType.LONG,
       tags = { DATANODE },
       description = "Periodic disk check run interval in minutes."
@@ -314,7 +314,7 @@ public class DatanodeConfiguration {
       DISK_CHECK_FILE_SIZE_DEFAULT;
 
   @Config(key = "disk.check.min.gap",
-      defaultValue = "10m",
+      defaultValue = "1m",
       type = ConfigType.TIME,
       tags = { DATANODE },
       description = "The minimum gap between two successive checks of the same"

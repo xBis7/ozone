@@ -29,6 +29,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.SyncFailedException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
 
@@ -131,9 +132,18 @@ public final class DiskCheckUtil {
     @Override
     public boolean checkReadWrite(File storageDir,
         File testFileDir, int numBytesToWrite) {
+      if (Objects.nonNull(testFileDir)) {
+        LOG.info("xbis: testFileDir path: " + testFileDir.getAbsolutePath());
+      }
+
+      if (Objects.nonNull(storageDir)) {
+        LOG.info("xbis: storageDir path: " + storageDir.getAbsolutePath());
+      }
+
       File testFile = new File(testFileDir, "disk-check-" + UUID.randomUUID());
       byte[] writtenBytes = new byte[numBytesToWrite];
       RANDOM.nextBytes(writtenBytes);
+      LOG.info("xbis: testFile path: " + testFile.getAbsolutePath());
       try (FileOutputStream fos = new FileOutputStream(testFile)) {
         fos.write(writtenBytes);
         fos.getFD().sync();

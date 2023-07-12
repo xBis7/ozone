@@ -624,6 +624,13 @@ public abstract class StorageVolume
       return VolumeCheckResult.HEALTHY;
     }
 
+    LOG.info("xbis: storageDir: " + getStorageDir().getAbsolutePath());
+    if (diskCheckDir != null) {
+      LOG.info("xbis: diskCheckDir: " + getDiskCheckDir().getAbsolutePath());
+    } else {
+      LOG.info("xbis: diskCheckDir: NotExist: null");
+      diskCheckDir = storageDir;
+    }
     // Since IO errors may be intermittent, volume remains healthy until the
     // threshold of failures is crossed.
     boolean diskChecksPassed = DiskCheckUtil.checkReadWrite(storageDir,
