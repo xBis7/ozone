@@ -624,6 +624,9 @@ public abstract class StorageVolume
       return VolumeCheckResult.HEALTHY;
     }
 
+    if (diskCheckDir == null) {
+      diskCheckDir = storageDir;
+    }
     // Since IO errors may be intermittent, volume remains healthy until the
     // threshold of failures is crossed.
     boolean diskChecksPassed = DiskCheckUtil.checkReadWrite(storageDir,
