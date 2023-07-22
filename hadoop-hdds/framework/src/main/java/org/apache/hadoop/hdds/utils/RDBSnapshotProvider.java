@@ -121,7 +121,7 @@ public abstract class RDBSnapshotProvider implements Closeable {
       LOG.info(
           "xbis: targetFile size in Bytes: " + targetFile.length() +
               " | KB: " + ((double) targetFile.length() / 1024) +
-              " | MB: " + ((double) targetFile.length() / (1024 * 1024))
+              " | MB: " + ((double) targetFile.length() / (1024 * 1024) + "\n")
       );
 
       numDownloaded.incrementAndGet();
