@@ -21,6 +21,16 @@ CORE-SITE.XML_hadoop.proxyuser.httpfs.groups=*
 CORE-SITE.XML_fs.defaultFS=ofs://omservice
 CORE-SITE.XML_fs.trash.interval=1
 
+CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
+CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
+CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider
+CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
+CORE-SITE.XML_ipc.9862.backoff.enable=true
+CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=2,1
+CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=50
+
+OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory
+
 OZONE-SITE.XML_ozone.om.service.ids=omservice
 OZONE-SITE.XML_ozone.om.internal.service.id=omservice
 OZONE-SITE.XML_ozone.om.nodes.omservice=om1,om2,om3
@@ -97,8 +107,8 @@ HDFS-SITE.XML_dfs.web.authentication.kerberos.principal=HTTP/ozone@EXAMPLE.COM
 HDFS-SITE.XML_dfs.web.authentication.kerberos.keytab=/etc/security/keytabs/HTTP.keytab
 
 
-OZONE-SITE.XML_ozone.security.http.kerberos.enabled=true
-OZONE-SITE.XML_ozone.http.filter.initializers=org.apache.hadoop.security.AuthenticationFilterInitializer
+OZONE-SITE.XML_ozone.security.http.kerberos.enabled=false
+OZONE-SITE.XML_ozone.http.filter.initializers=
 
 OZONE-SITE.XML_ozone.om.http.auth.type=kerberos
 OZONE-SITE.XML_hdds.scm.http.auth.type=kerberos
