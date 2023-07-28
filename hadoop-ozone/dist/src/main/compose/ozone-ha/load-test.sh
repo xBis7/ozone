@@ -36,16 +36,22 @@ writeKeys() {
   docker exec ozone-ha-datanode-1 ozone freon omkg -t "$threads" -n "$writes" -v vol1 -b bucket1 -p "$prefix$random" &
   pid_dn1=$!
 
+  echo "$prefix$random" >> ./key_prefixes.txt
+
   random=$(($random+1))
 
   docker exec ozone-ha-datanode-2 ozone freon omkg -t "$threads" -n "$writes" -v vol1 -b bucket1 -p "$prefix$random" &
   pid_dn2=$!
+
+  echo "$prefix$random" >> ./key_prefixes.txt
 
 	random=$(($random+1))
 
   docker exec ozone-ha-datanode-3 ozone freon omkg -t "$threads" -n "$writes" -v vol1 -b bucket1 -p "$prefix$random" &
   pid_dn3=$!
 
+  echo "$prefix$random" >> ./key_prefixes.txt
+  echo "--" >> ./key_prefixes.txt
   # Wait for all commands to finish
   wait $pid_dn1 $pid_dn2 $pid_dn3
 }
@@ -53,6 +59,8 @@ writeKeys() {
 NUM_KEYS=$1
 NUM_KEYS_PER_SNAPSHOT=$2
 NUM_SNAPSHOTS=$3
+
+> key_prefixes.txt
 
 docker-compose up --scale datanode=3 -d
 
@@ -92,16 +100,19 @@ snap_inc=$((1 + $RANDOM % 10))
 counter=0
 while [[ $counter -lt $NUM_SNAPSHOTS ]]
 do
-  writeKeys "$snap_keys_per_client" 5 "sn$counter"
-  docker-compose exec -T om1 ozone sh snapshot create /vol1/bucket1 "snap$counter"
+  writeKeys "$snap_keys_per_client" 5 "sn$snap_inc"
+  docker-compose exec -T om1 ozone sh snapshot create /vol1/bucket1 "snap$snap_inc"
 
-  echo "snap$counter" >> ./snaps.txt
+  echo "snap$snap_inc" >> ./snaps.txt
+
+	# Prefix number and snapshot number
+	snap_inc=$(($snap_inc+1))
 
   counter=$(($counter+1))
   echo "finished $counter iteration"
 done
 
-docker-compose exec -T om3 /opt/hadoop/bin/ozone om --init
-docker-compose exec -T om3 /opt/hadoop/bin/ozone om
+#docker-compose exec -T om3 /opt/hadoop/bin/ozone om --init
+#docker-compose exec -T om3 /opt/hadoop/bin/ozone om
 
 
