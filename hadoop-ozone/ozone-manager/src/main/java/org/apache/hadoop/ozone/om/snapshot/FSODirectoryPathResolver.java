@@ -99,8 +99,6 @@ public class FSODirectoryPathResolver implements ObjectPathResolver {
         }
       }
     }
-    System.out.println("xbis: objectIdPathMap: " + objectIdPathMap.toString());
-    System.out.println("xbis: objIds: " + objIds.toString());
     // Invalid directory objectId which does not exist in the given bucket.
     if (objIds.size() > 0) {
       throw new IllegalArgumentException(
