@@ -72,6 +72,15 @@ do
   leader_res=$(docker-compose exec om1 ozone admin om roles -id=omservice | grep 'LEADER')
 done
 
+# make sure that the leader is always, om1
+if [[ $leader_res != *"om1"*  ]]
+then
+  echo "Current leader is not om1, transferring leadership..."
+  docker-compose exec om1 ozone admin om transfer -id=omservice -n=om1
+fi
+
+
+
 # Initial key writes
 while [[  $(expr $NUM_KEYS % 3) != 0 ]]
 do
@@ -112,7 +121,7 @@ do
   echo "finished $counter iteration"
 done
 
-#docker-compose exec -T om3 /opt/hadoop/bin/ozone om --init
-#docker-compose exec -T om3 /opt/hadoop/bin/ozone om
+docker-compose exec -T om2 /opt/hadoop/bin/ozone om --init
+docker-compose exec -T om2 /opt/hadoop/bin/ozone om
 
 
