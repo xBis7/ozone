@@ -26,29 +26,41 @@ export SECURITY_ENABLED=true
 
 docker-compose up -d --scale datanode=3
 
-writeKeys() {
+writeKeysOM() {
   threads=$1
   keys=$2
+  iterations=$3
+  sleep_secs=$4
 
-  # This will be "om", "dn", "scm".
-  node=$3
-  iterations=$4
-  sleep_secs=$5
-
-  container="$node"
-  keytab_name="$node"
-
-  if [[ $node == "dn" ]]; then
-    container="datanode"
-  fi
+  docker exec ozonesecure-om-1 kinit -kt /etc/security/keytabs/om.keytab om/om@EXAMPLE.COM
 
   counter=0
 
   while [[ $counter -lt $iterations ]]
   do
-    # Run the commands in the background
-    docker exec ozonesecure-"$container"-1 kinit -kt /etc/security/keytabs/testuser.keytab testuser/"$keytab_name"@EXAMPLE.COM
-    docker exec ozonesecure-"$container"-1 ozone freon omkg -t "$threads" -n "$keys" -v vol1 -b bucket1
+    docker exec ozonesecure-datanode-1 ozone freon omkg -t "$threads" -n "$keys" -v vol1 -b bucket1
+
+    sleep "$sleep_secs"
+
+    counter=$(($counter+1))
+
+    echo "Finished iteration '$counter' on node '$node'"
+  done
+}
+
+writeKeysDn() {
+  threads=$1
+  keys=$2
+  iterations=$3
+  sleep_secs=$4
+
+  docker exec ozonesecure-datanode-1 kinit -kt /etc/security/keytabs/testuser.keytab testuser/dn@EXAMPLE.COM
+
+  counter=0
+
+  while [[ $counter -lt $iterations ]]
+  do
+    docker exec ozonesecure-datanode-1 ozone freon omkg -t "$threads" -n "$keys" -v vol1 -b bucket1
 
     sleep "$sleep_secs"
 
@@ -78,7 +90,7 @@ writeKeysS3G() {
   iterations=$3
   sleep_secs=$4
 
-  docker-compose exec -T s3g kinit -kt /etc/security/keytabs/testuser.keytab testuser/s3g@EXAMPLE.COM
+  docker-compose exec -T s3g kinit -kt /etc/security/keytabs/s3g.keytab s3g/s3g@EXAMPLE.COM
   getsecret=$(docker-compose exec -T s3g ozone s3 getsecret)
 
   awsAccessKey=$($getsecret | grep 'awsAccessKey' | awk -F '[=]' '{ print $2 }')
@@ -96,19 +108,19 @@ writeKeysS3G() {
   done
 }
 
-# 1 user on the OM writing 1000 keys, sleeping 1 sec and then repeating.
-# threads, keys, node, iterations, sleep
-writeKeys 100 1000 om 1000 1 &
+sleep 30
+
+# threads, keys, iterations, sleep
+writeKeysOM 100 1000 1000 1 &
 pid_om=$!
 
-# 1 user on the datanode writing 1.000.000 keys, sleeping 1 sec and then repeating.
-# threads, keys, node, iterations, sleep
-writeKeys 100 100000 dn 1000 5 &
+# threads, keys, iterations, sleep
+writeKeysDn 100 100000 1000 5 &
 pid_dn=$!
 
-# 1 user on the S3G writing 100.000 keys, sleeping 1 sec and then repeating.
-# threads, keys, node, iterations, sleep
-writeKeysS3G 100 10000 1000 3 &
-pid_s3g=$!
+# threads, keys, iterations, sleep
+#writeKeysS3G 100 10000 1000 3 &
+#pid_s3g=$!
 
-#wait $pid_om $pid_dn
+#wait $pid_om $pid_dn pid_s3g
+wait $pid_om $pid_dn
