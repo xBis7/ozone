@@ -52,14 +52,15 @@ services:
   om2:
     <<: *common-config
     environment:
-      WAITFOR: scm3:9894
-      ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
+#      WAITFOR: scm3:9894
+#      ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       <<: *replication
     ports:
       - 9874
       - 9862
     hostname: om2
-    command: ["ozone","om"]
+#    command: ["ozone","om"]
+    command: ["tail","-f","/dev/null"]
   om3:
     <<: *common-config
     environment:
