@@ -116,17 +116,16 @@ public abstract class RDBSnapshotProvider implements Closeable {
       long startTime = System.currentTimeMillis();
       String snapshotFileName = getSnapshotFileName(leaderNodeID);
       File targetFile = new File(snapshotDir, snapshotFileName);
+      downloadSnapshot(leaderNodeID, targetFile);
+      LOG.info(
+          "Successfully download the latest snapshot {} from leader OM: {}",
+          targetFile, leaderNodeID);
       LOG.info(
           "xbis: targetFile name: " + targetFile.getName() +
               "\n targetFile path: " + targetFile.getAbsolutePath() +
               "\n size in Bytes: " + targetFile.length() +
               " | KB: " + ((double) targetFile.length() / 1024) +
               " | MB: " + ((double) targetFile.length() / (1024 * 1024)));
-      downloadSnapshot(leaderNodeID, targetFile);
-      LOG.info(
-          "Successfully download the latest snapshot {} from leader OM: {}",
-          targetFile, leaderNodeID);
-
       long downloadTime = System.currentTimeMillis();
       long timeToDownload = downloadTime - startTime;
       LOG.info(

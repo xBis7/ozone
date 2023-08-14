@@ -127,6 +127,7 @@ while [[ $it_count -lt $iterations ]]
 do
   writeKeys "$keys_per_client" 100 "sn$it_count"
   echo "Finished iteration '$it_count'."
+  it_count=$(($it_count+1))
 done
 
 # Keys per snapshot
