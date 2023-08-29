@@ -30,17 +30,32 @@ source "$COMPOSE_DIR/../testlib.sh"
 
 start_docker_env
 
-echo "docker ps"
-docker ps
-
-echo "docker logs"
-docker logs ozonesecure-ha-om4-1
-
 # Robot test for data creation
-
 
 # bootstrap new om4
 docker-compose up -d om4
+
+echo "xbis: docker logs"
+res=$(docker logs ozonesecure-ha-om4-1)
+
+while [[ "$res" == *"Waiting for"* ]]
+do
+  echo "om4 not ready, waiting for scm3"
+  sleep 10
+  res=$(docker logs ozonesecure-ha-om4-1)
+done
+
+echo "xbis: docker logs"
+docker logs ozonesecure-ha-om4-1
+
+echo "xbis: kinit"
+docker-compose exec -T om1 kinit -kt /etc/security/keytabs/testuser.keytab testuser/scm@EXAMPLE.COM
+
+echo "xbis: freon"
+docker-compose exec -T om1 ozone freon omkg -t 100 -n 1000000
+
+# Avoid leaving it orphaned
+stop_containers om4
 
 # Robot test for checking data is installed on om4,
 # transferring leadership to om4 and validating data

@@ -47,15 +47,16 @@ services:
       - 9886:9874
       - 9896:9872
       #- 18003:18003
+    profiles:
+      - donotstart
     environment:
-      #      WAITFOR: scm3.org:9894
-      #      ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
+      WAITFOR: scm3.org:9894
+      ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       OZONE_OPTS:
     env_file:
       - ./docker-config
       - ./docker-config-om4
-    #    command: ["/opt/hadoop/bin/ozone","om"]
-    command: ["tail","-f","/dev/null"]
+    command: ["/opt/hadoop/bin/ozone","om"]
     extra_hosts:
       - "scm1.org: 172.25.0.116"
       - "scm2.org: 172.25.0.117"
