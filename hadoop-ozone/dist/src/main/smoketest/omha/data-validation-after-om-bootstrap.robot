@@ -14,22 +14,34 @@
 # limitations under the License.
 
 *** Settings ***
-Documentation       Smoke test for listing om roles.
+Documentation       Smoke test for validating data and snapshots after om bootstrap.
 Resource            ../commonlib.robot
 Resource            ./om-leader-transfer.robot
 Test Timeout        10 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
+*** Variables ***
+${VOLUME}
+${BUCKET}
+
 *** Keywords ***
 
-# Create a docker smoke test that does the same thing as your scripts but with 100 keys and 5 snapshots. Do it cleanly because you will be submitting it as a PR.
 
 *** Test Cases ***
-List om roles
-    ${output} =         Execute          ozone admin om roles --service-id=omservice
-                        Should Match Regexp   ${output}  [om (: LEADER|)]
 
-List om roles as JSON
-    ${output} =         Execute          ozone admin om roles --service-id=omservice --json
-    ${leader} =         Execute          echo '${output}' | jq -r '.[] | select(.serverRole == "LEADER")'
-                        Should Not Be Equal       ${leader}       ${EMPTY}
+
+
+
+
+
+
+Check the checkpoint state dir for any files.
+
+Transfer leadership to om4
+
+check keys for all snapshots
+
+check 
+
+
+
