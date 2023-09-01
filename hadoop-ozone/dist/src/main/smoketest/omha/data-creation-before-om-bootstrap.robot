@@ -16,7 +16,7 @@
 *** Settings ***
 Documentation       Smoke test for creating data needed for om bootstrap load test.
 Resource            ../commonlib.robot
-Test Timeout        10 minutes
+Test Timeout        5 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
 *** Variables ***
@@ -78,38 +78,17 @@ Volume-bucket init
 Create 100 key metadata under /${VOLUME}/${BUCKET}
     Create key metadata     10      100     ${VOLUME}       ${BUCKET}
 
-Create tmp file to be used for key creation
-    Create tmp file         ${TMP_FILE}
-
-Create 10 actual keys with prefix 'sn0', key contents the same as the key name
-    Create actual keys      10              sn0             ${VOLUME}       ${BUCKET}       ${TMP_FILE}
-
 Create snapshot 'snap0'
     Create snapshot         ${VOLUME}       ${BUCKET}       snap0
 
-Create 10 actual keys with prefix 'sn1', key contents the same as the key name
-    Create actual keys      10              sn1             ${VOLUME}       ${BUCKET}       ${TMP_FILE}
+Create tmp file to be used for key creation
+    Create tmp file         ${TMP_FILE}
+
+Create 2 actual keys with prefix 'sn1', key contents the same as the key name
+    Create actual keys      2               sn1             ${VOLUME}       ${BUCKET}       ${TMP_FILE}
 
 Create snapshot 'snap1'
     Create snapshot         ${VOLUME}       ${BUCKET}       snap1
-
-Create 10 actual keys with prefix 'sn2', key contents the same as the key name
-    Create actual keys      10              sn2             ${VOLUME}       ${BUCKET}       ${TMP_FILE}
-
-Create snapshot 'snap2'
-    Create snapshot         ${VOLUME}       ${BUCKET}       snap2
-
-Create 10 actual keys with prefix 'sn3', key contents the same as the key name
-    Create actual keys      10              sn3             ${VOLUME}       ${BUCKET}       ${TMP_FILE}
-
-Create snapshot 'snap3'
-    Create snapshot         ${VOLUME}       ${BUCKET}       snap3
-
-Create 10 actual keys with prefix 'sn4', key contents the same as the key name
-    Create actual keys      10              sn4             ${VOLUME}       ${BUCKET}       ${TMP_FILE}
-
-Create snapshot 'snap4'
-    Create snapshot         ${VOLUME}       ${BUCKET}       snap4
 
 Cleanup tmp file
     Delete tmp file         ${TMP_FILE}

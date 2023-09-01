@@ -21,14 +21,24 @@ Test Timeout        10 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
 *** Variables ***
-${VOLUME}
-${BUCKET}
+${BOOTSTRAPPED_OM}      om4
+${VOLUME}               vol1
+${BUCKET}               bucket1
+${SNAP_1}               snap0
+${SNAP_2}               snap1
 
 *** Keywords ***
 
+Transfer leadership to OM
+    [arguments]         ${new_leader}
+    ${result} =         Execute                 ozone admin om transfer --service-id=omservice -n ${new_leader}
+                        Should Contain          ${result}               Transfer leadership successfully
 
 *** Test Cases ***
 
+
+Transfer leadership to om4
+    Transfer leadership to OM       ${BOOTSTRAPPED_OM}
 
 
 
@@ -39,9 +49,9 @@ Check the checkpoint state dir for any files.
 
 Transfer leadership to om4
 
-check keys for all snapshots
+check keys snap diff between snap-0 snap-1
 
-check 
+check
 
 
 
