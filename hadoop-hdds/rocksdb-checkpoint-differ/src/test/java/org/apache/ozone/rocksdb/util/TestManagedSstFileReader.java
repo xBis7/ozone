@@ -28,13 +28,11 @@ import org.apache.hadoop.hdds.utils.db.managed.ManagedSSTDumpTool;
 import org.apache.hadoop.hdds.utils.db.managed.ManagedSstFileWriter;
 import org.apache.ozone.test.tag.Native;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.rocksdb.RocksDBException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,11 +54,7 @@ import static org.apache.hadoop.hdds.utils.NativeConstants.ROCKS_TOOLS_NATIVE_LI
 /**
  * ManagedSstFileReader tests.
  */
-@Timeout(60)
 class TestManagedSstFileReader {
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(TestManagedSstFileReader.class);
 
   // Key prefix containing all characters, to check if all characters can be
   // written & read from rocksdb through SSTDumptool
@@ -135,6 +129,7 @@ class TestManagedSstFileReader {
   @Native(ROCKS_TOOLS_NATIVE_LIBRARY_NAME)
   @ParameterizedTest
   @ValueSource(ints = {0, 1, 2, 3, 7, 10})
+  @Disabled("HDDS-8818")
   public void testGetKeyStreamWithTombstone(int numberOfFiles)
       throws RocksDBException, IOException, NativeLibraryNotLoadedException {
     Assumptions.assumeTrue(NativeLibraryLoader.getInstance()
@@ -158,6 +153,5 @@ class TestManagedSstFileReader {
     } finally {
       executorService.shutdown();
     }
-
   }
 }

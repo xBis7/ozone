@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
@@ -113,7 +112,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
   public void checkAndAddNewContainer(ContainerID containerID,
       ContainerReplicaProto.State replicaState,
       DatanodeDetails datanodeDetails)
-      throws IOException, TimeoutException, InvalidStateTransitionException {
+      throws IOException, InvalidStateTransitionException {
     if (!containerExist(containerID)) {
       LOG.info("New container {} got from {}.", containerID,
           datanodeDetails.getHostName());
@@ -163,7 +162,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
       for (ContainerWithPipeline cwp : verifiedContainerPipeline) {
         try {
           addNewContainer(cwp);
-        } catch (IOException | TimeoutException ioe) {
+        } catch (IOException ioe) {
           LOG.error("Exception while checking and adding new container.", ioe);
         }
       }
@@ -195,8 +194,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
 
   private void checkContainerStateAndUpdate(ContainerID containerID,
                                             ContainerReplicaProto.State state)
-          throws IOException, InvalidStateTransitionException,
-          TimeoutException {
+          throws IOException, InvalidStateTransitionException {
     ContainerInfo containerInfo = getContainer(containerID);
     if (containerInfo.getState().equals(HddsProtos.LifeCycleState.OPEN)
         && !state.equals(ContainerReplicaProto.State.OPEN)
@@ -227,7 +225,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
    * @throws IOException on Error.
    */
   public void addNewContainer(ContainerWithPipeline containerWithPipeline)
-      throws IOException, TimeoutException {
+      throws IOException {
     ContainerInfo containerInfo = containerWithPipeline.getContainerInfo();
     try {
       if (containerInfo.getState().equals(HddsProtos.LifeCycleState.OPEN)) {
@@ -253,7 +251,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
         LOG.info("Successfully added no open container {} to Recon.",
             containerInfo.containerID());
       }
-    } catch (IOException | TimeoutException ex) {
+    } catch (IOException ex) {
       LOG.info("Exception while adding container {} .",
           containerInfo.containerID(), ex);
       pipelineManager.removeContainerFromPipeline(
