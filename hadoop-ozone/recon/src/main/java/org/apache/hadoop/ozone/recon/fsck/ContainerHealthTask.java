@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -35,6 +34,7 @@ import org.apache.hadoop.hdds.scm.container.ContainerManager;
 import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
+import org.apache.hadoop.hdds.scm.ha.SCMHAUtils;
 import org.apache.hadoop.hdds.scm.ha.SCMHAUtils;
 import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHealthSchemaManager;
@@ -188,7 +188,7 @@ public class ContainerHealthTask extends ReconScmTask {
                 try {
                   containerManager.deleteContainer(currentContainer
                       .getContainer().containerID());
-                } catch (IOException | TimeoutException ex) {
+                } catch (IOException ex) {
                   LOG.error("Unable to delete container during " +
                       "periodic container health task.");
                 } finally {
@@ -260,7 +260,7 @@ public class ContainerHealthTask extends ReconScmTask {
     } catch (InvalidStateTransitionException e) {
       LOG.error("Failed to transition Container state while processing " +
           "container in Container Health task", e);
-    } catch (IOException | TimeoutException e) {
+    } catch (IOException e) {
       Throwable t = SCMHAUtils.unwrapException(e);
       if (t instanceof ContainerNotFoundException) {
         LOG.error("Container not present in SCM", t);
