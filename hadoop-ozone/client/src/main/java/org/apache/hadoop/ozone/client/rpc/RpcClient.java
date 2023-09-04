@@ -46,6 +46,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.crypto.CryptoInputStream;
 import org.apache.hadoop.crypto.CryptoOutputStream;
 import org.apache.hadoop.crypto.key.KeyProvider;
@@ -58,7 +59,6 @@ import org.apache.hadoop.hdds.client.ReplicationConfigValidator;
 import org.apache.hadoop.hdds.client.ReplicationFactor;
 import org.apache.hadoop.hdds.client.ReplicationType;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
-import org.apache.hadoop.hdds.function.SupplierWithIOException;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.StorageType;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -88,6 +88,7 @@ import org.apache.hadoop.ozone.client.OzoneMultipartUpload;
 import org.apache.hadoop.ozone.client.OzoneMultipartUploadList;
 import org.apache.hadoop.ozone.client.OzoneMultipartUploadPartListParts;
 import org.apache.hadoop.ozone.client.OzoneSnapshot;
+import org.apache.hadoop.ozone.client.OzoneSnapshotDiff;
 import org.apache.hadoop.ozone.client.OzoneVolume;
 import org.apache.hadoop.ozone.client.TenantArgs;
 import org.apache.hadoop.ozone.client.VolumeArgs;
@@ -150,6 +151,7 @@ import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer.ACLIdentityType;
 import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer.ACLType;
 import org.apache.hadoop.ozone.security.acl.OzoneAclConfig;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
+import org.apache.hadoop.ozone.snapshot.CancelSnapshotDiffResponse;
 import org.apache.hadoop.ozone.snapshot.SnapshotDiffResponse;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
@@ -165,12 +167,12 @@ import static org.apache.hadoop.ozone.OzoneAcl.AclScope.ACCESS;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CLIENT_KEY_PROVIDER_CACHE_EXPIRY;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CLIENT_KEY_PROVIDER_CACHE_EXPIRY_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_CLIENT_REQUIRED_OM_VERSION_MIN_KEY;
+import static org.apache.hadoop.ozone.OzoneConsts.MAXIMUM_NUMBER_OF_PARTS_PER_UPLOAD;
 import static org.apache.hadoop.ozone.OzoneConsts.OLD_QUOTA_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_MAXIMUM_ACCESS_ID_LENGTH;
 import static org.apache.hadoop.ozone.security.acl.IAccessAuthorizer.ACLType.READ;
 import static org.apache.hadoop.ozone.security.acl.IAccessAuthorizer.ACLType.WRITE;
 
-import org.apache.logging.log4j.util.Strings;
 import org.apache.ratis.protocol.ClientId;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -817,8 +819,9 @@ public class RpcClient implements ClientProtocol {
    * @throws IOException
    */
   @Override
+  @Nonnull
   public S3SecretValue getS3Secret(String kerberosID) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(kerberosID),
+    Preconditions.checkArgument(StringUtils.isNotBlank(kerberosID),
         "kerberosID cannot be null or empty.");
 
     return ozoneManagerClient.getS3Secret(kerberosID);
@@ -833,7 +836,7 @@ public class RpcClient implements ClientProtocol {
   @Override
   public S3SecretValue getS3Secret(String kerberosID, boolean createIfNotExist)
           throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(kerberosID),
+    Preconditions.checkArgument(StringUtils.isNotBlank(kerberosID),
             "kerberosID cannot be null or empty.");
     // No need to check createIfNotExist here which is a primitive
     return ozoneManagerClient.getS3Secret(kerberosID, createIfNotExist);
@@ -844,9 +847,9 @@ public class RpcClient implements ClientProtocol {
    */
   public S3SecretValue setS3Secret(String accessId, String secretKey)
           throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(accessId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(accessId),
             "accessId cannot be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(secretKey),
+    Preconditions.checkArgument(StringUtils.isNotBlank(secretKey),
             "secretKey cannot be null or empty.");
     return ozoneManagerClient.setS3Secret(accessId, secretKey);
   }
@@ -856,7 +859,7 @@ public class RpcClient implements ClientProtocol {
    */
   @Override
   public void revokeS3Secret(String kerberosID) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(kerberosID),
+    Preconditions.checkArgument(StringUtils.isNotBlank(kerberosID),
             "kerberosID cannot be null or empty.");
 
     ozoneManagerClient.revokeS3Secret(kerberosID);
@@ -877,21 +880,28 @@ public class RpcClient implements ClientProtocol {
   @Override
   public void createTenant(String tenantId, TenantArgs tenantArgs)
       throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(tenantId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(tenantId),
         "tenantId cannot be null or empty.");
     Preconditions.checkNotNull(tenantArgs);
 
     final String volumeName = tenantArgs.getVolumeName();
     verifyVolumeName(volumeName);
 
+    final boolean forceCreationWhenVolumeExists =
+        tenantArgs.getForceCreationWhenVolumeExists();
+
     OmTenantArgs.Builder builder = OmTenantArgs.newBuilder();
     builder.setTenantId(tenantId);
     builder.setVolumeName(volumeName);
-    // TODO: Add more fields
-    // TODO: Include OmVolumeArgs in (Om)TenantArgs as well for volume creation?
+    builder.setForceCreationWhenVolumeExists(
+        tenantArgs.getForceCreationWhenVolumeExists());
 
-    LOG.info("Creating Tenant: '{}', with new volume: '{}'",
-        tenantId, volumeName);
+    // TODO: Add more fields. e.g. include OmVolumeArgs in (Om)TenantArgs
+    //  as well for customized volume creation.
+
+    LOG.info("Creating Tenant: '{}', with volume: '{}', "
+            + "forceCreationWhenVolumeExists: {}",
+        tenantId, volumeName, forceCreationWhenVolumeExists);
 
     ozoneManagerClient.createTenant(builder.build());
   }
@@ -901,7 +911,7 @@ public class RpcClient implements ClientProtocol {
    */
   @Override
   public DeleteTenantState deleteTenant(String tenantId) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(tenantId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(tenantId),
         "tenantId cannot be null or empty.");
     return ozoneManagerClient.deleteTenant(tenantId);
   }
@@ -915,11 +925,11 @@ public class RpcClient implements ClientProtocol {
   @Override
   public S3SecretValue tenantAssignUserAccessId(
       String username, String tenantId, String accessId) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(username),
+    Preconditions.checkArgument(StringUtils.isNotBlank(username),
         "username can't be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(tenantId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(tenantId),
         "tenantId can't be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(accessId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(accessId),
         "accessId can't be null or empty.");
     Preconditions.checkArgument(
         accessId.length() <= OZONE_MAXIMUM_ACCESS_ID_LENGTH, "accessId length ("
@@ -936,7 +946,7 @@ public class RpcClient implements ClientProtocol {
    */
   @Override
   public void tenantRevokeUserAccessId(String accessId) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(accessId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(accessId),
         "accessId can't be null or empty.");
     ozoneManagerClient.tenantRevokeUserAccessId(accessId);
   }
@@ -952,9 +962,9 @@ public class RpcClient implements ClientProtocol {
   @Override
   public String createSnapshot(String volumeName,
       String bucketName, String snapshotName) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(volumeName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(volumeName),
         "volume can't be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(bucketName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(bucketName),
         "bucket can't be null or empty.");
     return ozoneManagerClient.createSnapshot(volumeName,
         bucketName, snapshotName);
@@ -970,13 +980,26 @@ public class RpcClient implements ClientProtocol {
   @Override
   public void deleteSnapshot(String volumeName,
       String bucketName, String snapshotName) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(volumeName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(volumeName),
         "volume can't be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(bucketName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(bucketName),
         "bucket can't be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(snapshotName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(snapshotName),
         "snapshot name can't be null or empty.");
     ozoneManagerClient.deleteSnapshot(volumeName, bucketName, snapshotName);
+  }
+
+  /**
+   * Create an image of the current compaction log DAG in the OM.
+   * @param fileNamePrefix  file name prefix of the image file.
+   * @param graphType       type of node name to use in the graph image.
+   * @return message which tells the image name, parent dir and OM leader
+   * node information.
+   */
+  @Override
+  public String printCompactionLogDag(String fileNamePrefix,
+                                      String graphType) throws IOException {
+    return ozoneManagerClient.printCompactionLogDag(fileNamePrefix, graphType);
   }
 
   @Override
@@ -986,14 +1009,51 @@ public class RpcClient implements ClientProtocol {
                                            String toSnapshot,
                                            String token,
                                            int pageSize,
-                                           boolean forceFullDiff)
+                                           boolean forceFullDiff,
+                                           boolean disableNativeDiff)
       throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(volumeName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(volumeName),
         "volume can't be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(bucketName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(bucketName),
         "bucket can't be null or empty.");
     return ozoneManagerClient.snapshotDiff(volumeName, bucketName,
-        fromSnapshot, toSnapshot, token, pageSize, forceFullDiff);
+        fromSnapshot, toSnapshot, token, pageSize, forceFullDiff,
+        disableNativeDiff);
+  }
+
+  @Override
+  public CancelSnapshotDiffResponse cancelSnapshotDiff(String volumeName,
+                                                       String bucketName,
+                                                       String fromSnapshot,
+                                                       String toSnapshot)
+      throws IOException {
+    Preconditions.checkArgument(StringUtils.isNotBlank(volumeName),
+        "volume can't be null or empty.");
+    Preconditions.checkArgument(StringUtils.isNotBlank(bucketName),
+        "bucket can't be null or empty.");
+    Preconditions.checkArgument(StringUtils.isNotBlank(fromSnapshot),
+        "fromSnapshot can't be null or empty.");
+    Preconditions.checkArgument(StringUtils.isNotBlank(toSnapshot),
+        "toSnapshot can't be null or empty.");
+    return ozoneManagerClient.cancelSnapshotDiff(volumeName, bucketName,
+        fromSnapshot, toSnapshot);
+  }
+
+  @Override
+  public List<OzoneSnapshotDiff> listSnapshotDiffJobs(String volumeName,
+                                                    String bucketName,
+                                                    String jobStatus,
+                                                    boolean listAll)
+      throws IOException {
+    Preconditions.checkArgument(StringUtils.isNotBlank(volumeName),
+        "volume can't be null or empty.");
+    Preconditions.checkArgument(StringUtils.isNotBlank(bucketName),
+        "bucket can't be null or empty.");
+
+    return ozoneManagerClient.listSnapshotDiffJobs(
+        volumeName, bucketName, jobStatus, listAll).stream()
+        .map(OzoneSnapshotDiff::fromSnapshotDiffJob)
+        .collect(Collectors.toList());
   }
 
   /**
@@ -1010,9 +1070,9 @@ public class RpcClient implements ClientProtocol {
   public List<OzoneSnapshot> listSnapshot(
       String volumeName, String bucketName, String snapshotPrefix,
       String prevSnapshot, int maxListResult) throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(volumeName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(volumeName),
         "volume can't be null or empty.");
-    Preconditions.checkArgument(Strings.isNotBlank(bucketName),
+    Preconditions.checkArgument(StringUtils.isNotBlank(bucketName),
         "bucket can't be null or empty.");
     return ozoneManagerClient.listSnapshot(volumeName, bucketName,
             snapshotPrefix, prevSnapshot, maxListResult).stream()
@@ -1031,7 +1091,7 @@ public class RpcClient implements ClientProtocol {
   public void tenantAssignAdmin(String accessId, String tenantId,
       boolean delegated)
       throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(accessId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(accessId),
         "accessId can't be null or empty.");
     // tenantId can be empty
     ozoneManagerClient.tenantAssignAdmin(accessId, tenantId, delegated);
@@ -1046,7 +1106,7 @@ public class RpcClient implements ClientProtocol {
   @Override
   public void tenantRevokeAdmin(String accessId, String tenantId)
       throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(accessId),
+    Preconditions.checkArgument(StringUtils.isNotBlank(accessId),
         "accessId can't be null or empty.");
     // tenantId can be empty
     ozoneManagerClient.tenantRevokeAdmin(accessId, tenantId);
@@ -1061,7 +1121,7 @@ public class RpcClient implements ClientProtocol {
   @Override
   public TenantUserInfoValue tenantGetUserInfo(String userPrincipal)
       throws IOException {
-    Preconditions.checkArgument(Strings.isNotBlank(userPrincipal),
+    Preconditions.checkArgument(StringUtils.isNotBlank(userPrincipal),
         "userPrincipal can't be null or empty.");
     return ozoneManagerClient.tenantGetUserInfo(userPrincipal);
   }
@@ -1507,7 +1567,8 @@ public class RpcClient implements ClientProtocol {
         key.getDataSize(),
         key.getCreationTime(),
         key.getModificationTime(),
-        key.getReplicationConfig()))
+        key.getReplicationConfig(),
+        key.isFile()))
         .collect(Collectors.toList());
   }
 
@@ -1553,15 +1614,12 @@ public class RpcClient implements ClientProtocol {
       lastKeyOffset += info.getLength();
     }
 
-    SupplierWithIOException<OzoneInputStream> getInputStream =
-        () -> getInputStreamWithRetryFunction(keyInfo);
-
     return new OzoneKeyDetails(keyInfo.getVolumeName(), keyInfo.getBucketName(),
         keyInfo.getKeyName(), keyInfo.getDataSize(), keyInfo.getCreationTime(),
         keyInfo.getModificationTime(), ozoneKeyLocations,
         keyInfo.getReplicationConfig(), keyInfo.getMetadata(),
         keyInfo.getFileEncryptionInfo(),
-        getInputStream);
+        () -> getInputStreamWithRetryFunction(keyInfo), keyInfo.isFile());
   }
 
   @Override
@@ -1673,22 +1731,20 @@ public class RpcClient implements ClientProtocol {
     return multipartInfo;
   }
 
-  @Override
-  public OzoneOutputStream createMultipartKey(String volumeName,
-                                              String bucketName,
-                                              String keyName,
-                                              long size,
-                                              int partNumber,
-                                              String uploadID)
-      throws IOException {
+  private OpenKeySession newMultipartOpenKey(
+      String volumeName, String bucketName, String keyName,
+      long size, int partNumber, String uploadID) throws IOException {
     verifyVolumeName(volumeName);
     verifyBucketName(bucketName);
     if (checkKeyNameEnabled) {
       HddsClientUtils.verifyKeyName(keyName);
     }
     HddsClientUtils.checkNotNull(keyName, uploadID);
-    Preconditions.checkArgument(partNumber > 0 && partNumber <= 10000, "Part " +
-        "number should be greater than zero and less than or equal to 10000");
+    if (partNumber <= 0 || partNumber > MAXIMUM_NUMBER_OF_PARTS_PER_UPLOAD) {
+      throw new OMException("Part number must be an integer between 1 and "
+          + MAXIMUM_NUMBER_OF_PARTS_PER_UPLOAD + ", inclusive",
+          OMException.ResultCodes.INVALID_PART);
+    }
     Preconditions.checkArgument(size >= 0, "size should be greater than or " +
         "equal to zero");
     OmKeyArgs keyArgs = new OmKeyArgs.Builder()
@@ -1701,27 +1757,21 @@ public class RpcClient implements ClientProtocol {
         .setMultipartUploadPartNumber(partNumber)
         .setAcls(getAclList())
         .build();
+    return ozoneManagerClient.openKey(keyArgs);
+  }
 
-    OpenKeySession openKey = ozoneManagerClient.openKey(keyArgs);
+  @Override
+  public OzoneOutputStream createMultipartKey(
+      String volumeName, String bucketName, String keyName,
+      long size, int partNumber, String uploadID) throws IOException {
+    final OpenKeySession openKey = newMultipartOpenKey(
+        volumeName, bucketName, keyName, size, partNumber, uploadID);
     KeyOutputStream keyOutputStream = createKeyOutputStream(openKey)
         .setMultipartNumber(partNumber)
         .setMultipartUploadID(uploadID)
         .setIsMultipartKey(true)
         .build();
-    keyOutputStream.addPreallocateBlocks(
-        openKey.getKeyInfo().getLatestVersionLocations(),
-        openKey.getOpenVersion());
-    FileEncryptionInfo feInfo = openKey.getKeyInfo().getFileEncryptionInfo();
-    if (feInfo != null) {
-      KeyProvider.KeyVersion decrypted = getDEK(feInfo);
-      final CryptoOutputStream cryptoOut =
-          new CryptoOutputStream(keyOutputStream,
-              OzoneKMSUtil.getCryptoCodec(conf, feInfo),
-              decrypted.getMaterial(), feInfo.getIV());
-      return new OzoneOutputStream(cryptoOut);
-    } else {
-      return new OzoneOutputStream(keyOutputStream);
-    }
+    return createOutputStream(openKey, keyOutputStream);
   }
 
   @Override
@@ -1733,29 +1783,8 @@ public class RpcClient implements ClientProtocol {
       int partNumber,
       String uploadID)
       throws IOException {
-    verifyVolumeName(volumeName);
-    verifyBucketName(bucketName);
-    if (checkKeyNameEnabled) {
-      HddsClientUtils.verifyKeyName(keyName);
-    }
-    HddsClientUtils.checkNotNull(keyName, uploadID);
-    Preconditions.checkArgument(partNumber > 0 && partNumber <= 10000, "Part " +
-        "number should be greater than zero and less than or equal to 10000");
-    Preconditions.checkArgument(size >= 0, "size should be greater than or " +
-        "equal to zero");
-
-    OmKeyArgs keyArgs = new OmKeyArgs.Builder()
-        .setVolumeName(volumeName)
-        .setBucketName(bucketName)
-        .setKeyName(keyName)
-        .setDataSize(size)
-        .setIsMultipartKey(true)
-        .setMultipartUploadID(uploadID)
-        .setMultipartUploadPartNumber(partNumber)
-        .setAcls(getAclList())
-        .build();
-
-    OpenKeySession openKey = ozoneManagerClient.openKey(keyArgs);
+    final OpenKeySession openKey = newMultipartOpenKey(
+        volumeName, bucketName, keyName, size, partNumber, uploadID);
 
     KeyDataStreamOutput keyOutputStream =
         new KeyDataStreamOutput.Builder()
@@ -1773,17 +1802,9 @@ public class RpcClient implements ClientProtocol {
         .addPreallocateBlocks(
             openKey.getKeyInfo().getLatestVersionLocations(),
             openKey.getOpenVersion());
-
-    FileEncryptionInfo feInfo = openKey.getKeyInfo().getFileEncryptionInfo();
-    if (feInfo != null) {
-      // todo: need to support file encrypt,
-      //  https://issues.apache.org/jira/browse/HDDS-5892
-      throw new UnsupportedOperationException(
-          "FileEncryptionInfo is not yet supported in " +
-              "createMultipartStreamKey");
-    } else {
-      return new OzoneDataStreamOutput(keyOutputStream);
-    }
+    final OzoneOutputStream out = createSecureOutputStream(
+        openKey, keyOutputStream, null);
+    return new OzoneDataStreamOutput(out != null ? out : keyOutputStream);
   }
 
   @Override
@@ -2184,22 +2205,33 @@ public class RpcClient implements ClientProtocol {
         openKey, keyOutputStream, null);
     return new OzoneDataStreamOutput(out != null ? out : keyOutputStream);
   }
-
   private OzoneOutputStream createOutputStream(OpenKeySession openKey)
       throws IOException {
-
     KeyOutputStream keyOutputStream = createKeyOutputStream(openKey)
         .build();
+    return createOutputStream(openKey, keyOutputStream);
+  }
+
+  private OzoneOutputStream createOutputStream(OpenKeySession openKey,
+      KeyOutputStream keyOutputStream)
+      throws IOException {
+    boolean enableHsync = conf.getBoolean(
+        OzoneConfigKeys.OZONE_FS_HSYNC_ENABLED,
+        OzoneConfigKeys.OZONE_FS_HSYNC_ENABLED_DEFAULT);
     keyOutputStream
         .addPreallocateBlocks(openKey.getKeyInfo().getLatestVersionLocations(),
             openKey.getOpenVersion());
     final OzoneOutputStream out = createSecureOutputStream(
         openKey, keyOutputStream, keyOutputStream);
-    return out != null ? out : new OzoneOutputStream(keyOutputStream);
+    return out != null ? out : new OzoneOutputStream(
+        keyOutputStream, enableHsync);
   }
 
   private OzoneOutputStream createSecureOutputStream(OpenKeySession openKey,
       OutputStream keyOutputStream, Syncable syncable) throws IOException {
+    boolean enableHsync = conf.getBoolean(
+        OzoneConfigKeys.OZONE_FS_HSYNC_ENABLED,
+        OzoneConfigKeys.OZONE_FS_HSYNC_ENABLED_DEFAULT);
     final FileEncryptionInfo feInfo =
         openKey.getKeyInfo().getFileEncryptionInfo();
     if (feInfo != null) {
@@ -2208,14 +2240,14 @@ public class RpcClient implements ClientProtocol {
           new CryptoOutputStream(keyOutputStream,
               OzoneKMSUtil.getCryptoCodec(conf, feInfo),
               decrypted.getMaterial(), feInfo.getIV());
-      return new OzoneOutputStream(cryptoOut);
+      return new OzoneOutputStream(cryptoOut, enableHsync);
     } else {
       try {
         final GDPRSymmetricKey gk = getGDPRSymmetricKey(
             openKey.getKeyInfo().getMetadata(), Cipher.ENCRYPT_MODE);
         if (gk != null) {
           return new OzoneOutputStream(new CipherOutputStream(
-              keyOutputStream, gk.getCipher()), syncable);
+              keyOutputStream, gk.getCipher()), syncable, enableHsync);
         }
       }  catch (Exception ex) {
         throw new IOException(ex);

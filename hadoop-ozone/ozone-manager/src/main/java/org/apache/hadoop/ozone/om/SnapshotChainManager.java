@@ -25,10 +25,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,8 +56,7 @@ public class SnapshotChainManager {
   private final ConcurrentMap<UUID, String> snapshotIdToTableKey;
   private UUID latestGlobalSnapshotId;
 
-  public SnapshotChainManager(OMMetadataManager metadataManager)
-      throws IOException {
+  public SnapshotChainManager(OMMetadataManager metadataManager) {
     globalSnapshotChain = Collections.synchronizedMap(new LinkedHashMap<>());
     snapshotChainByPath = new ConcurrentHashMap<>();
     latestSnapshotIdByPath = new ConcurrentHashMap<>();
@@ -69,20 +68,42 @@ public class SnapshotChainManager {
   /**
    * Add snapshot to global snapshot chain.
    */
-  private void addSnapshotGlobal(UUID snapshotID,
-                                 UUID prevGlobalID) throws IOException {
-    // On add snapshot, set previous snapshot entry nextSnapshotID = snapshotID
-    if (prevGlobalID != null && globalSnapshotChain.containsKey(prevGlobalID)) {
-      globalSnapshotChain.get(prevGlobalID).setNextSnapshotId(snapshotID);
+  private void addSnapshotGlobal(UUID snapshotID, UUID prevGlobalID) {
+    if (globalSnapshotChain.containsKey(snapshotID)) {
+      throw new IllegalStateException(String.format(
+          "Global Snapshot chain corruption. Snapshot with snapshotId: %s is " +
+              "already present in the chain.", snapshotID));
+    }
+    if (globalSnapshotChain.size() > 0 && prevGlobalID == null) {
+      throw new IllegalStateException(String.format("Snapshot chain " +
+          "corruption. Adding snapshot %s as head node while there are %d " +
+              "snapshots in the global snapshot chain.", snapshotID,
+          globalSnapshotChain.size()));
     }
 
     if (prevGlobalID != null &&
         !globalSnapshotChain.containsKey(prevGlobalID)) {
-      throw new IOException(String.format("Snapshot chain corruption. " +
-              "Previous snapshotId: %s is set for snapshotId: %s but no " +
-              "associated snapshot found in snapshot chain.", prevGlobalID,
-          snapshotID));
+      throw new IllegalStateException(String.format(
+          "Global Snapshot chain corruption. Previous snapshotId: %s is " +
+              "set for snapshotId: %s but no associated snapshot found in " +
+              "snapshot chain.", prevGlobalID, snapshotID));
     }
+
+    if (prevGlobalID != null) {
+      if (globalSnapshotChain.get(prevGlobalID).hasNextSnapshotId()) {
+        throw new IllegalStateException(String.format(
+            "Global Snapshot chain corruption. Snapshot with snapshotId: %s " +
+                "already has the next snapshotId: %s. Adding snapshot %s " +
+                "with prevSnapshotId: %s will make the chain non linear.",
+            prevGlobalID,
+            globalSnapshotChain.get(prevGlobalID).getNextSnapshotId(),
+            snapshotID, prevGlobalID));
+      }
+      // On add snapshot, set previous snapshot entry nextSnapshotID =
+      // snapshotID
+      globalSnapshotChain.get(prevGlobalID).setNextSnapshotId(snapshotID);
+    }
+
     globalSnapshotChain.put(snapshotID,
         new SnapshotChainInfo(snapshotID, prevGlobalID, null));
 
@@ -93,20 +114,38 @@ public class SnapshotChainManager {
   /**
    * Add snapshot to bucket snapshot chain(path based).
    */
-  private void addSnapshotPath(String snapshotPath,
-                               UUID snapshotID,
-                               UUID prevPathID) throws IOException {
+  private void addSnapshotPath(String snapshotPath, UUID snapshotID,
+                               UUID prevPathID) {
     // On add snapshot, set previous snapshot entry nextSnapshotId = snapshotId
     if (prevPathID != null &&
         ((!snapshotChainByPath.containsKey(snapshotPath)) ||
             (!snapshotChainByPath.get(snapshotPath).containsKey(prevPathID)))) {
-      throw new IOException(String.format("Snapshot chain corruption. " +
-              "Previous snapshotId: %s is set for snapshotId: %s but no " +
-              "associated snapshot found in snapshot chain.", prevPathID,
-          snapshotID));
+      throw new IllegalStateException(String.format(
+          "Path Snapshot chain corruption. Previous snapshotId: %s is set " +
+              "for snapshotId: %s but no associated snapshot found in " +
+              "snapshot chain.", prevPathID, snapshotID));
+    }
+
+    if (prevPathID == null && snapshotChainByPath.containsKey(snapshotPath) &&
+        !snapshotChainByPath.get(snapshotPath).isEmpty()) {
+      throw new IllegalStateException(String.format(
+          "Path Snapshot chain corruption. Error while adding snapshot with " +
+              "snapshotId %s with as the first snapshot in snapshot path: " +
+              "%s which already has %d snapshots.", snapshotID, snapshotPath,
+          snapshotChainByPath.get(snapshotPath).size()));
     }
 
     if (prevPathID != null && snapshotChainByPath.containsKey(snapshotPath)) {
+      if (snapshotChainByPath.get(snapshotPath).get(prevPathID)
+          .hasNextSnapshotId()) {
+        throw new IllegalStateException(String.format(
+            "Path Snapshot chain corruption. Next snapshotId: %s is already " +
+                "set for snapshotId: %s. Adding snapshotId: %s with " +
+                "prevSnapshotId: %s will make the chain non linear.",
+            snapshotChainByPath.get(snapshotPath).get(prevPathID)
+                .getNextSnapshotId(), prevPathID,
+            snapshotID, prevPathID));
+      }
       snapshotChainByPath
           .get(snapshotPath)
           .get(prevPathID)
@@ -230,13 +269,15 @@ public class SnapshotChainManager {
   /**
    * Loads the snapshot chain from SnapshotInfo table.
    */
-  private void loadFromSnapshotInfoTable(OMMetadataManager metadataManager)
-      throws IOException {
+  private void loadFromSnapshotInfoTable(OMMetadataManager metadataManager) {
     // read from snapshotInfo table to populate
     // snapshot chains - both global and local path
     try (TableIterator<String, ? extends Table.KeyValue<String, SnapshotInfo>>
              keyIter = metadataManager.getSnapshotInfoTable().iterator()) {
-      Map<Long, SnapshotInfo> snaps = new TreeMap<>();
+      Map<UUID, SnapshotInfo> snaps = new HashMap<>();
+      // Forward Linked list for snapshot chain.
+      Map<UUID, UUID> snapshotToNextSnapshotMap = new HashMap<>();
+      UUID head = null;
       Table.KeyValue<String, SnapshotInfo> kv;
       globalSnapshotChain.clear();
       snapshotChainByPath.clear();
@@ -245,22 +286,53 @@ public class SnapshotChainManager {
 
       while (keyIter.hasNext()) {
         kv = keyIter.next();
-        snaps.put(kv.getValue().getCreationTime(), kv.getValue());
+        SnapshotInfo snapshotInfo = kv.getValue();
+        snaps.put(kv.getValue().getSnapshotId(), snapshotInfo);
+        if (snapshotInfo.getGlobalPreviousSnapshotId() != null) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("Global Snapshot chain link {} -> {}",
+                snapshotInfo.getGlobalPreviousSnapshotId(),
+                snapshotInfo.getSnapshotId());
+          }
+          // Adding edge to the linked list. prevGlobalSnapId -> snapId
+          snapshotToNextSnapshotMap.put(
+              snapshotInfo.getGlobalPreviousSnapshotId(),
+              snapshotInfo.getSnapshotId());
+        } else {
+          head = snapshotInfo.getSnapshotId();
+        }
       }
-      for (SnapshotInfo snapshotInfo : snaps.values()) {
-        addSnapshot(snapshotInfo);
+      int size = 0;
+      UUID prev = null;
+      while (head != null) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Adding Snapshot Info: {}", snaps.get(head));
+        }
+        addSnapshot(snaps.get(head));
+        size += 1;
+        prev = head;
+        head = snapshotToNextSnapshotMap.get(head);
       }
+      if (size != snaps.size()) {
+        throw new IllegalStateException(String.format("Snapshot chain " +
+            "corruption. All snapshots have not been added to the " +
+            "snapshot chain. Last snapshot added to chain : %s", prev));
+      }
+    } catch (IOException ioException) {
+      // TODO: [SNAPSHOT] Fail gracefully.
+      throw new RuntimeException(ioException);
     }
   }
 
   /**
    * Add snapshot to snapshot chain.
    */
-  public void addSnapshot(SnapshotInfo snapshotInfo) throws IOException {
+  public synchronized void addSnapshot(SnapshotInfo snapshotInfo) {
     addSnapshotGlobal(snapshotInfo.getSnapshotId(),
         snapshotInfo.getGlobalPreviousSnapshotId());
     addSnapshotPath(snapshotInfo.getSnapshotPath(),
-        snapshotInfo.getSnapshotId(), snapshotInfo.getPathPreviousSnapshotId());
+        snapshotInfo.getSnapshotId(),
+        snapshotInfo.getPathPreviousSnapshotId());
     // store snapshot ID to snapshot DB table key in the map
     snapshotIdToTableKey.put(snapshotInfo.getSnapshotId(),
         snapshotInfo.getTableKey());
@@ -269,7 +341,8 @@ public class SnapshotChainManager {
   /**
    * Delete snapshot from snapshot chain.
    */
-  public boolean deleteSnapshot(SnapshotInfo snapshotInfo) throws IOException {
+  public synchronized boolean deleteSnapshot(SnapshotInfo snapshotInfo)
+      throws IOException {
     boolean status = deleteSnapshotGlobal(snapshotInfo.getSnapshotId()) &&
         deleteSnapshotPath(snapshotInfo.getSnapshotPath(),
             snapshotInfo.getSnapshotId());
@@ -423,14 +496,19 @@ public class SnapshotChainManager {
     return snapshotIdToTableKey.get(snapshotId);
   }
 
-  @VisibleForTesting
-  void loadSnapshotInfo(OMMetadataManager metadataManager) throws IOException {
-    loadFromSnapshotInfoTable(metadataManager);
-  }
-
-  @VisibleForTesting
   public LinkedHashMap<UUID, SnapshotChainInfo> getSnapshotChainPath(
       String path) {
     return snapshotChainByPath.get(path);
+  }
+
+  @VisibleForTesting
+  public Map<UUID, SnapshotChainInfo> getGlobalSnapshotChain() {
+    return globalSnapshotChain;
+  }
+
+  @VisibleForTesting
+  public Map<String,
+      LinkedHashMap<UUID, SnapshotChainInfo>> getSnapshotChainByPath() {
+    return snapshotChainByPath;
   }
 }

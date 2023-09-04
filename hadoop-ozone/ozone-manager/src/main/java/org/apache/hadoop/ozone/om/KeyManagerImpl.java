@@ -60,7 +60,6 @@ import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
 import org.apache.hadoop.hdds.utils.db.cache.CacheValue;
 import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneAcl;
-import org.apache.hadoop.ozone.common.BlockGroup;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes;
 import org.apache.hadoop.ozone.om.helpers.BucketEncryptionKeyInfo;
@@ -271,7 +270,7 @@ public class KeyManagerImpl implements KeyManager {
           OZONE_SNAPSHOT_SST_FILTERING_SERVICE_TIMEOUT,
           OZONE_SNAPSHOT_SST_FILTERING_SERVICE_TIMEOUT_DEFAULT,
           TimeUnit.MILLISECONDS);
-      if (serviceInterval != DISABLE_VALUE) {
+      if (isSstFilteringSvcEnabled()) {
         snapshotSstFilteringService =
             new SstFilteringService(serviceInterval, TimeUnit.MILLISECONDS,
                 serviceTimeout, ozoneManager, configuration);
@@ -478,9 +477,9 @@ public class KeyManagerImpl implements KeyManager {
    */
   private OmKeyInfo getOmKeyInfoFSO(String volumeName, String bucketName,
                                    String keyName) throws IOException {
-    OzoneFileStatus fileStatus =
-            OMFileRequest.getOMKeyInfoIfExists(metadataManager,
-                    volumeName, bucketName, keyName, scmBlockSize);
+    OzoneFileStatus fileStatus = OMFileRequest.getOMKeyInfoIfExists(
+        metadataManager, volumeName, bucketName, keyName, scmBlockSize,
+        ozoneManager.getDefaultReplicationConfig());
     if (fileStatus == null) {
       return null;
     }
@@ -628,7 +627,7 @@ public class KeyManagerImpl implements KeyManager {
   }
 
   @Override
-  public List<BlockGroup> getPendingDeletionKeys(final int count)
+  public PendingKeysDeletion getPendingDeletionKeys(final int count)
       throws IOException {
     OmMetadataManagerImpl omMetadataManager =
         (OmMetadataManagerImpl) metadataManager;
@@ -669,6 +668,15 @@ public class KeyManagerImpl implements KeyManager {
   public SnapshotDeletingService getSnapshotDeletingService() {
     return snapshotDeletingService;
   }
+
+  public boolean isSstFilteringSvcEnabled() {
+    long serviceInterval = ozoneManager.getConfiguration()
+        .getTimeDuration(OZONE_SNAPSHOT_SST_FILTERING_SERVICE_INTERVAL,
+            OZONE_SNAPSHOT_SST_FILTERING_SERVICE_INTERVAL_DEFAULT,
+            TimeUnit.MILLISECONDS);
+    return serviceInterval != DISABLE_VALUE;
+  }
+
 
   @Override
   public MissingContainerCleanupService getMissingContainerCleanupService() {
@@ -1298,7 +1306,8 @@ public class KeyManagerImpl implements KeyManager {
       }
 
       fileStatus = OMFileRequest.getOMKeyInfoIfExists(metadataManager,
-              volumeName, bucketName, keyName, scmBlockSize);
+          volumeName, bucketName, keyName, scmBlockSize,
+          ozoneManager.getDefaultReplicationConfig());
 
     } finally {
       metadataManager.getLock().releaseReadLock(BUCKET_LOCK, volumeName,
@@ -1511,7 +1520,8 @@ public class KeyManagerImpl implements KeyManager {
       Preconditions.checkArgument(!recursive);
       OzoneListStatusHelper statusHelper =
           new OzoneListStatusHelper(metadataManager, scmBlockSize,
-              this::getOzoneFileStatusFSO);
+              this::getOzoneFileStatusFSO,
+              ozoneManager.getDefaultReplicationConfig());
       Collection<OzoneFileStatus> statuses =
           statusHelper.listStatusFSO(args, startKey, numEntries,
           clientAddress, allowPartialPrefixes);
@@ -1636,7 +1646,7 @@ public class KeyManagerImpl implements KeyManager {
             // for recursive list all the entries
 
             if (!isKeyDeleted(entryInDb, keyTable)) {
-              cacheKeyMap.put(entryInDb, new OzoneFileStatus(omKeyInfo,
+              cacheKeyMap.putIfAbsent(entryInDb, new OzoneFileStatus(omKeyInfo,
                   scmBlockSize, !OzoneFSUtils.isFile(entryKeyName)));
               countEntries++;
             }
