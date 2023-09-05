@@ -17,25 +17,18 @@
 version: "3.8"
 
 x-OM-config:
-  &OM-common
+  &common-env
   env_file:
     - ./docker-config
     - ./docker-config-om4
-  environment:
-    - OZONE-SITE.XML_ozone.om.ratis.log.purge.gap=50
-    - OZONE-SITE.XML_ozone.om.ratis.segment.size=16KB
-    - OZONE-SITE.XML_ozone.om.ratis.segment.preallocated.size=16KB
-    - OZONE-SITE.XML_ozone.om.ratis.snapshot.auto.trigger.threshold=500
-    - OZONE-SITE.XML_ozone.om.ratis.snapshot.max.total.sst.size=100000000
-    - OZONE-SITE.XML_ozone.om.db.dirs=/data/disk1/om
 
 services:
   om1:
-    <<: *OM-common
+    <<: *common-env
   om2:
-    <<: *OM-common
+    <<: *common-env
   om3:
-    <<: *OM-common
+    <<: *common-env
   om4:
     image: ${OZONE_RUNNER_IMAGE}:${OZONE_RUNNER_VERSION}
     hostname: om4
@@ -46,16 +39,11 @@ services:
     ports:
       - 9886:9874
       - 9896:9872
-      #- 18003:18003
     profiles:
       - donotstart
     environment:
-      WAITFOR: scm3.org:9894
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       OZONE_OPTS:
-    env_file:
-      - ./docker-config
-      - ./docker-config-om4
     command: ["/opt/hadoop/bin/ozone","om"]
     extra_hosts:
       - "scm1.org: 172.25.0.116"
@@ -64,7 +52,7 @@ services:
     networks:
       ozone_net:
         ipv4_address: 172.25.0.130
-    <<: *OM-common
+    <<: *common-env
   datanode:
     image: ${OZONE_RUNNER_IMAGE}:${OZONE_RUNNER_VERSION}
     volumes:
@@ -74,14 +62,18 @@ services:
     ports:
       - 9864
     command: [ "/opt/hadoop/bin/ozone","datanode" ]
-    env_file:
-      - docker-config
     environment:
       OZONE_OPTS:
-    <<: *OM-common
+    <<: *common-env
   scm1.org:
-    <<: *OM-common
+    <<: *common-env
   scm2.org:
-    <<: *OM-common
+    <<: *common-env
   scm3.org:
-    <<: *OM-common
+    <<: *common-env
+  s3g:
+    <<: *common-env
+  httpfs:
+    <<: *common-env
+  recon:
+    <<: *common-env
