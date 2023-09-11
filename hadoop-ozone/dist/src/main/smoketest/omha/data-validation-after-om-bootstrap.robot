@@ -14,9 +14,9 @@
 # limitations under the License.
 
 *** Settings ***
-Documentation       Smoke test for validating data and snapshots after om bootstrap.
+Documentation       Smoke test for validating snapshot data after om bootstrap.
 Resource            ../commonlib.robot
-Test Timeout        10 minutes
+Test Timeout        5 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
 *** Variables ***
@@ -76,7 +76,7 @@ Validate keys under snapshot
 
 *** Test Cases ***
 Check number of checkpoints made
-    Wait Until Keyword Succeeds     3min        10sec            Number of checkpoints is higher than 0
+    Wait Until Keyword Succeeds     3min        5sec            Number of checkpoints is higher than 0
 
 Transfer leadership to '${BOOTSTRAPPED_OM}'
     Transfer leadership to OM       ${BOOTSTRAPPED_OM}

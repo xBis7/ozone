@@ -39,6 +39,7 @@ services:
       - 9894:9872
     environment:
       OZONE_OPTS:
+    # This command produces the same behavior as sleeping indefinitely.
     command: ["tail","-f","/dev/null"]
     extra_hosts:
       - "scm1.org: 172.25.0.116"

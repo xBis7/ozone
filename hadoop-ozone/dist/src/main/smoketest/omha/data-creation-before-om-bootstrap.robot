@@ -51,9 +51,9 @@ Delete tmp file
                         Should contain      ${file_exists}      File doesn't exist
 
 Create a key and set contents same as the keyName
-    [arguments]         ${volume}            ${bucket}      ${key_prefix}       ${key_name}         ${tmp_file}
+    [arguments]         ${volume}           ${bucket}      ${key_prefix}       ${key_name}         ${tmp_file}
     Execute             > ${tmp_file}
-    Execute             echo '${key_prefix}/${key_name}' >> ${tmp_file}
+    Execute             echo "${key_prefix}/${key_name}" >> ${tmp_file}
     ${key_res} =        Execute             ozone sh key put /${volume}/${bucket}/${key_prefix}/${key_name} ${tmp_file}
                         Should Be Empty     ${key_res}
     ${key_cat_res} =    Execute             ozone sh key cat /${volume}/${bucket}/${key_prefix}/${key_name}
