@@ -30,8 +30,6 @@ source "$COMPOSE_DIR/../testlib.sh"
 
 start_docker_env
 
-execute_robot_test om1 kinit.robot
-
 volume="vol1"
 bucket="bucket1"
 snap1="snap1"
@@ -39,18 +37,18 @@ snap2="snap2"
 keyPrefix="sn"
 key1="key1"
 key2="key2"
+bootstrap_om="om3"
 
-# Robot test for data creation
+execute_robot_test om1 kinit.robot
+
+# Data creation
 execute_robot_test om1 -v VOLUME:${volume} -v BUCKET:${bucket} -v SNAP_1:${snap1} -v SNAP_2:${snap2} -v KEY_PREFIX:${keyPrefix} -v KEY_1:${key1} -v KEY_2:${key2} omha/data-creation-before-om-bootstrap.robot
 
-# bootstrap new om4
-docker-compose up -d om4
+# Init om3 and start the om daemon in the background
+execute_command_in_container om3 ozone om --init
+execute_command_in_container -d om3 ozone om
 
-execute_robot_test om4 kinit.robot
+execute_robot_test om3 kinit.robot
 
-# Robot test for checking data is installed on om4,
-# transferring leadership to om4 and validating data
-execute_robot_test om4 -v VOLUME:${volume} -v BUCKET:${bucket} -v SNAP_1:${snap1} -v SNAP_2:${snap2} -v KEY_PREFIX:${keyPrefix} -v KEY_1:${key1} -v KEY_2:${key2} omha/data-validation-after-om-bootstrap.robot
-
-# Avoid leaving it orphaned
-stop_containers om4
+# Transferring leadership to the provided OM and validating data
+execute_robot_test om3 -v BOOTSTRAPPED_OM:${bootstrap_om} -v VOLUME:${volume} -v BUCKET:${bucket} -v SNAP_1:${snap1} -v SNAP_2:${snap2} -v KEY_PREFIX:${keyPrefix} -v KEY_1:${key1} -v KEY_2:${key2} omha/data-validation-after-om-bootstrap.robot

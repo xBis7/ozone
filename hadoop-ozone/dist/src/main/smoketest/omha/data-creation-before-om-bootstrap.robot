@@ -79,19 +79,19 @@ Volume-bucket init
     Create volume and bucket        ${VOLUME}       ${BUCKET}
 
 Create 100 key metadata under /${VOLUME}/${BUCKET}
-    Create key metadata     10      100         ${VOLUME}       ${BUCKET}
+    Create key metadata     10      100             ${VOLUME}       ${BUCKET}
 
 Create snapshot '${SNAP_1}'
-    Create snapshot         ${VOLUME}           ${BUCKET}       ${SNAP_1}
+    Create snapshot         ${VOLUME}               ${BUCKET}       ${SNAP_1}
 
 Create tmp file to be used for key creation
     Create tmp file         ${TMP_FILE}
 
 Create 2 actual keys with prefix '${KEY_PREFIX}', key contents the same as the key name
-    Create actual keys      ${VOLUME}           ${BUCKET}       ${KEY_PREFIX}       ${KEY_1}        ${KEY_2}        ${TMP_FILE}
+    Create actual keys      ${VOLUME}               ${BUCKET}       ${KEY_PREFIX}       ${KEY_1}        ${KEY_2}        ${TMP_FILE}
 
 Create snapshot '${SNAP_2}'
-    Create snapshot         ${VOLUME}       ${BUCKET}       ${SNAP_2}
+    Create snapshot         ${VOLUME}               ${BUCKET}       ${SNAP_2}
 
 Cleanup tmp file
     Delete tmp file         ${TMP_FILE}

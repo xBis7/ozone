@@ -20,7 +20,7 @@ Test Timeout        10 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
 *** Variables ***
-${BOOTSTRAPPED_OM}      om4
+${BOOTSTRAPPED_OM}      om3
 ${VOLUME}               vol1
 ${BUCKET}               bucket1
 ${SNAP_1}               snap1
@@ -31,7 +31,7 @@ ${KEY_2}                key2
 
 *** Keywords ***
 Number of checkpoints is higher than 0
-    ${checkpoints} =    Execute                 ls -lah /data/om/db.snapshots/checkpointState | grep 'om.db-' | wc -l
+    ${checkpoints} =    Execute                 ls -lah /data/metadata/db.snapshots/checkpointState | grep 'om.db-' | wc -l
                         Should be true          ${checkpoints} > 0
 
 Transfer leadership to OM
@@ -40,20 +40,31 @@ Transfer leadership to OM
                         Should Contain          ${result}               Transfer leadership successfully
 
 Check snapshots on OM
-    [arguments]         ${volume}           ${bucket}       ${snap_1}       ${snap_2}
+    [arguments]         ${volume}           ${bucket}           ${snap_1}       ${snap_2}
     ${snap1_res} =      Execute             ozone sh snapshot list /${volume}/${bucket} | grep ${snap_1}
                         Should contain      ${snap1_res}        ${snap_1}
     ${snap2_res} =      Execute             ozone sh snapshot list /${volume}/${bucket} | grep ${snap_2}
                         Should contain      ${snap2_res}        ${snap_2}
 
-Run snap diff and validate results
-    [arguments]         ${volume}           ${bucket}       ${snap_1}       ${snap_2}       ${key_1}        ${key_2}
+Run snap diff and get response
+    [arguments]         ${volume}           ${bucket}           ${snap_1}       ${snap_2}
     ${diff_res} =       Execute             ozone sh snapshot diff /${volume}/${bucket} ${snap_1} ${snap_2}
-    ${key_num} =        Execute             ${diff_res} | grep 'key' | wc -l
+                        [return]            ${diff_res}
+
+Snap diff finished
+    [arguments]         ${volume}           ${bucket}           ${snap_1}       ${snap_2}
+    ${diff_res} =       Run snap diff and get response          ${volume}       ${bucket}       ${snap_1}       ${snap_2}
+                        Should contain      ${diff_res}         Difference between snapshot: ${snap_1} and snapshot: ${snap_2}
+
+Run snap diff and validate results
+    [arguments]         ${volume}           ${bucket}           ${snap_1}       ${snap_2}       ${key_1}        ${key_2}
+    Wait Until Keyword Succeeds             2min                3sec            Snap diff finished              ${volume}           ${bucket}       ${snap_1}       ${snap_2}
+    ${diff_res} =       Run snap diff and get response          ${volume}       ${bucket}       ${snap_1}       ${snap_2}
+    ${key_num} =        Execute             echo "${diff_res}" | grep 'key' | wc -l
                         Should be true      ${key_num} == 2
-    ${diff_key1} =      Execute             ${diff_res} | grep ${key_1} | wc -l
+    ${diff_key1} =      Execute             echo "${diff_res}" | grep ${key_1} | wc -l
                         Should be true      ${diff_key1} == 1
-    ${diff_key2} =      Execute             ${diff_res} | grep ${key_2} | wc -l
+    ${diff_key2} =      Execute             echo "${diff_res}" | grep ${key_2} | wc -l
                         Should be true      ${diff_key2} == 1
 
 Validate keys under snapshot
