@@ -39,8 +39,8 @@ key1="key1"
 key2="key2"
 bootstrap_om="om3"
 
-#execute_robot_test om1 kinit.robot
-execute_command_in_container om1 kinit -kt /etc/security/keytabs/testuser.keytab testuser/om@EXAMPLE.COM
+execute_robot_test om1 kinit.robot
+#execute_command_in_container om1 kinit -kt /etc/security/keytabs/testuser.keytab testuser/om@EXAMPLE.COM
 
 # Data creation
 execute_robot_test om1 -v VOLUME:${volume} -v BUCKET:${bucket} -v SNAP_1:${snap1} -v SNAP_2:${snap2} -v KEY_PREFIX:${keyPrefix} -v KEY_1:${key1} -v KEY_2:${key2} omha/data-creation-before-om-bootstrap.robot
@@ -49,8 +49,8 @@ execute_robot_test om1 -v VOLUME:${volume} -v BUCKET:${bucket} -v SNAP_1:${snap1
 execute_command_in_container om3 ozone om --init
 execute_command_in_container -d om3 ozone om
 
-#execute_robot_test om3 kinit.robot
-execute_command_in_container om1 kinit -kt /etc/security/keytabs/testuser.keytab testuser/om@EXAMPLE.COM
+execute_robot_test om3 kinit.robot
+#execute_command_in_container om1 kinit -kt /etc/security/keytabs/testuser.keytab testuser/om@EXAMPLE.COM
 
 # Transferring leadership to the provided OM and validating data
 execute_robot_test om3 -v BOOTSTRAPPED_OM:${bootstrap_om} -v VOLUME:${volume} -v BUCKET:${bucket} -v SNAP_1:${snap1} -v SNAP_2:${snap2} -v KEY_PREFIX:${keyPrefix} -v KEY_1:${key1} -v KEY_2:${key2} omha/data-validation-after-om-bootstrap.robot
