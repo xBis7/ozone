@@ -327,7 +327,7 @@ jobs:
     strategy:
       matrix:
         profile:
-#          - client
+          - client
 #          - contract
 #          - filesystem
 #          - hdds
