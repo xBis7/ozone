@@ -28,12 +28,7 @@ ${OM_SERVICE_ID}     om
 *** Keywords ***
 Get test user principal
     [arguments]         ${user}
-    ${hostname} =       Execute         hostname
-    IF    "${hostname}" == "s3g"
-        ${instance} =       Execute         echo "${hostname}"
-    ELSE
-        ${instance} =       Execute         hostname | sed 's/[0-9].*//'
-    END
+    ${instance} =       Execute                    hostname | sed 's/scm[0-9].org/scm/;s/scm[0-9]/scm/;s/om[0-9]/om/'
     [return]            ${user}/${instance}@EXAMPLE.COM
 
 Kinit HTTP user
