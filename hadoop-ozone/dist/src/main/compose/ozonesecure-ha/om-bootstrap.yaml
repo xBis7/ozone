@@ -25,6 +25,7 @@ x-OM-config:
 x-om3-setup:
   &om3-setup
   environment:
+    # Skip initialising the OM, so that the container doesn't have any data.
     OZONE_OPTS:
   # This command produces the same behavior as sleeping indefinitely.
   command: [ "tail","-f","/dev/null" ]
