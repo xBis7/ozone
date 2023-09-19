@@ -20,6 +20,7 @@ Test Timeout        5 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
 *** Variables ***
+${TMP_FILE}         tmp.txt
 ${VOLUME}
 ${BUCKET}
 ${SNAP_1}
@@ -27,7 +28,6 @@ ${SNAP_2}
 ${KEY_PREFIX}
 ${KEY_1}
 ${KEY_2}
-${TMP_FILE}
 
 *** Keywords ***
 Create volume and bucket
