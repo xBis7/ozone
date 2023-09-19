@@ -20,14 +20,14 @@ Test Timeout        5 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
 *** Variables ***
-${VOLUME}           vol1
-${BUCKET}           bucket1
-${SNAP_1}           snap1
-${SNAP_2}           snap2
-${KEY_PREFIX}       sn
-${KEY_1}            key1
-${KEY_2}            key2
-${TMP_FILE}         tmp.txt
+${VOLUME}
+${BUCKET}
+${SNAP_1}
+${SNAP_2}
+${KEY_PREFIX}
+${KEY_1}
+${KEY_2}
+${TMP_FILE}
 
 *** Keywords ***
 Create volume and bucket
@@ -52,8 +52,7 @@ Delete tmp file
 
 Create a key and set contents same as the keyName
     [arguments]         ${volume}           ${bucket}      ${key_prefix}       ${key_name}         ${tmp_file}
-    Execute             > ${tmp_file}
-    Execute             echo "${key_prefix}/${key_name}" >> ${tmp_file}
+    Execute             echo "${key_prefix}/${key_name}" > ${tmp_file}
     ${key_res} =        Execute             ozone sh key put /${volume}/${bucket}/${key_prefix}/${key_name} ${tmp_file}
                         Should Be Empty     ${key_res}
     ${key_cat_res} =    Execute             ozone sh key cat /${volume}/${bucket}/${key_prefix}/${key_name}
@@ -64,7 +63,7 @@ Create actual keys
     Create a key and set contents same as the keyName           ${volume}           ${bucket}           ${key_prefix}       ${key_1}            ${tmp_file}
     Create a key and set contents same as the keyName           ${volume}           ${bucket}           ${key_prefix}       ${key_2}            ${tmp_file}
 
-Create key metadata
+Create metadata keys
     [arguments]         ${threads}          ${key_num}          ${volume}       ${bucket}
     ${freon_res} =      Execute             ozone freon omkg -t ${threads} -n ${key_num} -v ${volume} -b ${bucket}
                         Should contain      ${freon_res}        Successful executions: ${key_num}
@@ -78,8 +77,8 @@ Create snapshot
 Volume-bucket init
     Create volume and bucket        ${VOLUME}       ${BUCKET}
 
-Create 100 key metadata under /${VOLUME}/${BUCKET}
-    Create key metadata     10      100             ${VOLUME}       ${BUCKET}
+Create 100 metadata keys under /${VOLUME}/${BUCKET}
+    Create metadata keys     10      100             ${VOLUME}       ${BUCKET}
 
 Create snapshot '${SNAP_1}'
     Create snapshot         ${VOLUME}               ${BUCKET}       ${SNAP_1}

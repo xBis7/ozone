@@ -20,19 +20,24 @@ Test Timeout        5 minutes
 Test Setup          Run Keyword if    '${SECURITY_ENABLED}' == 'true'    Kinit test user     testuser     testuser.keytab
 
 *** Variables ***
-${BOOTSTRAPPED_OM}      om3
-${VOLUME}               vol1
-${BUCKET}               bucket1
-${SNAP_1}               snap1
-${SNAP_2}               snap2
-${KEY_PREFIX}           sn
-${KEY_1}                key1
-${KEY_2}                key2
+${BOOTSTRAPPED_OM}
+${VOLUME}
+${BUCKET}
+${SNAP_1}
+${SNAP_2}
+${KEY_PREFIX}
+${KEY_1}
+${KEY_2}
 
 *** Keywords ***
-Number of checkpoints is higher than 0
+Number of checkpoints equals 2
     ${checkpoints} =    Execute                 ls -lah /data/metadata/db.snapshots/checkpointState | grep 'om.db-' | wc -l
-                        Should be true          ${checkpoints} > 0
+                        Should be true          ${checkpoints} == 2
+
+Check current leader is different than OM
+    [arguments]         ${om}
+    ${leader}           Execute                 ozone admin om roles -id=omservice | grep 'LEADER' | awk -F ':' '{ print $1 }'
+                        Should not contain      ${leader}       ${om}
 
 Transfer leadership to OM
     [arguments]         ${new_leader}
@@ -40,11 +45,13 @@ Transfer leadership to OM
                         Should Contain          ${result}               Transfer leadership successfully
 
 Check snapshots on OM
-    [arguments]         ${volume}           ${bucket}           ${snap_1}       ${snap_2}
-    ${snap1_res} =      Execute             ozone sh snapshot list /${volume}/${bucket} | grep ${snap_1}
-                        Should contain      ${snap1_res}        ${snap_1}
-    ${snap2_res} =      Execute             ozone sh snapshot list /${volume}/${bucket} | grep ${snap_2}
-                        Should contain      ${snap2_res}        ${snap_2}
+    [arguments]         ${volume}               ${bucket}           ${snap_1}       ${snap_2}
+    ${snap_list}        Execute                 ozone sh snapshot list /${volume}/${bucket}
+                        Should not contain      ${snap_list}        [ ]
+    ${snap1_res} =      Execute                 echo "${snap_list}" | grep ${snap_1}
+                        Should contain          ${snap1_res}        ${snap_1}
+    ${snap2_res} =      Execute                 echo "${snap_list}" | grep ${snap_2}
+                        Should contain          ${snap2_res}        ${snap_2}
 
 Run snap diff and get response
     [arguments]         ${volume}           ${bucket}           ${snap_1}       ${snap_2}
@@ -76,10 +83,11 @@ Validate keys under snapshot
 
 *** Test Cases ***
 Check number of checkpoints made
-    Wait Until Keyword Succeeds     3min        5sec            Number of checkpoints is higher than 0
+    Wait Until Keyword Succeeds     3min        5sec            Number of checkpoints equals 2
 
-Transfer leadership to '${BOOTSTRAPPED_OM}'
-    Transfer leadership to OM       ${BOOTSTRAPPED_OM}
+Check current leader and transfer leadership to '${BOOTSTRAPPED_OM}'
+    Check current leader is different than OM       ${BOOTSTRAPPED_OM}
+    Transfer leadership to OM                       ${BOOTSTRAPPED_OM}
 
 Snapshots exist on '${BOOTSTRAPPED_OM}'
     Check snapshots on OM           ${VOLUME}       ${BUCKET}       ${SNAP_1}       ${SNAP_2}
