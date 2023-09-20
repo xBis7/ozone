@@ -22,14 +22,6 @@ x-OM-config:
     - ./docker-config
     - ./docker-config-om-ratis
 
-x-om3-setup:
-  &om3-setup
-  environment:
-    # Skip initialising the OM, so that the container doesn't have any data.
-    OZONE_OPTS:
-  # This command produces the same behavior as sleeping indefinitely.
-  command: [ "tail","-f","/dev/null" ]
-
 services:
   kdc:
     <<: *common-env
@@ -46,7 +38,28 @@ services:
   om2:
     <<: *common-env
   om3:
-    <<: [*om3-setup, *common-env]
+    image: ${OZONE_RUNNER_IMAGE}:${OZONE_RUNNER_VERSION}
+    hostname: om3
+    volumes:
+      - ../..:/opt/hadoop
+      - ../_keytabs:/etc/security/keytabs
+      - ./krb5.conf:/etc/krb5.conf
+    ports:
+      - 9884:9874
+      - 9894:9872
+    environment:
+      # Skip initialising the OM, so that the container doesn't have any data.
+      OZONE_OPTS:
+    # This command produces the same behavior as sleeping indefinitely.
+    command: ["tail","-f","/dev/null"]
+    extra_hosts:
+      - "scm1.org: 172.25.0.116"
+      - "scm2.org: 172.25.0.117"
+      - "scm3.org: 172.25.0.118"
+    networks:
+      ozone_net:
+        ipv4_address: 172.25.0.113
+    <<: *common-env
   httpfs:
     <<: *common-env
   s3g:

@@ -75,7 +75,7 @@ execute_robot_test om1 kinit.robot
 execute_robot_test om1 -v VOLUME:${volume} -v BUCKET:${bucket} -v SNAP_1:${snap1} -v SNAP_2:${snap2} -v KEY_PREFIX:${keyPrefix} -v KEY_1:${key1} -v KEY_2:${key2} omha/data-creation-before-om-bootstrap.robot
 
 echo "Check that om3 isn't running"
-om3_service=$(execute_command_in_container om3 ps aux | grep 'OzoneManagerStarter')
+om3_service=$(execute_command_in_container om3 ps aux | grep 'OzoneManagerStarter' || true)
 
 if [[ $om3_service != "" ]]
 then
@@ -84,7 +84,7 @@ then
 fi
 
 echo "Check that om3 has no data"
-om3_data=$(execute_command_in_container om3 ls -lah /data | grep 'metadata')
+om3_data=$(execute_command_in_container om3 ls -lah /data | grep 'metadata' || true)
 
 if [[ $om3_data != "" ]]
 then
@@ -95,9 +95,10 @@ fi
 # Init om3 and start the om daemon in the background
 execute_command_in_container om3 ozone om --init
 execute_command_in_container -d om3 ozone om
+wait_for_port om3 9872 120
 
 echo "Check that om3 is running"
-om3_service=$(execute_command_in_container om3 ps aux | grep 'OzoneManagerStarter')
+om3_service=$(execute_command_in_container om3 ps aux | grep 'OzoneManagerStarter' || true)
 
 if [[ $om3_service == "" ]]
 then
@@ -106,7 +107,7 @@ then
 fi
 
 echo "Check that om3 has data"
-om3_data=$(execute_command_in_container om3 ls -lah /data | grep 'metadata')
+om3_data=$(execute_command_in_container om3 ls -lah /data | grep 'metadata' || true)
 
 if [[ $om3_data == "" ]]
 then
