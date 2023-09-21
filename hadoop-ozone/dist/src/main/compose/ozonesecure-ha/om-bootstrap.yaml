@@ -16,8 +16,8 @@
 
 version: "3.8"
 
-x-OM-config:
-  &common-env
+x-OM-Ratis-config:
+  &common-env-file
   env_file:
     - ./docker-config
     - ./docker-config-om-ratis
@@ -34,30 +34,30 @@ x-om3-setup:
 
 services:
   kdc:
-    <<: *common-env
+    <<: *common-env-file
   kms:
-    <<: *common-env
+    <<: *common-env-file
   datanode1:
-    <<: *common-env
+    <<: *common-env-file
   datanode2:
-    <<: *common-env
+    <<: *common-env-file
   datanode3:
-    <<: *common-env
+    <<: *common-env-file
   om1:
-    <<: *common-env
+    <<: *common-env-file
   om2:
-    <<: *common-env
+    <<: *common-env-file
   om3:
-    <<: [*om3-setup, *common-env]
+    <<: [*om3-setup, *common-env-file]
   httpfs:
-    <<: *common-env
+    <<: *common-env-file
   s3g:
-    <<: *common-env
+    <<: *common-env-file
   scm1.org:
-    <<: *common-env
+    <<: *common-env-file
   scm2.org:
-    <<: *common-env
+    <<: *common-env-file
   scm3.org:
-    <<: *common-env
+    <<: *common-env-file
   recon:
-    <<: *common-env
+    <<: *common-env-file
