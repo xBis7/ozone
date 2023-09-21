@@ -343,7 +343,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
 
   @Override
   public void deleteContainer(ContainerID containerID)
-      throws IOException, TimeoutException {
+      throws IOException {
     // Get containers table
     Table<ContainerID, ContainerInfo> reconContainersTable =
         ReconSCMDBDefinition.CONTAINERS.getTable(dbStore);

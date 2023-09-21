@@ -125,7 +125,7 @@ public class TestContainerStateManagerIntegration {
 
   @Test
   public void testDeleteContainer()
-      throws IOException {
+      throws IOException, ReconfigurationException {
     // Allocate a container
     ContainerWithPipeline containerWithPipeline = scm.getClientProtocolServer()
         .allocateContainer(HddsProtos.ReplicationType.STAND_ALONE,
