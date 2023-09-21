@@ -41,7 +41,6 @@ import org.apache.hadoop.security.authentication.client.AuthenticationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.apache.ozone.test.tag.Flaky;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
@@ -269,7 +268,6 @@ public class TestContainerStateManagerIntegration {
   }
 
   @Test
-  @Flaky("HDDS-1159")
   public void testGetMatchingContainerMultipleThreads()
       throws IOException, InterruptedException {
     ContainerWithPipeline container1 = scm.getClientProtocolServer().
