@@ -75,7 +75,7 @@ public class ReconContainerManager extends ContainerManagerImpl {
   private final Map<Long, Map<UUID, ContainerReplicaHistory>> replicaHistoryMap;
   // Pipeline -> # of open containers
   private final Map<PipelineID, Integer> pipelineToOpenContainer;
-  private final DBStore dbStore;
+  private final Table<ContainerID, ContainerInfo> reconContainerTable;
 
   @SuppressWarnings("parameternumber")
   public ReconContainerManager(
@@ -94,9 +94,9 @@ public class ReconContainerManager extends ContainerManagerImpl {
         pendingOps);
     this.scmClient = scm;
     this.pipelineManager = pipelineManager;
+    this.reconContainerTable = containerStore;
     this.containerHealthSchemaManager = containerHealthSchemaManager;
     this.cdbServiceProvider = reconContainerMetadataManager;
-    this.dbStore = store;
     this.nodeDB = ReconSCMDBDefinition.NODES.getTable(store);
     this.replicaHistoryMap = new ConcurrentHashMap<>();
     this.pipelineToOpenContainer = new ConcurrentHashMap<>();
@@ -344,16 +344,12 @@ public class ReconContainerManager extends ContainerManagerImpl {
   @Override
   public void deleteContainer(ContainerID containerID)
       throws IOException {
-    // Get containers table
-    Table<ContainerID, ContainerInfo> reconContainersTable =
-        ReconSCMDBDefinition.CONTAINERS.getTable(dbStore);
-
-    ContainerInfo info = reconContainersTable
+    ContainerInfo info = reconContainerTable
         .getIfExist(containerID);
 
     // If the container exists in the table, delete it.
     if (Objects.nonNull(info)) {
-      reconContainersTable.delete(containerID);
+      reconContainerTable.delete(containerID);
     }
 
 //    cdbServiceProvider.removeContainerFromMappingTables(
