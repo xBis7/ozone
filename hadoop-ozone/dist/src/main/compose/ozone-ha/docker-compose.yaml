@@ -56,7 +56,7 @@ services:
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       <<: *replication
     ports:
-      - 9874
+      - 9884:9874
       - 9862
     hostname: om2
     command: ["ozone","om"]
@@ -67,7 +67,7 @@ services:
       ENSURE_OM_INITIALIZED: /data/metadata/om/current/VERSION
       <<: *replication
     ports:
-      - 9874
+      - 9894:9874
       - 9862
     hostname: om3
     command: ["ozone","om"]

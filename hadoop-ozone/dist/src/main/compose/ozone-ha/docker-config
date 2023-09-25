@@ -21,6 +21,23 @@ CORE-SITE.XML_hadoop.proxyuser.hadoop.groups=*
 CORE-SITE.XML_fs.defaultFS=ofs://omservice/
 CORE-SITE.XML_fs.trash.interval=1
 
+####
+CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
+CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
+CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider
+
+CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
+CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=2,1
+CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=50
+
+CORE-SITE.XML_ipc.9862.backoff.enable=true
+
+OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory
+OZONE-SITE.XML_ozone.om.s3.grpc.server_enabled=false
+
+OZONE-SITE.XML_ozone.om.handler.count.key=2
+####
+
 OZONE-SITE.XML_ozone.om.service.ids=omservice
 OZONE-SITE.XML_ozone.om.nodes.omservice=om1,om2,om3
 OZONE-SITE.XML_ozone.om.address.omservice.om1=om1
