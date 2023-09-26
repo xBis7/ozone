@@ -30,12 +30,13 @@ source "$COMPOSE_DIR/../testlib.sh"
 
 iterations=$1
 
+execute_command_in_container om1 ozone sh bucket create /s3v/bucket1 || true
+
 counter=0
 while [[ $counter -lt $iterations ]]
 do
-  docker exec ozone-ha-datanode-1 ozone freon omkg -t 2 -n 10
-
-  sleep 3
+  execute_command_in_container om1 bash -c 'export AWS_ACCESS_KEY=mid400keysPer5s/s3oz3 AWS_SECRET_KEY=pass && ozone freon s3kg -t 10 -n 400 -e http://s3g:9878'
+  sleep 5
 
   counter=$(($counter+1))
 
