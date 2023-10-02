@@ -32,8 +32,8 @@ CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=13,25,50
 
 CORE-SITE.XML_ipc.9862.backoff.enable=true
 
-CORE-SITE.XML_ipc.9862.decay-scheduler.backoff.responsetime.enable=true
-CORE-SITE.XML_ipc.9862.decay-scheduler.backoff.responsetime.thresholds=1s,2s,3s,4s
+#CORE-SITE.XML_ipc.9862.decay-scheduler.backoff.responsetime.enable=true
+#CORE-SITE.XML_ipc.9862.decay-scheduler.backoff.responsetime.thresholds=1s,2s,3s,4s
 
 OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory
 OZONE-SITE.XML_ozone.om.s3.grpc.server_enabled=false

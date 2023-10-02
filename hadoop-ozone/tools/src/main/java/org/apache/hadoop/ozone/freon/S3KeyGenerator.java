@@ -19,6 +19,7 @@ package org.apache.hadoop.ozone.freon;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -142,8 +143,15 @@ public class S3KeyGenerator extends S3EntityGenerator
                 parts));
 
       } else {
-        getS3().putObject(bucketName, generateObjectName(counter),
-            content);
+        try {
+          getS3().putObject(bucketName, generateObjectName(counter),
+              content);
+        } catch (Exception e) {
+          LOG.info("xbis: cause: " + e.getCause());
+          LOG.info("xbis: stackTrace: " + Arrays.toString(e.getStackTrace()));
+          LOG.info("xbis: message: " + e.getMessage());
+          throw e;
+        }
       }
 
       return null;

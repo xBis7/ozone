@@ -48,6 +48,7 @@ services:
     ports:
       - 9874:9874
       - 9862:9862
+      - 5005:5005
     command: ["ozone","om"]
   scm:
     <<: *common-config
@@ -75,6 +76,7 @@ services:
       <<: *replication
     ports:
       - 9878:9878
+      - 3003:3003
     command: ["ozone","s3g"]
   recon:
     <<: *common-config

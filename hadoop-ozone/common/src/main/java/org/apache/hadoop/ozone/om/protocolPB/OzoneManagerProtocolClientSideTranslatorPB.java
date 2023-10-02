@@ -20,6 +20,7 @@ package org.apache.hadoop.ozone.om.protocolPB;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -318,9 +319,18 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
         CallerContext.setCurrent(callerContext);
       }
     }
-    OMResponse response =
-        transport.submitRequest(
-            builder.setTraceID(TracingUtil.exportCurrentSpan()).build());
+    OMResponse response;
+    try {
+      response =
+          transport.submitRequest(
+              builder.setTraceID(TracingUtil.exportCurrentSpan()).build());
+    } catch (IOException ex) {
+      System.out.println("xbis: cause: " + ex.getCause());
+      System.out.println("xbis: stackTrace: " + Arrays.toString(ex.getStackTrace()));
+      System.out.println("xbis: message: " + ex.getMessage());
+      throw ex;
+    }
+
     return response;
   }
 

@@ -20,6 +20,28 @@ CORE-SITE.XML_fs.trash.interval=1
 CORE-SITE.XML_hadoop.proxyuser.hadoop.hosts=*
 CORE-SITE.XML_hadoop.proxyuser.hadoop.groups=*
 
+#### FCQ-config
+CORE-SITE.XML_ipc.9862.callqueue.impl=org.apache.hadoop.ipc.FairCallQueue
+CORE-SITE.XML_ipc.9862.scheduler.impl=org.apache.hadoop.ipc.DecayRpcScheduler
+CORE-SITE.XML_ipc.9862.identity-provider.impl=org.apache.hadoop.ozone.om.helpers.OzoneIdentityProvider
+
+CORE-SITE.XML_ipc.9862.scheduler.priority.levels=2
+CORE-SITE.XML_ipc.9862.faircallqueue.multiplexer.weights=2,1
+CORE-SITE.XML_ipc.9862.decay-scheduler.thresholds=50
+
+CORE-SITE.XML_ipc.9862.backoff.enable=true
+
+#CORE-SITE.XML_ipc.server.handler.queue.size=10
+
+#CORE-SITE.XML_ipc.9862.decay-scheduler.backoff.responsetime.enable=true
+#CORE-SITE.XML_ipc.9862.decay-scheduler.backoff.responsetime.thresholds=5ms,20ms
+
+OZONE-SITE.XML_ozone.om.transport.class=org.apache.hadoop.ozone.om.protocolPB.Hadoop3OmTransportFactory
+OZONE-SITE.XML_ozone.om.s3.grpc.server_enabled=false
+
+OZONE-SITE.XML_ozone.om.handler.count.key=2
+####
+
 OZONE-SITE.XML_ozone.om.address=om
 OZONE-SITE.XML_ozone.om.http-address=om:9874
 OZONE-SITE.XML_ozone.scm.http-address=scm:9876
