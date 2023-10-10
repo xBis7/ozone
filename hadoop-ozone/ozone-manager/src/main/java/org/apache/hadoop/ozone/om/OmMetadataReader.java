@@ -39,6 +39,7 @@ import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OzoneFileStatus;
 import org.apache.hadoop.ozone.om.helpers.S3VolumeContext;
 import org.apache.hadoop.ozone.security.acl.OzoneObjInfo;
+import org.apache.hadoop.ozone.security.acl.OzoneSharedTmpAuthorizer;
 import org.apache.hadoop.ozone.security.acl.RequestContext;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
@@ -79,6 +80,7 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
   private final OzoneManager ozoneManager;
   private final boolean isAclEnabled;
   private final IAccessAuthorizer accessAuthorizer;
+  private final OzoneSharedTmpAuthorizer ozoneSharedTmpAuthorizer;
   private final OmMetadataReaderMetrics metrics;
   private final Logger log;
   private final AuditLogger audit;
@@ -91,6 +93,18 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
                           AuditLogger audit,
                           OmMetadataReaderMetrics omMetadataReaderMetrics,
                           IAccessAuthorizer accessAuthorizer) {
+    this(keyManager, prefixManager, ozoneManager, log, audit,
+         omMetadataReaderMetrics, accessAuthorizer, null);
+  }
+
+  public OmMetadataReader(KeyManager keyManager,
+                          PrefixManager prefixManager,
+                          OzoneManager ozoneManager,
+                          Logger log,
+                          AuditLogger audit,
+                          OmMetadataReaderMetrics omMetadataReaderMetrics,
+                          IAccessAuthorizer accessAuthorizer,
+                          OzoneSharedTmpAuthorizer ozoneSharedTmpAuthorizer) {
     this.keyManager = keyManager;
     this.bucketManager = ozoneManager.getBucketManager();
     this.volumeManager = ozoneManager.getVolumeManager();
@@ -102,7 +116,8 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
     this.metrics = omMetadataReaderMetrics;
     this.perfMetrics = ozoneManager.getPerfMetrics();
     this.accessAuthorizer = accessAuthorizer != null ? accessAuthorizer
-        : OzoneAccessAuthorizer.get();
+                                : OzoneAccessAuthorizer.get();
+    this.ozoneSharedTmpAuthorizer = ozoneSharedTmpAuthorizer;
   }
 
   /**

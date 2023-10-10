@@ -20,6 +20,8 @@ CORE-SITE.XML_fs.trash.interval=1
 CORE-SITE.XML_hadoop.proxyuser.httpfs.hosts=*
 CORE-SITE.XML_hadoop.proxyuser.httpfs.groups=*
 
+OZONE-SITE.XML_ozone.om.enable.ofs.shared.tmp.dir=true
+
 OZONE-SITE.XML_ozone.om.address=om
 OZONE-SITE.XML_ozone.om.http-address=om:9874
 OZONE-SITE.XML_ozone.scm.http-address=scm:9876

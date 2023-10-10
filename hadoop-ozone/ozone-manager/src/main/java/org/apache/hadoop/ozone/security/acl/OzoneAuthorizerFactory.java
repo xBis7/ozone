@@ -55,6 +55,11 @@ public final class OzoneAuthorizerFactory {
         : om.getAccessAuthorizer();
   }
 
+  public static IAccessAuthorizer createNativeAuthorizer(OzoneManager om) {
+    final OzoneNativeAuthorizer authorizer = new OzoneNativeAuthorizer();
+    return configure(authorizer, om, om.getKeyManager(), om.getPrefixManager());
+  }
+
   /**
    * Creates new instance (except for {@link OzoneAccessAuthorizer},
    * which is a no-op authorizer.
@@ -74,8 +79,7 @@ public final class OzoneAuthorizerFactory {
     }
 
     if (OzoneNativeAuthorizer.class == clazz) {
-      final OzoneNativeAuthorizer authorizer = new OzoneNativeAuthorizer();
-      return configure(authorizer, om, km, pm);
+      return createNativeAuthorizer(om);
     }
 
     final IAccessAuthorizer authorizer = newInstance(clazz, conf);
