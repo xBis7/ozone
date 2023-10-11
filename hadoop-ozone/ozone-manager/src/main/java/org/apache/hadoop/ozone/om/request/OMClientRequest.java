@@ -58,6 +58,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.INVALID_KEY_NAME;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.UNAUTHORIZED;
@@ -274,7 +275,12 @@ public abstract class OMClientRequest implements RequestAuditor {
       if (isVolOwner) {
         contextBuilder.setOwnerName(volumeOwner);
       } else {
-        contextBuilder.setOwnerName(bucketOwner);
+        if (Objects.equals(aclType, IAccessAuthorizer.ACLType.DELETE) &&
+            keyName.contains(OzoneConsts.FS_FILE_COPYING_TEMP_SUFFIX)) {
+          contextBuilder.setOwnerName(currentUser.getUserName());
+        } else {
+          contextBuilder.setOwnerName(bucketOwner);
+        }
       }
 
       try (ReferenceCounted<IOmMetadataReader, SnapshotCache> rcMetadataReader =

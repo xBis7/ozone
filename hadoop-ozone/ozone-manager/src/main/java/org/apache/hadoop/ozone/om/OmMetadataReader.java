@@ -31,6 +31,7 @@ import org.apache.hadoop.ozone.audit.Auditor;
 import org.apache.hadoop.ozone.audit.OMAction;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.BasicOmKeyInfo;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.ListKeysLightResult;
 import org.apache.hadoop.ozone.om.helpers.ListKeysResult;
 import org.apache.hadoop.ozone.om.helpers.KeyInfoWithVolumeContext;
@@ -38,14 +39,17 @@ import org.apache.hadoop.ozone.om.helpers.OmKeyArgs;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OzoneFileStatus;
 import org.apache.hadoop.ozone.om.helpers.S3VolumeContext;
+import org.apache.hadoop.ozone.security.acl.OzoneNativeAuthorizer;
 import org.apache.hadoop.ozone.security.acl.OzoneObjInfo;
 import org.apache.hadoop.ozone.security.acl.RequestContext;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.hadoop.hdds.server.ServerUtils.getRemoteUserName;
@@ -53,7 +57,9 @@ import static org.apache.hadoop.hdds.utils.HddsServerUtil.getRemoteUser;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_FS_LISTING_PAGE_SIZE;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_FS_LISTING_PAGE_SIZE_DEFAULT;
 import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_FS_LISTING_PAGE_SIZE_MAX;
+import static org.apache.hadoop.ozone.om.OzoneManager.LOG;
 import static org.apache.hadoop.ozone.om.OzoneManager.getS3Auth;
+import static org.apache.hadoop.ozone.om.OzoneManagerUtils.getBucketLayout;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.INVALID_REQUEST;
 import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
 import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer.ACLIdentityType;
@@ -147,6 +153,28 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
       perfMetrics.addLookupLatency(Time.monotonicNowNanos() - start);
     }
   }
+
+  public List<OzoneAcl> getKeyOzoneAcls(
+      String volumeName, String bucketName, String keyName) throws IOException {
+    String keyBytes =
+        keyManager.getMetadataManager().getOzoneKey(volumeName, bucketName, keyName);
+    BucketLayout bucketLayout = getBucketLayout(keyManager.getMetadataManager(), volumeName,
+                                                bucketName);
+
+    OmKeyInfo omKeyInfo = keyManager.getMetadataManager()
+                                .getKeyTable(bucketLayout)
+                                .get(keyBytes);
+
+    if (omKeyInfo == null) {
+      omKeyInfo = keyManager
+                      .getMetadataManager()
+                      .getOpenKeyTable(bucketLayout)
+                      .get(keyBytes);
+    }
+
+    return omKeyInfo.getAcls();
+  }
+
 
   @Override
   public KeyInfoWithVolumeContext getKeyInfo(final OmKeyArgs args,
@@ -488,7 +516,7 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
    */
   public boolean checkAcls(OzoneObj obj, RequestContext context,
       boolean throwIfPermissionDenied) throws OMException {
-
+    LOG.info("xbis: OmMetadataReader.checkAcls");
     if (!captureLatencyNs(perfMetrics::setCheckAccessLatencyNs,
         () -> accessAuthorizer.checkAccess(obj, context))) {
       if (throwIfPermissionDenied) {
