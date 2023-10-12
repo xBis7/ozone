@@ -162,6 +162,11 @@ public final class OzoneAclUtils {
       return bucketOwner;
     }
 
+//    List<OzoneAcl> aclList1 = metadataReader.getKeyOzoneAcls(
+//        volumeName, bucketName, keyName);
+//    LOG.info("xbis: don't ignoreACLs: aclList: " + aclList1 +
+//             " | key: " + keyName);
+
     if ((Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE) ||
          Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE)) ||
         (Objects.equals(aclType, IAccessAuthorizer.ACLType.DELETE) &&
@@ -175,12 +180,12 @@ public final class OzoneAclUtils {
       LOG.info("xbis: don't ignoreACLs: aclList: " + aclList +
                " | key: " + keyName);
       for (OzoneAcl acl : aclList) {
-        // If ACL is for user (and not group or world) &&
-        // acl user is the same as the current user &&
-        // acl access is a
+        // aclList appears to contain only the owner
+        // and not any other users with permissions.
+        // TODO: figure out why or verify if that's how it works.
         if (Objects.equals(acl.getType(),
             IAccessAuthorizer.ACLIdentityType.USER) &&
-            Objects.equals(acl.getName(), user.getUserName()) &&
+//            Objects.equals(acl.getName(), user.getUserName()) &&
             Objects.equals(IAccessAuthorizer.ACLType
                                .getACLString(acl.getAclBitSet()), "a")) {
           LOG.info("xbis: don't ignoreACLs: user: " + acl.getName() +

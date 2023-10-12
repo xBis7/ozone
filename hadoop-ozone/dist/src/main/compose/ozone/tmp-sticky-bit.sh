@@ -15,17 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#suite:unsecure
-
-COMPOSE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-export COMPOSE_DIR
-
-export SECURITY_ENABLED=false
-export OZONE_REPLICATION_FACTOR=3
-
-# shellcheck source=/dev/null
-source "$COMPOSE_DIR/../testlib.sh"
-
 bucket_layout=$1
 
 if [[ "$bucket_layout" == "" ]]
@@ -35,42 +24,42 @@ fi
 
 export COMPOSE_FILE=docker-compose.yaml:ranger.yaml
 
-start_docker_env
+docker-compose up --scale datanode=3 -d
 
 # Create tmp volume and tmp bucket
 echo ""
 echo "hadoop | create /tmp vol | exp_res: empty"
-execute_command_in_container om ozone sh volume create /tmp
+docker-compose exec -T om ozone sh volume create /tmp
 
 echo ""
 echo "hadoop | create /tmp/tmp bucket | exp_res: empty"
-execute_command_in_container om ozone sh bucket create /tmp/tmp -l "$bucket_layout"
+docker-compose exec -T om ozone sh bucket create /tmp/tmp -l "$bucket_layout"
 
 # Create files and dirs as testuser
 echo ""
 echo "testuser | fs -put ./README.md ofs://om/tmp | exp_res: empty"
-execute_command_in_container -u testuser om ozone fs -put ./README.md ofs://om/tmp
+docker-compose exec -T -u testuser om ozone fs -put ./README.md ofs://om/tmp
 
 echo ""
 echo "testuser | fs -mkdir ofs://om/tmp/dir1 | exp_res: empty"
-execute_command_in_container -u testuser om ozone fs -mkdir ofs://om/tmp/dir1
+docker-compose exec -T -u testuser om ozone fs -mkdir ofs://om/tmp/dir1
 
 echo ""
 echo "testuser | fs -mkdir ofs://om/tmp/dir1/dir2 | exp_res: empty"
-execute_command_in_container -u testuser om ozone fs -mkdir ofs://om/tmp/dir1/dir2
+docker-compose exec -T -u testuser om ozone fs -mkdir ofs://om/tmp/dir1/dir2
 
 echo ""
 echo "testuser | fs -put ./README.md ofs://om/tmp/dir1/key1 | exp_res: empty"
-execute_command_in_container -u testuser om ozone fs -put ./README.md ofs://om/tmp/dir1/key1
+docker-compose exec -T -u testuser om ozone fs -put ./README.md ofs://om/tmp/dir1/key1
 
 echo ""
 echo "testuser | fs -put ./README.md ofs://om/tmp/dir1/dir2/key2 | exp_res: empty"
-execute_command_in_container -u testuser om ozone fs -put ./README.md ofs://om/tmp/dir1/dir2/key2
+docker-compose exec -T -u testuser om ozone fs -put ./README.md ofs://om/tmp/dir1/dir2/key2
 
 # Create a file as testuser2
 echo ""
 echo "testuser2 | fs -put ./LICENSE.txt ofs://om/tmp | exp_res: empty"
-execute_command_in_container -u testuser2 om ozone fs -put ./LICENSE.txt ofs://om/tmp
+docker-compose exec -T -u testuser2 om ozone fs -put ./LICENSE.txt ofs://om/tmp
 
 # Try to delete files and dirs owned by testuser as testuser2
 
@@ -78,54 +67,52 @@ execute_command_in_container -u testuser2 om ozone fs -put ./LICENSE.txt ofs://o
 # there are files owned by him, then these files will be deleted. Delete for everything else will fail.
 echo ""
 echo "testuser2 | fs -rm -skipTrash ofs://om/tmp/dir1/dir2/key2 | exp_res: 'Input/output error'"
-execute_command_in_container -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/dir1/dir2/key2 || true
+docker-compose exec -T -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/dir1/dir2/key2 || true
 
 echo ""
 echo "testuser2 | fs -rm -r -skipTrash ofs://om/tmp/dir1/dir2 | exp_res: 'Input/output error'"
-execute_command_in_container -u testuser2 om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1/dir2 || true
+docker-compose exec -T -u testuser2 om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1/dir2 || true
 
 echo ""
 echo "testuser2 | fs -rm -r -skipTrash ofs://om/tmp/dir1 | exp_res: 'Input/output error'"
-execute_command_in_container -u testuser2 om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1 || true
+docker-compose exec -T -u testuser2 om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1 || true
 
 echo ""
 echo "testuser2 | fs -rm -skipTrash ofs://om/tmp/dir1/key1 | exp_res: 'Input/output error'"
-execute_command_in_container -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/dir1/key1 || true
+docker-compose exec -T -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/dir1/key1 || true
 
 echo ""
 echo "testuser2 | fs -rm -skipTrash ofs://om/tmp/README.md | exp_res: 'Input/output error'"
-execute_command_in_container -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/README.md || true
+docker-compose exec -T -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/README.md || true
 
 # 'testuser2' can delete his own file
 echo ""
 echo "testuser2 | fs -rm -skipTrash ofs://om/tmp/LICENSE.txt | exp_res: 'Deleted'"
-execute_command_in_container -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/LICENSE.txt
+docker-compose exec -T -u testuser2 om ozone fs -rm -skipTrash ofs://om/tmp/LICENSE.txt
 
 # Repeat above deletes as testuser
 echo ""
 echo "testuser | fs -rm -skipTrash ofs://om/tmp/dir1/dir2/key2 | exp_res: 'Deleted'"
-execute_command_in_container -u testuser om ozone fs -rm -skipTrash ofs://om/tmp/dir1/dir2/key2
+docker-compose exec -T -u testuser om ozone fs -rm -skipTrash ofs://om/tmp/dir1/dir2/key2
 
 echo ""
 echo "testuser | fs -rm -skipTrash ofs://om/tmp/dir1/key1 | exp_res: 'Deleted'"
-execute_command_in_container -u testuser om ozone fs -rm -skipTrash ofs://om/tmp/dir1/key1
+docker-compose exec -T -u testuser om ozone fs -rm -skipTrash ofs://om/tmp/dir1/key1
 
 echo ""
 echo "testuser | fs -rm -r -skipTrash ofs://om/tmp/dir1/dir2 | exp_res: 'Deleted'"
-execute_command_in_container -u testuser om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1/dir2
+docker-compose exec -T -u testuser om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1/dir2
 
 echo ""
 echo "testuser | fs -rm -r -skipTrash ofs://om/tmp/dir1 | exp_res: 'Deleted'"
-execute_command_in_container -u testuser om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1
+docker-compose exec -T -u testuser om ozone fs -rm -r -skipTrash ofs://om/tmp/dir1
 
 echo ""
 echo "testuser | fs -rm -skipTrash ofs://om/tmp/README.md | exp_res: 'Deleted'"
-execute_command_in_container -u testuser om ozone fs -rm -skipTrash ofs://om/tmp/README.md
+docker-compose exec -T -u testuser om ozone fs -rm -skipTrash ofs://om/tmp/README.md
 
 echo ""
 echo "testuser | fs -rm -r -skipTrash ofs://om/tmp | exp_res: 'Deleted'"
-execute_command_in_container -u testuser om ozone fs -rm -r -skipTrash ofs://om/tmp
-
-docker logs ozone-om-1 > om_logs_tmp.txt 2>&1
+docker-compose exec -T -u testuser om ozone fs -rm -r -skipTrash ofs://om/tmp
 
 
