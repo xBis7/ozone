@@ -21,6 +21,7 @@ import org.apache.hadoop.ozone.OzoneAcl;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
+import org.apache.hadoop.ozone.security.acl.OzoneAccessAuthorizer;
 import org.apache.hadoop.ozone.security.acl.OzoneNativeAuthorizer;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -156,7 +157,8 @@ public final class OzoneAclUtils {
                                    String bucketName,
                                    String keyName, String bucketOwner)
       throws IOException {
-    if (metadataReader.getAccessAuthorizer() instanceof OzoneNativeAuthorizer) {
+    if (metadataReader.getAccessAuthorizer() instanceof OzoneAccessAuthorizer ||
+        metadataReader.getAccessAuthorizer() instanceof OzoneNativeAuthorizer) {
       return bucketOwner;
     }
 
@@ -178,6 +180,7 @@ public final class OzoneAclUtils {
         // acl access is a
         if (Objects.equals(acl.getType(),
             IAccessAuthorizer.ACLIdentityType.USER) &&
+            Objects.equals(acl.getName(), user.getUserName()) &&
             Objects.equals(IAccessAuthorizer.ACLType
                                .getACLString(acl.getAclBitSet()), "a")) {
           LOG.info("xbis: don't ignoreACLs: user: " + acl.getName() +
