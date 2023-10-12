@@ -21,6 +21,7 @@ import org.apache.hadoop.ozone.OzoneAcl;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
+import org.apache.hadoop.ozone.security.acl.OzoneNativeAuthorizer;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
@@ -41,6 +42,9 @@ import static org.apache.hadoop.ozone.security.acl.OzoneObj.ResourceType.VOLUME;
 public final class OzoneAclUtils {
 
   private static OMMultiTenantManager multiTenantManager;
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(OzoneAclUtils.class);
 
   private OzoneAclUtils() {
   }
@@ -127,58 +131,15 @@ public final class OzoneAclUtils {
             remoteAddress, hostName, true,
             volOwner);
 
-        // Delete files owned by the current user
-        // Delete files with _COPYING_ suffix
-
-        // create 'key._COPYING_'
-        // write 'key._COPYING_'
-        // delete 'key._COPYING_'
-        // create 'key'
-        Logger LOG = LoggerFactory.getLogger(OzoneAclUtils.class);
-
-        // This new code should be in a method that returns the username,
-        // so that it can be cleanly reused in other places checking for FSO keys.
-        LOG.info("xbis: here: OzoneAclUtils.checkAllAcls()");
-        // If create or delete with _COPYING_ suffix.
-        boolean ignoreACLs =
-            (Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE) ||
-             Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE)) ||
-            (Objects.equals(aclType, IAccessAuthorizer.ACLType.DELETE) &&
-            key.contains(OzoneConsts.FS_FILE_COPYING_TEMP_SUFFIX));
-
-        String owner = "";
-
-        if (Objects.equals(resType, OzoneObj.ResourceType.KEY)) {
-          LOG.info("xbis: key: " + key);
-          if (ignoreACLs) {
-            owner = user.getUserName();
-            LOG.info("xbis: ignoreACLs: resource: " + resType + " | owner: " + owner);
-          } else {
-            List<OzoneAcl> aclList = omMetadataReader.getKeyOzoneAcls(vol, bucket, key);
-            for (OzoneAcl acl : aclList) {
-              LOG.info("xbis: user: " + acl.getName() + " | ACLs: " + IAccessAuthorizer.ACLType.getACLString(acl.getAclBitSet()));
-              // If ACL is for user (and not group or world) &&
-              // acl user is the same as the current user &&
-              // acl access is a
-              if (Objects.equals(acl.getType(), IAccessAuthorizer.ACLIdentityType.USER) &&
-                  Objects.equals(user.getUserName(), acl.getName()) &&
-                  Objects.equals(IAccessAuthorizer.ACLType.getACLString(acl.getAclBitSet()), "a")) {
-                owner = user.getUserName();
-                LOG.info("xbis: don't ignoreACLs: resource: " + resType + " | owner: " + owner);
-                break;
-              }
-            }
-          }
-        }
-
-        if (owner.isEmpty()) {
-          owner = bucketOwner;
-        }
+        String owner =
+            Objects.equals(resType, OzoneObj.ResourceType.KEY) ?
+                getKeyOwner(aclType, omMetadataReader, user,
+                    vol, bucket, key, bucketOwner) :
+                bucketOwner;
 
         omMetadataReader.checkAcls(resType, storeType,
             aclType, vol, bucket, key,
             user, remoteAddress, hostName, true,
-//            bucketOwner);
             owner);
       }
       break;
@@ -186,6 +147,47 @@ public final class OzoneAclUtils {
       throw new OMException("Unexpected object type:" +
               resType, INVALID_REQUEST);
     }
+  }
+
+  public static String getKeyOwner(IAccessAuthorizer.ACLType aclType,
+                                   OmMetadataReader metadataReader,
+                                   UserGroupInformation user,
+                                   String volumeName,
+                                   String bucketName,
+                                   String keyName, String bucketOwner)
+      throws IOException {
+    if (metadataReader.getAccessAuthorizer() instanceof OzoneNativeAuthorizer) {
+      return bucketOwner;
+    }
+
+    if ((Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE) ||
+         Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE)) ||
+        (Objects.equals(aclType, IAccessAuthorizer.ACLType.DELETE) &&
+         keyName.contains(OzoneConsts.FS_FILE_COPYING_TEMP_SUFFIX))) {
+      LOG.info("xbis: ignoreACLs: user: " + user.getUserName() +
+               " | key: " + keyName);
+      return user.getUserName();
+    } else {
+      List<OzoneAcl> aclList = metadataReader.getKeyOzoneAcls(
+          volumeName, bucketName, keyName);
+      LOG.info("xbis: don't ignoreACLs: aclList: " + aclList +
+               " | key: " + keyName);
+      for (OzoneAcl acl : aclList) {
+        // If ACL is for user (and not group or world) &&
+        // acl user is the same as the current user &&
+        // acl access is a
+        if (Objects.equals(acl.getType(),
+            IAccessAuthorizer.ACLIdentityType.USER) &&
+            Objects.equals(IAccessAuthorizer.ACLType
+                               .getACLString(acl.getAclBitSet()), "a")) {
+          LOG.info("xbis: don't ignoreACLs: user: " + acl.getName() +
+                   " | key: " + keyName);
+          return acl.getName();
+        }
+      }
+    }
+    LOG.info("xbis: return bucket owner: " + bucketOwner);
+    return bucketOwner;
   }
 
   /**

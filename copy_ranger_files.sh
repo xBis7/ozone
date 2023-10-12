@@ -5,6 +5,8 @@ libext_path="$ozone_snap_dir/share/ozone/lib/libext"
 
 ranger_utils_dir="../../utils/ranger-files"
 
+mvn clean install -DskipTests -DskipShade -Ddocker.ozone-runner.version=dev
+
 mkdir "$libext_path"
 
 cp "$ranger_utils_dir"/conf/* "$ozone_snap_dir"/etc/hadoop/
