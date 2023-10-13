@@ -162,15 +162,8 @@ public final class OzoneAclUtils {
       return bucketOwner;
     }
 
-//    List<OzoneAcl> aclList1 = metadataReader.getKeyOzoneAcls(
-//        volumeName, bucketName, keyName);
-//    LOG.info("xbis: don't ignoreACLs: aclList: " + aclList1 +
-//             " | key: " + keyName);
-
-    if ((Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE) ||
-         Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE)) ||
-        (Objects.equals(aclType, IAccessAuthorizer.ACLType.DELETE) &&
-         keyName.contains(OzoneConsts.FS_FILE_COPYING_TEMP_SUFFIX))) {
+    if (Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE) ||
+         Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE)) {
       LOG.info("xbis: ignoreACLs: user: " + user.getUserName() +
                " | key: " + keyName);
       return user.getUserName();
