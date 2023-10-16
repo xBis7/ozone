@@ -64,6 +64,7 @@ import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.security.acl.OzoneObj.ResourceType;
 import org.apache.hadoop.ozone.security.acl.OzoneObj.StoreType;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes;
+import static org.apache.hadoop.ozone.om.lock.OzoneManagerLock.Resource.BUCKET_LOCK;
 import static org.apache.hadoop.util.MetricUtil.captureLatencyNs;
 
 /**
@@ -158,8 +159,14 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
                          .setHeadOp(true)
                          .build();
 
+    keyManager.getMetadataManager().getLock()
+        .acquireReadLock(BUCKET_LOCK, volumeName, bucketName);
+
     OzoneFileStatus fileStatus = getFileStatus(args);
     OmKeyInfo omKeyInfo = fileStatus.getKeyInfo();
+
+    keyManager.getMetadataManager().getLock()
+        .releaseReadLock(BUCKET_LOCK, volumeName, bucketName);
 
     return omKeyInfo == null ? new ArrayList<>() : omKeyInfo.getAcls();
   }
