@@ -47,10 +47,14 @@ public class TestOzoneAclUtils {
   private static OmMetadataReader omMetadataReader;
   private static UserGroupInformation currUgi;
   private static String currUser;
-  private static final List<OzoneAcl> ACL_LIST_USER_ALL = new ArrayList<>();
-  private static final List<OzoneAcl> ACL_LIST_USER_RESTRICTED = new ArrayList<>();
-  private static final List<OzoneAcl> ACL_LIST_MULTIPLE_USERS = new ArrayList<>();
-  private static final List<OzoneAcl> EMPTY_ACL_LIST = new ArrayList<>();
+  private static final List<OzoneAcl> ACL_LIST_USER_ALL =
+      new ArrayList<>();
+  private static final List<OzoneAcl> ACL_LIST_USER_RESTRICTED =
+      new ArrayList<>();
+  private static final List<OzoneAcl> ACL_LIST_MULTIPLE_USERS =
+      new ArrayList<>();
+  private static final List<OzoneAcl> EMPTY_ACL_LIST =
+      new ArrayList<>();
   private static final String TMP_VOLUME_NAME = "tmp";
   private static final String TMP_BUCKET_NAME = "tmp";
   private static final String KEY_NAME = "key";
@@ -64,10 +68,10 @@ public class TestOzoneAclUtils {
     omMetadataReader = Mockito.mock(OmMetadataReader.class);
     currUgi = UserGroupInformation.getCurrentUser();
     currUser = currUgi.getUserName();
-    setupACLLists();
+    setupAclLists();
   }
 
-  private static void setupACLLists() {
+  private static void setupAclLists() {
     // Create user and group ACL with all access
     OzoneAcl userAclAll = new OzoneAcl(
         IAccessAuthorizer.ACLIdentityType.USER,
@@ -114,15 +118,18 @@ public class TestOzoneAclUtils {
   }
 
   /**
-   * In all cases, we will have a non-native authorizer, ACLType.DELETE.
+   * In all cases, authorizer will be non-native and ACLType.DELETE.
    * If path isn't /tmp/tmp, aclList will be ignored.
-   * We will test these key ACL cases:
+   * The following key ACL cases will be tested:
    * 1. empty ACL list                                    -> return bucketOwner
    * 2. user same as the current but with only read access-> return bucketOwner
    * 3. user with all access that's not the current user  -> return bucketOwner
    * 4. user with all access and same as the current user -> return aclUser
    * 5. multiple users, the current user has all access   -> return aclUser
    * 6. multiple users, none of which is the current      -> return bucketOwner
+   * 7. tmp volume, not tmp bucket, ACLs ignored          -> return bucketOwner
+   * 8. not tmp volume, tmp bucket, ACLs ignored          -> return bucketOwner
+   * 9. not tmp volume and bucket, ACLs ignored           -> return bucketOwner
    */
   private static Stream<Arguments> aclListArgs() {
     return Stream.of(
@@ -177,14 +184,16 @@ public class TestOzoneAclUtils {
         omMetadataReader, currUgi, TMP_VOLUME_NAME,
         TMP_BUCKET_NAME, KEY_NAME, BUCKET_OWNER);
 
-    Assertions.assertEquals(currUgi.getUserName(), owner);
+    Assertions.assertEquals(currUser, owner);
   }
 
   @ParameterizedTest
   @MethodSource("aclListArgs")
-  public void testGetKeyOwnerAclList(List<OzoneAcl> aclList, String volumeName,
-      String bucketName, String currUser, String expUser) throws IOException {
-    UserGroupInformation ugi = UserGroupInformation.createRemoteUser(currUser);
+  public void testGetKeyOwnerAclList(List<OzoneAcl> aclList,
+      String volumeName, String bucketName,
+      String currentUser, String expectedUser) throws IOException {
+    UserGroupInformation ugi =
+        UserGroupInformation.createRemoteUser(currentUser);
 
     when(omMetadataReader.getAccessAuthorizer())
         .thenReturn(new MockExternalAuthorizer());
@@ -197,7 +206,7 @@ public class TestOzoneAclUtils {
         omMetadataReader, ugi, volumeName,
         bucketName, KEY_NAME, BUCKET_OWNER);
 
-    Assertions.assertEquals(expUser, owner);
+    Assertions.assertEquals(expectedUser, owner);
   }
 
   /**

@@ -157,7 +157,7 @@ public final class OzoneAclUtils {
                                    String keyName, String bucketOwner)
       throws IOException {
     // This method is needed only for non-native authorizers.
-    // Otherwise, return the bucketOwner.
+    // For native, return the bucketOwner.
     // OzoneNativeAuthorizer checks the key ACLs to determine access.
     if (metadataReader.getAccessAuthorizer() instanceof OzoneAccessAuthorizer ||
         metadataReader.getAccessAuthorizer() instanceof OzoneNativeAuthorizer) {
@@ -171,17 +171,16 @@ public final class OzoneAclUtils {
                " | key: " + keyName);
       return user.getUserName();
     } else {
-      String tmp = "tmp";
       // Perform a RocksDB read to get the key ACLs only for
       // the shareable tmp dir where file ownership is crucial for
       // the sticky-bit behavior. Avoid doing it for all volumes and
       // buckets to prevent taking a toll on performance.
-      if (Objects.equals(volumeName, tmp) &&
-          Objects.equals(bucketName, tmp)) {
+      if (Objects.equals(volumeName, "tmp") &&
+          Objects.equals(bucketName, "tmp")) {
         // Read the key ACLs and if the current user has all access
         // then set it as the owner. The user might not be the actual owner,
         // but this is resulting in the same behavior.
-        // TODO: change this if file ownership is implemented.
+        // TODO: modify this if file ownership is implemented.
         List<OzoneAcl> aclList = metadataReader.getKeyOzoneAcls(
             volumeName, bucketName, keyName);
         LOG.info("xbis: don't ignoreACLs: aclList: " + aclList +

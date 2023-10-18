@@ -270,22 +270,21 @@ public abstract class OMClientRequest implements RequestAuditor {
       contextBuilder.setHost(getHostName());
       contextBuilder.setAclType(IAccessAuthorizer.ACLIdentityType.USER);
 
-      boolean isVolOwner = isOwner(currentUser, volumeOwner);
-      if (isVolOwner) {
-        contextBuilder.setOwnerName(volumeOwner);
-      } else {
-        String owner = OzoneAclUtils.getKeyOwner(aclType,
-            (OmMetadataReader) ozoneManager.getOmMetadataReader().get(),
-            currentUser, volumeName, bucketName, keyName, bucketOwner);
-
-        contextBuilder.setOwnerName(owner);
-      }
-
       try (ReferenceCounted<IOmMetadataReader, SnapshotCache> rcMetadataReader =
-          ozoneManager.getOmMetadataReader()) {
+               ozoneManager.getOmMetadataReader()) {
         OmMetadataReader omMetadataReader =
             (OmMetadataReader) rcMetadataReader.get();
 
+        boolean isVolOwner = isOwner(currentUser, volumeOwner);
+        if (isVolOwner) {
+          contextBuilder.setOwnerName(volumeOwner);
+        } else {
+          String owner = OzoneAclUtils.getKeyOwner(aclType,
+              omMetadataReader, currentUser, volumeName,
+              bucketName, keyName, bucketOwner);
+
+          contextBuilder.setOwnerName(owner);
+        }
         omMetadataReader.checkAcls(obj, contextBuilder.build(), true);
       }
     }
