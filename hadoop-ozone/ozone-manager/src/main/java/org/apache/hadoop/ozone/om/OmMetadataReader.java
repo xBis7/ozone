@@ -44,6 +44,7 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Time;
 import org.slf4j.Logger;
 import java.net.InetAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -63,6 +64,7 @@ import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.ozone.security.acl.OzoneObj.ResourceType;
 import org.apache.hadoop.ozone.security.acl.OzoneObj.StoreType;
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes;
+import static org.apache.hadoop.ozone.om.lock.OzoneManagerLock.Resource.BUCKET_LOCK;
 import static org.apache.hadoop.util.MetricUtil.captureLatencyNs;
 
 /**
@@ -146,6 +148,27 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
 
       perfMetrics.addLookupLatency(Time.monotonicNowNanos() - start);
     }
+  }
+
+  public List<OzoneAcl> getKeyOzoneAcls(String volumeName,
+      String bucketName, String keyName) throws IOException {
+    OmKeyArgs args = new OmKeyArgs.Builder()
+                         .setVolumeName(volumeName)
+                         .setBucketName(bucketName)
+                         .setKeyName(keyName)
+                         .setHeadOp(true)
+                         .build();
+
+    keyManager.getMetadataManager().getLock()
+        .acquireReadLock(BUCKET_LOCK, volumeName, bucketName);
+
+    OzoneFileStatus fileStatus = getFileStatus(args);
+    OmKeyInfo omKeyInfo = fileStatus.getKeyInfo();
+
+    keyManager.getMetadataManager().getLock()
+        .releaseReadLock(BUCKET_LOCK, volumeName, bucketName);
+
+    return omKeyInfo == null ? new ArrayList<>() : omKeyInfo.getAcls();
   }
 
   @Override
@@ -546,6 +569,10 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
         .withResult(AuditEventStatus.FAILURE)
         .withException(throwable)
         .build();
+  }
+
+  public IAccessAuthorizer getAccessAuthorizer() {
+    return accessAuthorizer;
   }
 
   /**

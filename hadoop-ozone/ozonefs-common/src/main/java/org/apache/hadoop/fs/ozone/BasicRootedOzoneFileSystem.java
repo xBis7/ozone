@@ -560,10 +560,10 @@ public class BasicRootedOzoneFileSystem extends FileSystem {
     @Override
     boolean processKeyPath(List<String> keyPathList) {
       LOG.trace("Deleting keys: {}", keyPathList);
-      boolean succeed = adapterImpl.deleteObjects(this.bucket, keyPathList);
-      // if recursive delete is requested ignore the return value of
-      // deleteObject and issue deletes for other keys.
-      return recursive || succeed;
+      // If the path points to a not empty directory and recursive is false,
+      // the constructor will throw an exception.
+      // Return true only if all keys have been deleted just like FSO.
+      return adapterImpl.deleteObjects(this.bucket, keyPathList);
     }
   }
 

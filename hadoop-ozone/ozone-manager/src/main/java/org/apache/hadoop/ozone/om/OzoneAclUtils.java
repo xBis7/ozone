@@ -17,13 +17,18 @@
 
 package org.apache.hadoop.ozone.om;
 
+import org.apache.hadoop.ozone.OzoneAcl;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
+import org.apache.hadoop.ozone.security.acl.OzoneAccessAuthorizer;
+import org.apache.hadoop.ozone.security.acl.OzoneNativeAuthorizer;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.security.UserGroupInformation;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.List;
+import java.util.Objects;
 
 import static org.apache.hadoop.ozone.om.exceptions.OMException.ResultCodes.INVALID_REQUEST;
 import static org.apache.hadoop.ozone.security.acl.OzoneObj.ResourceType.BUCKET;
@@ -120,16 +125,69 @@ public final class OzoneAclUtils {
             parentAclRight, vol, bucket, key, user,
             remoteAddress, hostName, true,
             volOwner);
+
+        String owner =
+            Objects.equals(resType, OzoneObj.ResourceType.KEY) ?
+                getKeyOwner(aclType, omMetadataReader, user,
+                    vol, bucket, key, bucketOwner) :
+                bucketOwner;
+
         omMetadataReader.checkAcls(resType, storeType,
             aclType, vol, bucket, key,
             user, remoteAddress, hostName, true,
-            bucketOwner);
+            owner);
       }
       break;
     default:
       throw new OMException("Unexpected object type:" +
               resType, INVALID_REQUEST);
     }
+  }
+
+  public static String getKeyOwner(IAccessAuthorizer.ACLType aclType,
+                                   OmMetadataReader metadataReader,
+                                   UserGroupInformation user,
+                                   String volumeName,
+                                   String bucketName,
+                                   String keyName, String bucketOwner)
+      throws IOException {
+    // This method is needed only for non-native authorizers.
+    // For native, return the bucketOwner.
+    // OzoneNativeAuthorizer checks the key ACLs to determine access.
+    if (metadataReader.getAccessAuthorizer() instanceof OzoneAccessAuthorizer ||
+        metadataReader.getAccessAuthorizer() instanceof OzoneNativeAuthorizer) {
+      return bucketOwner;
+    }
+
+    // If that's a new key, then return the current user as the owner.
+    if (Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE) ||
+         Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE)) {
+      return user.getUserName();
+    } else {
+      // Perform a RocksDB read to get the key ACLs only for
+      // the shareable tmp dir where file ownership is crucial for
+      // the sticky-bit behavior. Avoid doing it for all volumes and
+      // buckets to prevent taking a toll on performance.
+      if (Objects.equals(volumeName, "tmp") &&
+          Objects.equals(bucketName, "tmp")) {
+        // Read the key ACLs and if the current user has all access
+        // then set it as the owner. The user might not be the actual owner,
+        // but this is resulting in the same behavior.
+        // TODO: modify this if file ownership is implemented.
+        List<OzoneAcl> aclList = metadataReader.getKeyOzoneAcls(
+            volumeName, bucketName, keyName);
+        for (OzoneAcl acl : aclList) {
+          if (Objects.equals(acl.getType(),
+              IAccessAuthorizer.ACLIdentityType.USER) &&
+              Objects.equals(acl.getName(), user.getUserName()) &&
+              Objects.equals(IAccessAuthorizer.ACLType
+                                 .getACLString(acl.getAclBitSet()), "a")) {
+            return acl.getName();
+          }
+        }
+      }
+    }
+    return bucketOwner;
   }
 
   /**
