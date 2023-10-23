@@ -30,6 +30,10 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos.GetScmInfoResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.TransferLeadershipRequestProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.UpgradeFinalizationStatus;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.UpdateContainerKeyNumRequestProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.UpdateContainerKeyNumResponseProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.GetContainerKeyNumRequestProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.GetContainerKeyNumResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.FinalizeScmUpgradeRequestProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.FinalizeScmUpgradeResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.GetFailedDeletedBlocksTxnRequestProto;
@@ -101,6 +105,7 @@ import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
 import org.apache.hadoop.hdds.scm.container.ReplicationManagerReport;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
+import org.apache.hadoop.hdds.scm.exceptions.SCMException;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
 import org.apache.hadoop.hdds.scm.proxy.SCMContainerLocationFailoverProxyProvider;
@@ -320,6 +325,48 @@ public final class StorageContainerLocationProtocolClientSideTranslatorPB
     }
 
     return cps;
+  }
+
+  @Override
+  public boolean updateContainerKeyNum(
+      long containerId, long keyNum) {
+    Preconditions.checkState(containerId >= 0,
+        "Container ID cannot be negative");
+    Preconditions.checkState(keyNum >= 0,
+        "Container ID cannot be negative");
+
+    UpdateContainerKeyNumRequestProto request =
+        UpdateContainerKeyNumRequestProto.newBuilder()
+            .setContainerID(containerId)
+            .setKeyNum(keyNum)
+            .build();
+
+    ScmContainerLocationResponse response = null;
+    try {
+      response = submitRequest(Type.UpdateContainerKeyNum,
+          (builder) -> builder
+              .setUpdateContainerKeyNumRequest(request));
+    } catch (IOException e) {
+      return false;
+    }
+
+    return response.getSuccess();
+  }
+
+  @Override
+  public long getContainerKeyNum(long containerId) throws IOException {
+    Preconditions.checkState(containerId >= 0,
+        "Container ID cannot be negative");
+
+    GetContainerKeyNumRequestProto request =
+        GetContainerKeyNumRequestProto.newBuilder()
+            .setContainerID(containerId)
+            .build();
+
+    ScmContainerLocationResponse response =
+        submitRequest(Type.GetContainerKeyNum,
+            (builder) -> builder.setGetContainerKeyNumRequest(request));
+    return response.getGetContainerKeyNumResponse().getKeyNum();
   }
 
   /**

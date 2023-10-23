@@ -81,6 +81,8 @@ message ScmContainerLocationRequest {
   optional TransferLeadershipRequestProto  transferScmLeadershipRequest = 42;
   optional GetFailedDeletedBlocksTxnRequestProto getFailedDeletedBlocksTxnRequest = 43;
   optional DecommissionScmRequestProto decommissionScmRequest = 44;
+  optional UpdateContainerKeyNumRequestProto updateContainerKeyNumRequest = 45;
+  optional GetContainerKeyNumRequestProto getContainerKeyNumRequest = 46;
 }
 
 message ScmContainerLocationResponse {
@@ -133,6 +135,8 @@ message ScmContainerLocationResponse {
   optional TransferLeadershipResponseProto  transferScmLeadershipResponse = 42;
   optional GetFailedDeletedBlocksTxnResponseProto getFailedDeletedBlocksTxnResponse = 43;
   optional DecommissionScmResponseProto decommissionScmResponse = 44;
+  optional UpdateContainerKeyNumResponseProto updateContainerKeyNumResponse = 45;
+  optional GetContainerKeyNumResponseProto getContainerKeyNumResponse = 46;
 
   enum Status {
     OK = 1;
@@ -184,6 +188,8 @@ enum Type {
   TransferLeadership = 38;
   GetFailedDeletedBlocksTransaction = 39;
   DecommissionScm = 40;
+  UpdateContainerKeyNum = 41;
+  GetContainerKeyNum = 42;
 }
 
 /**
@@ -249,6 +255,15 @@ message GetContainerWithPipelineBatchRequestProto {
 message GetExistContainerWithPipelinesInBatchRequestProto {
   repeated int64 containerIDs = 1;
   optional string traceID = 2;
+}
+
+message UpdateContainerKeyNumRequestProto {
+  required int64 containerID = 1;
+  required int64 keyNum = 2;
+}
+
+message GetContainerKeyNumRequestProto {
+  required int64 containerID = 1;
 }
 
 message GetSafeModeRuleStatusesRequestProto {
@@ -584,6 +599,14 @@ message DecommissionScmRequestProto {
 message DecommissionScmResponseProto {
   required bool success = 1;
   optional string errorMsg = 2;
+}
+
+message UpdateContainerKeyNumResponseProto {
+  required bool success = 1;
+}
+
+message GetContainerKeyNumResponseProto {
+  required int64 keyNum = 1;
 }
 
 /**

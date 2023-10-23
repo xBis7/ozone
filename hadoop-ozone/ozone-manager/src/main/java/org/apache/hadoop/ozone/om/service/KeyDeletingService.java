@@ -27,11 +27,15 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import com.google.common.base.Preconditions;
 import com.google.protobuf.ServiceException;
+import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.conf.ConfigurationSource;
 import org.apache.hadoop.hdds.scm.protocol.ScmBlockLocationProtocol;
+import org.apache.hadoop.hdds.scm.protocol.StorageContainerLocationProtocol;
+import org.apache.hadoop.hdds.scm.storage.BlockLocationInfo;
 import org.apache.hadoop.hdds.utils.IOUtils;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.hdds.utils.db.TableIterator;
@@ -99,6 +103,8 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
   private final Map<String, Long> exclusiveReplicatedSizeMap;
   private final Set<String> completedExclusiveSizeSet;
 
+  private final StorageContainerLocationProtocol scmContainerClient;
+
   public KeyDeletingService(OzoneManager ozoneManager,
       ScmBlockLocationProtocol scmClient,
       KeyManager manager, long serviceInterval,
@@ -116,6 +122,7 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
     this.exclusiveSizeMap = new HashMap<>();
     this.exclusiveReplicatedSizeMap = new HashMap<>();
     this.completedExclusiveSizeSet = new HashSet<>();
+    this.scmContainerClient = ozoneManager.getScmClient().getContainerClient();
   }
 
   /**
@@ -188,6 +195,7 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
       if (shouldRun()) {
         getRunCount().incrementAndGet();
 
+        LOG.info("xbis: Key Deleting service is running");
         // Acquire active DB deletedTable write lock because of the
         // deletedTable read-write here to avoid interleaving with
         // the table range delete operation in createOmSnapshotCheckpoint()
@@ -211,6 +219,27 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
                 getOzoneManager().getKeyManager(),
                 pendingKeysDeletion.getKeysToModify(), null);
             deletedKeyCount.addAndGet(delCount);
+
+            // for every BlockGroup, get the BlockIDList
+            // for every BlockIDList, get the BlockID
+            // for every BlockID, get the container ID
+
+            List<Long> containerIds = keyBlocksList.stream()
+                                          .flatMap(blockGroup -> blockGroup.getBlockIDList().stream())
+                                          .map(BlockID::getContainerID)
+                                          .collect(Collectors.toList());
+            for (long containerId : containerIds) {
+              long keyNum = scmContainerClient.getContainerKeyNum(containerId);
+              LOG.info("xbis: containerID: " + containerId +
+                       " | currKeyNum: " + keyNum);
+              keyNum--;
+              LOG.info("xbis: containerID: " + containerId +
+                       " | currKeyNum: " + keyNum);
+              scmContainerClient.updateContainerKeyNum(containerId, keyNum);
+              keyNum = scmContainerClient.getContainerKeyNum(containerId);
+              LOG.info("xbis: containerID: " + containerId +
+                       " | currKeyNum: " + keyNum);
+            }
           }
         } catch (IOException e) {
           LOG.error("Error while running delete keys background task. Will " +
@@ -233,6 +262,13 @@ public class KeyDeletingService extends AbstractKeyDeletingService {
       }
       // By design, no one cares about the results of this call back.
       return EmptyTaskResult.newResult();
+    }
+
+    private List<Long> getContainerIdsForKey(OmKeyInfo omKeyInfo) {
+      return omKeyInfo.getKeyLocationVersions().stream()
+                 .flatMap(v -> v.getLocationList().stream())
+                 .map(BlockLocationInfo::getContainerID)
+                 .collect(Collectors.toList());
     }
 
     @SuppressWarnings("checkstyle:MethodLength")

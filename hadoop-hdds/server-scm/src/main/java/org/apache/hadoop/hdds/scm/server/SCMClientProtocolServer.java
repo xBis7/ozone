@@ -239,6 +239,24 @@ public class SCMClientProtocolServer implements
   }
 
   @Override
+  public boolean updateContainerKeyNum(long containerId, long keyNum) {
+    try {
+      scm.getContainerManager()
+          .updateContainerKeyNum(ContainerID.valueOf(containerId), keyNum);
+    } catch (SCMException ex) {
+      LOG.error("Ex: " + ex);
+      return false;
+    }
+    return true;
+  }
+
+  @Override
+  public long getContainerKeyNum(long containerId) {
+    return scm.getContainerManager()
+               .getContainerKeyNum(ContainerID.valueOf(containerId));
+  }
+
+  @Override
   public ContainerInfo getContainer(long containerID) throws IOException {
     boolean auditSuccess = true;
     Map<String, String> auditMap = Maps.newHashMap();

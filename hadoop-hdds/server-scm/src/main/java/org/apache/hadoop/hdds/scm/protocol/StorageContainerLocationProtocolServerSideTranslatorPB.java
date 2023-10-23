@@ -29,6 +29,10 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos.TransferLeadershipReques
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.TransferLeadershipResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.UpgradeFinalizationStatus;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.UpdateContainerKeyNumRequestProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.UpdateContainerKeyNumResponseProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.GetContainerKeyNumRequestProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.GetContainerKeyNumResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.ActivatePipelineRequestProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.ActivatePipelineResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.ClosePipelineRequestProto;
@@ -692,6 +696,20 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
               .setDecommissionScmResponse(decommissionScm(
                   request.getDecommissionScmRequest()))
               .build();
+      case UpdateContainerKeyNum:
+        return ScmContainerLocationResponse.newBuilder()
+               .setCmdType(request.getCmdType())
+               .setStatus(Status.OK)
+               .setUpdateContainerKeyNumResponse(updateContainerKeyNum(
+                   request.getUpdateContainerKeyNumRequest()))
+               .build();
+      case GetContainerKeyNum:
+        return ScmContainerLocationResponse.newBuilder()
+               .setCmdType(request.getCmdType())
+               .setStatus(Status.OK)
+               .setGetContainerKeyNumResponse(getContainerKeyNum(
+                   request.getGetContainerKeyNumRequest()))
+               .build();
       default:
         throw new IllegalArgumentException(
             "Unknown command type: " + request.getCmdType());
@@ -1224,5 +1242,23 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
       DecommissionScmRequestProto request) throws IOException {
     return impl.decommissionScm(
         request.getScmId());
+  }
+
+  public UpdateContainerKeyNumResponseProto updateContainerKeyNum(
+      UpdateContainerKeyNumRequestProto request) {
+    boolean success = impl.updateContainerKeyNum(
+        request.getContainerID(), request.getKeyNum());
+
+    return UpdateContainerKeyNumResponseProto.newBuilder()
+               .setSuccess(success)
+               .build();
+  }
+
+  public GetContainerKeyNumResponseProto getContainerKeyNum(
+      GetContainerKeyNumRequestProto request) throws IOException {
+    long keyNum = impl.getContainerKeyNum(request.getContainerID());
+    return GetContainerKeyNumResponseProto.newBuilder()
+               .setKeyNum(keyNum)
+               .build();
   }
 }

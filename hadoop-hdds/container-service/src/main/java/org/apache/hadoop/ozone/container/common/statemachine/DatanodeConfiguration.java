@@ -200,7 +200,7 @@ public class DatanodeConfiguration extends ReconfigurableConfig {
   private int cmdQueueLimit = 5000;
 
   @Config(key = "block.deleting.service.interval",
-          defaultValue = "60s",
+          defaultValue = "6s",
           type = ConfigType.TIME,
           tags = { ConfigTag.SCM, ConfigTag.DELETION },
           description =

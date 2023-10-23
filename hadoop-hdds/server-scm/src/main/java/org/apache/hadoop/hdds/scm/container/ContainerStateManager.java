@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.ContainerInfoProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleState;
+import org.apache.hadoop.hdds.scm.exceptions.SCMException;
 import org.apache.hadoop.hdds.scm.metadata.Replicate;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineID;
 import org.apache.hadoop.hdds.utils.db.Table;
@@ -157,6 +158,11 @@ public interface ContainerStateManager {
   // Make this as @Replicate
   void updateDeleteTransactionId(Map<ContainerID, Long> deleteTransactionMap)
       throws IOException;
+
+  void updateContainerKeyNum(final ContainerID id, final long keyNum)
+      throws SCMException;
+
+  long getContainerKeyNum(final ContainerID id);
 
   /**
    *

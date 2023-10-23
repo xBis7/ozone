@@ -170,7 +170,7 @@ public class BlockDeletingService extends BackgroundService {
   public List<ContainerBlockInfo> chooseContainerForBlockDeletion(
       int blockLimit, ContainerDeletionChoosingPolicy deletionPolicy)
       throws StorageContainerException {
-
+LOG.info("xbis: choose container for block deletion");
     AtomicLong totalPendingBlockCount = new AtomicLong(0L);
     Map<Long, ContainerData> containerDataMap =
         ozoneContainer.getContainerSet().getContainerMap().entrySet().stream()

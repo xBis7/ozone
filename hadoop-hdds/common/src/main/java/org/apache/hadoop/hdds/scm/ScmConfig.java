@@ -108,7 +108,7 @@ public class ScmConfig extends ReconfigurableConfig {
   private int blockDeletionLimit;
 
   @Config(key = "block.deleting.service.interval",
-      defaultValue = "60s",
+      defaultValue = "6s",
       type = ConfigType.TIME,
       tags = { ConfigTag.SCM, ConfigTag.DELETION },
       description =

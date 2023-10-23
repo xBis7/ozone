@@ -42,6 +42,7 @@ import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.replication.ContainerReplicaPendingOps;
 import org.apache.hadoop.hdds.scm.container.states.ContainerState;
 import org.apache.hadoop.hdds.scm.container.states.ContainerStateMap;
+import org.apache.hadoop.hdds.scm.exceptions.SCMException;
 import org.apache.hadoop.hdds.scm.ha.ExecutionUtil;
 import org.apache.hadoop.hdds.scm.ha.SCMHAInvocationHandler;
 import org.apache.hadoop.hdds.scm.ha.SCMRatisServer;
@@ -388,6 +389,44 @@ public final class ContainerStateManagerImpl
       containerReplicaPendingOps.completeAddReplica(id,
           replica.getDatanodeDetails(), replica.getReplicaIndex());
     }
+  }
+
+  @Override
+  public void updateContainerKeyNum(final ContainerID id, final long keyNum)
+      throws SCMException {
+    try (AutoCloseableLock ignored = writeLock(id)) {
+      ContainerInfo containerInfo = containers.getContainerInfo(id);
+      containerInfo.setNumberOfKeys(keyNum);
+      containers.updateContainerInfo(containerInfo);
+      Set<ContainerReplica> replicas = getContainerReplicas(id);
+      for (ContainerReplica replica : replicas) {
+        ContainerReplica repl = ContainerReplica.newBuilder()
+                                    .setContainerID(id)
+                                    .setContainerState(replica.getState())
+                                    .setReplicaIndex(replica.getReplicaIndex())
+                                    .setDatanodeDetails(replica.getDatanodeDetails())
+                                    .setOriginNodeId(replica.getOriginDatanodeId())
+                                    .setSequenceId(replica.getSequenceId())
+                                    .setKeyCount(keyNum)
+                                    .setBytesUsed(replica.getBytesUsed())
+                                    .setEmpty(keyNum == 0)
+                                    .build();
+        LOG.info("xbis: updating repl");
+
+        updateContainerReplica(id, repl);
+        try {
+          transactionBuffer.addToBuffer(containerStore, id,
+              containerInfo);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public long getContainerKeyNum(final ContainerID id) {
+    return containers.getContainerInfo(id).getNumberOfKeys();
   }
 
   @Override

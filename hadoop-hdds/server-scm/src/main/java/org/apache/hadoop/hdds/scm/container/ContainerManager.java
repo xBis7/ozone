@@ -26,6 +26,7 @@ import java.util.Set;
 import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleState;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.LifeCycleEvent;
+import org.apache.hadoop.hdds.scm.exceptions.SCMException;
 import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
@@ -148,6 +149,11 @@ public interface ContainerManager extends Closeable {
    */
   void updateContainerReplica(ContainerID containerID, ContainerReplica replica)
       throws ContainerNotFoundException;
+
+  void updateContainerKeyNum(final ContainerID id, final long keyNum)
+      throws SCMException;
+
+  long getContainerKeyNum(final ContainerID id);
 
   /**
    * Remove a container Replica form a given Container.
