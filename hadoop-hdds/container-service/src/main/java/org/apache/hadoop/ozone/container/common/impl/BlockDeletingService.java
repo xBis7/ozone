@@ -136,11 +136,15 @@ public class BlockDeletingService extends BackgroundService {
       List<ContainerBlockInfo> containers =
           chooseContainerForBlockDeletion(getBlockLimitPerInterval(),
               containerDeletionPolicy);
-
+      LOG.info("xbis: BlockDeletingService: choosed containers for deletion: " + containers.toString());
       BackgroundTask
           containerBlockInfos = null;
       long totalBlocks = 0;
       for (ContainerBlockInfo containerBlockInfo : containers) {
+        LOG.info("xbis: BlockDeletingService: containerBlockInfo: " +
+                 containerBlockInfo.numBlocksToDelete +
+                 " | containerID: " + containerBlockInfo.containerData.getContainerID() +
+                 " | containerPath: " + containerBlockInfo.containerData.getContainerPath());
         BlockDeletingTaskBuilder builder =
             new BlockDeletingTaskBuilder();
         builder.setBlockDeletingService(this)
