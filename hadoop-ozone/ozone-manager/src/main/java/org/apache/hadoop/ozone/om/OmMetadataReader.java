@@ -182,7 +182,7 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
 
     final OmKeyArgs resolvedVolumeArgs;
     if (assumeS3Context) {
-      S3VolumeContext context = ozoneManager.getS3VolumeContext();
+      S3VolumeContext context = ozoneManager.getS3VolumeContext(true);
       s3VolumeContext = java.util.Optional.of(context);
       resolvedVolumeArgs = args.toBuilder()
           .setVolumeName(context.getOmVolumeArgs().getVolume())
