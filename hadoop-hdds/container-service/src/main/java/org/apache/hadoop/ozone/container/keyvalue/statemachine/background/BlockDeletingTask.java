@@ -120,6 +120,7 @@ public class BlockDeletingTask implements BackgroundTask {
   public BackgroundTaskResult call() throws Exception {
     ContainerBackgroundTaskResult result =
         new ContainerBackgroundTaskResult();
+    LOG.info("xbis: call background block deleting task, blocksToDelete: " + blocksToDelete);
     while (blocksToDelete > 0) {
       ContainerBackgroundTaskResult crr = handleDeleteTask();
       if (blocksToDelete > 0 && crr.getSize() == 0) {

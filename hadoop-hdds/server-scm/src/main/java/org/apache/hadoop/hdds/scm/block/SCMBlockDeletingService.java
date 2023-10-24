@@ -156,6 +156,7 @@ public class SCMBlockDeletingService extends BackgroundService
       if (LOG.isDebugEnabled()) {
         LOG.debug("Running DeletedBlockTransactionScanner");
       }
+      LOG.info("xbis: Running DeletedBlockTransactionScanner");
       List<DatanodeDetails> datanodes =
           nodeManager.getNodes(NodeStatus.inServiceHealthy());
       if (datanodes != null) {

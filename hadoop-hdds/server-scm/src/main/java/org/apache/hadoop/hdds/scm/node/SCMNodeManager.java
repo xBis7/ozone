@@ -621,9 +621,6 @@ public class SCMNodeManager implements NodeManager {
           datanodeDetails.getHostName(),
           nodeReport.toString().replaceAll("\n", "\\\\n"));
     }
-    LOG.info("HB is received from [datanode={}]: <json>{}</json>",
-        datanodeDetails.getHostName(),
-        nodeReport.toString().replaceAll("\n", "\\\\n"));
     try {
       DatanodeInfo datanodeInfo = nodeStateManager.getNode(datanodeDetails);
       if (nodeReport != null) {
