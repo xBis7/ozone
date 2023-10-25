@@ -2430,6 +2430,11 @@ public final class OzoneManagerProtocolClientSideTranslatorPB
     return setSafeModeResponse.getResponse();
   }
 
+  @Override
+  public boolean findContainerKeys(long containerId) {
+    return true;
+  }
+
   private SafeMode toProtoBuf(SafeModeAction action) {
     switch (action) {
     case ENTER:

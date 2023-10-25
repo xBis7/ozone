@@ -144,6 +144,8 @@ enum Type {
   ListKeysLight = 126;
   AbortExpiredMultiPartUploads = 127;
   SetSnapshotProperty = 128;
+
+  FindContainerKeys = 129;
 }
 
 enum SafeMode {
@@ -278,6 +280,8 @@ message OMRequest {
 
   optional MultipartUploadsExpiredAbortRequest multipartUploadsExpiredAbortRequest = 126;
   optional SetSnapshotPropertyRequest       SetSnapshotPropertyRequest     = 127;
+
+  optional FindContainerKeysRequest         FindContainerKeysRequest       = 128;
 }
 
 message OMResponse {
@@ -397,6 +401,7 @@ message OMResponse {
   optional ListKeysLightResponse             listKeysLightResponse         = 126;
   optional MultipartUploadsExpiredAbortResponse multipartUploadsExpiredAbortResponse = 127;
   optional SetSnapshotPropertyResponse       SetSnapshotPropertyResponse   = 128;
+  optional FindContainerKeysResponse         FindContainerKeysResponse     = 129;
 }
 
 enum Status {
@@ -688,6 +693,10 @@ message ListVolumeRequest {
     optional string prefix = 3;
     optional string prevKey = 4;
     optional uint32 maxKeys = 5;
+}
+
+message FindContainerKeysRequest {
+  required int64 containerId = 1;
 }
 
 message ListVolumeResponse {
@@ -2054,6 +2063,12 @@ message SetSafeModeRequest {
 
 message SetSafeModeResponse {
   optional bool response = 1;
+}
+
+message FindContainerKeysResponse {
+  optional bool success = 1;
+  // optional List of OmKeyInfo? , to be checked only if success = true?
+  // it will have only 1 key, so it makes more sense to return container info.
 }
 
 /**

@@ -4572,6 +4572,11 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
     }
   }
 
+  @Override
+  public boolean findContainerKeys(long containerId) {
+    return true;
+  }
+
   /**
    * Write down Layout version of a finalized feature to DB on finalization.
    * @param lvm OMLayoutVersionManager
