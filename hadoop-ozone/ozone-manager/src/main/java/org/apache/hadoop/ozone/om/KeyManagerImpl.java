@@ -2039,15 +2039,10 @@ public class KeyManagerImpl implements KeyManager {
   @Override
   public OmKeyInfo getOpenKeyInfo(OmKeyArgs args, long clientId)
       throws IOException {
-
     Preconditions.checkNotNull(args, "Key args can not be null");
-    final String volumeName = args.getVolumeName();
-    final String bucketName = args.getBucketName();
-    final String keyName = args.getKeyName();
-
-    OmKeyInfo fileKeyInfo = null;
-    OmKeyInfo dirKeyInfo = null;
-    OmKeyInfo fakeDirKeyInfo = null;
+    String volumeName = args.getVolumeName();
+    String bucketName = args.getBucketName();
+    String keyName = args.getKeyName();
 
 LOG.info("xbis: KeyManagerImpl: thread: " + Thread.currentThread().getName());
 
@@ -2056,13 +2051,11 @@ LOG.info("xbis: KeyManagerImpl: thread: " + Thread.currentThread().getName());
 
     BucketLayout layout =
         getBucketLayout(metadataManager, volumeName, bucketName);
-
     String openKeyName;
 
     if (Objects.equals(layout, BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
       long volumeId = metadataManager.getVolumeId(volumeName);
-      final long bucketId = metadataManager.getBucketId(volumeName,
-          bucketName);
+      long bucketId = metadataManager.getBucketId(volumeName, bucketName);
 
       // Here, need to test for parent being a directory.
       Iterator<Path> pathComponents = Paths.get(keyName).iterator();
@@ -2076,25 +2069,12 @@ LOG.info("xbis: KeyManagerImpl: thread: " + Thread.currentThread().getName());
           bucketName, keyName, clientId);
     }
 
-    fileKeyInfo = metadataManager.getOpenKeyTable(layout).get(openKeyName);
-
-    // test mkdir to see if we also need to check for directories here.
+    OmKeyInfo keyInfo = metadataManager.getOpenKeyTable(layout).get(openKeyName);
 
     metadataManager.getLock().releaseReadLock(BUCKET_LOCK, volumeName,
         bucketName);
-    // bucket lock
-    // get bucket info
-    // get bucket layout
-    // get open file status with FSO ??
-    // get open table
-    // get key info
-    // return info
-//    metadataManager.getOpenKeyTable()
 
-    // Check this later, HDDS-5450
-    //if (!args.isHeadOp()) {
-
-    return fileKeyInfo;
+    return keyInfo;
   }
 
   private void refreshPipelineFromCache(Iterable<OmKeyInfo> keyInfos)

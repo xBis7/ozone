@@ -22,7 +22,6 @@ import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.ozone.audit.OMAction;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OMMetrics;
-import org.apache.hadoop.ozone.om.OmMetadataReader;
 import org.apache.hadoop.ozone.om.OzoneConfigUtil;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
@@ -44,8 +43,6 @@ import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CreateK
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Type;
 import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
 import org.apache.hadoop.ozone.security.acl.OzoneObj;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.InvalidPathException;
@@ -81,14 +78,6 @@ public class OMKeyCreateRequestWithFSO extends OMKeyCreateRequest {
 
     OzoneManagerProtocolProtos.KeyArgs keyArgs = createKeyRequest.getKeyArgs();
     Map<String, String> auditMap = buildKeyArgsAuditMap(keyArgs);
-
-    Logger logger = LoggerFactory.getLogger(OMKeyCreateRequestWithFSO.class);
-    logger.info("xbis: key create FSO, before clientID: thread: " + Thread.currentThread().getName());
-
-    long clientID = createKeyRequest.getClientID();
-    OmMetadataReader omMetadataReader =
-        (OmMetadataReader) ozoneManager.getOmMetadataReader().get();
-    omMetadataReader.setThreadLocalClientId(clientID);
 
     String volumeName = keyArgs.getVolumeName();
     String bucketName = keyArgs.getBucketName();
@@ -180,6 +169,7 @@ public class OMKeyCreateRequestWithFSO extends OMKeyCreateRequest {
               ozoneManager.isRatisEnabled(), repConfig);
 
       long openVersion = omFileInfo.getLatestVersionLocations().getVersion();
+      long clientID = createKeyRequest.getClientID();
       String dbOpenFileName = omMetadataManager
           .getOpenFileName(volumeId, bucketId,
                   pathInfoFSO.getLastKnownParentId(),
@@ -243,8 +233,6 @@ public class OMKeyCreateRequestWithFSO extends OMKeyCreateRequest {
                 bucketName);
       }
     }
-    logger.info("xbis: key create FSO, clear clientID: thread: " + Thread.currentThread().getName());
-    omMetadataReader.clearThreadLocalClientId();
 
     // Audit Log outside the lock
     auditLog(ozoneManager.getAuditLogger(), buildAuditMessage(
