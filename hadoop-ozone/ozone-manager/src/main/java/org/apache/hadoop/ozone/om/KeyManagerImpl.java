@@ -17,6 +17,8 @@
 package org.apache.hadoop.ozone.om;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.PrivilegedExceptionAction;
 import java.time.Duration;
@@ -1999,6 +2001,67 @@ public class KeyManagerImpl implements KeyManager {
       }
     }
     return value;
+  }
+
+  @Override
+  public OmKeyInfo getOpenKeyInfo(OmKeyArgs args, long clientId)
+      throws IOException {
+
+    Preconditions.checkNotNull(args, "Key args can not be null");
+    final String volumeName = args.getVolumeName();
+    final String bucketName = args.getBucketName();
+    final String keyName = args.getKeyName();
+
+    OmKeyInfo fileKeyInfo = null;
+    OmKeyInfo dirKeyInfo = null;
+    OmKeyInfo fakeDirKeyInfo = null;
+
+LOG.info("xbis: KeyManagerImpl: thread: " + Thread.currentThread().getName());
+
+    metadataManager.getLock().acquireReadLock(BUCKET_LOCK, volumeName,
+        bucketName);
+
+    BucketLayout layout =
+        getBucketLayout(metadataManager, volumeName, bucketName);
+
+    String openKeyName;
+
+    if (Objects.equals(layout, BucketLayout.FILE_SYSTEM_OPTIMIZED)) {
+      long volumeId = metadataManager.getVolumeId(volumeName);
+      final long bucketId = metadataManager.getBucketId(volumeName,
+          bucketName);
+
+      // Here, need to test for parent being a directory.
+      Iterator<Path> pathComponents = Paths.get(keyName).iterator();
+      long parentId = OMFileRequest.getParentID(volumeId, bucketId,
+          pathComponents, keyName, metadataManager, null);
+
+      openKeyName = metadataManager.getOpenFileName(volumeId, bucketId,
+          parentId, keyName, clientId);
+    } else {
+      openKeyName = metadataManager.getOpenKey(volumeName,
+          bucketName, keyName, clientId);
+    }
+
+    fileKeyInfo = metadataManager.getOpenKeyTable(layout).get(openKeyName);
+
+    // test mkdir to see if we also need to check for directories here.
+
+    metadataManager.getLock().releaseReadLock(BUCKET_LOCK, volumeName,
+        bucketName);
+    // bucket lock
+    // get bucket info
+    // get bucket layout
+    // get open file status with FSO ??
+    // get open table
+    // get key info
+    // return info
+//    metadataManager.getOpenKeyTable()
+
+    // Check this later, HDDS-5450
+    //if (!args.isHeadOp()) {
+
+    return fileKeyInfo;
   }
 
   private void refreshPipelineFromCache(Iterable<OmKeyInfo> keyInfos)

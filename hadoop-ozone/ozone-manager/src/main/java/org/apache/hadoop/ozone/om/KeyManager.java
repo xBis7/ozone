@@ -78,6 +78,7 @@ public interface KeyManager extends OzoneManagerFS, IOzoneAcl {
    */
   OmKeyInfo getKeyInfo(OmKeyArgs args, String clientAddress) throws IOException;
 
+  OmKeyInfo getOpenKeyInfo(OmKeyArgs args, long clientId) throws IOException;
 
   /**
    * Returns a list of keys represented by {@link OmKeyInfo}

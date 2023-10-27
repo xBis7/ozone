@@ -26,6 +26,7 @@ import org.apache.hadoop.ozone.audit.AuditLogger;
 import org.apache.hadoop.ozone.audit.OMAction;
 import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OMMetrics;
+import org.apache.hadoop.ozone.om.OmMetadataReader;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
@@ -78,6 +79,15 @@ public class OMKeyCommitRequestWithFSO extends OMKeyCommitRequest {
       long trxnLogIndex, OzoneManagerDoubleBufferHelper omDoubleBufferHelper) {
 
     CommitKeyRequest commitKeyRequest = getOmRequest().getCommitKeyRequest();
+
+
+    Logger logger = LoggerFactory.getLogger(OMKeyCreateRequestWithFSO.class);
+    logger.info("xbis: commit FSO, before clientID: thread: " + Thread.currentThread().getName());
+
+    long clientID = commitKeyRequest.getClientID();
+    OmMetadataReader omMetadataReader =
+        (OmMetadataReader) ozoneManager.getOmMetadataReader().get();
+    omMetadataReader.setThreadLocalClientId(clientID);
 
     KeyArgs commitKeyArgs = commitKeyRequest.getKeyArgs();
 
@@ -284,6 +294,9 @@ public class OMKeyCommitRequestWithFSO extends OMKeyCommitRequest {
                 bucketName);
       }
     }
+
+    logger.info("xbis: commit FSO, clear clientID: thread: " + Thread.currentThread().getName());
+    omMetadataReader.clearThreadLocalClientId();
 
     // Debug logging for any key commit operation, successful or not
     LOG.debug("Key commit {} with isHSync = {}, omKeyInfo = {}",

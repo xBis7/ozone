@@ -152,8 +152,7 @@ public final class OzoneAclUtils {
   public static String getKeyOwner(IAccessAuthorizer.ACLType aclType,
                                    OmMetadataReader metadataReader,
                                    UserGroupInformation user,
-                                   String volumeName,
-                                   String bucketName,
+                                   String volumeName, String bucketName,
                                    String keyName, String bucketOwner)
       throws IOException {
     // This method is needed only for non-native authorizers.
@@ -164,25 +163,26 @@ public final class OzoneAclUtils {
       return bucketOwner;
     }
 
-    // If that's a new key, then return the current user as the owner.
-    if (Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE) ||
-         Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE)) {
-      LOG.info("xbis: ignoreACLs: user: " + user.getUserName() +
-               " | key: " + keyName);
-      return user.getUserName();
-    } else {
-      // Perform a RocksDB read to get the key ACLs only for
-      // the shareable tmp dir where file ownership is crucial for
-      // the sticky-bit behavior. Avoid doing it for all volumes and
-      // buckets to prevent taking a toll on performance.
-      if (Objects.equals(volumeName, "tmp") &&
-          Objects.equals(bucketName, "tmp")) {
+    // Perform a RocksDB read to get the key ACLs only for
+    // the shareable tmp dir where file ownership is crucial for
+    // the sticky-bit behavior. Avoid doing it for all volumes and
+    // buckets to prevent taking a toll on performance.
+    if (Objects.equals(volumeName, "tmp") &&
+        Objects.equals(bucketName, "tmp")) {
+      // If that's a new key, then return the current user as the owner.
+      if (Objects.equals(aclType, IAccessAuthorizer.ACLType.CREATE)) {
+        LOG.info("xbis: ignoreACLs: user: " + user.getUserName() +
+                 " | key: " + keyName);
+        return user.getUserName();
+      } else {
         // Read the key ACLs and if the current user has all access
         // then set it as the owner. The user might not be the actual owner,
         // but this is resulting in the same behavior.
         // TODO: modify this if file ownership is implemented.
+        boolean isOpenKey = Objects.equals(aclType, IAccessAuthorizer.ACLType.WRITE);
         List<OzoneAcl> aclList = metadataReader.getKeyOzoneAcls(
-            volumeName, bucketName, keyName);
+            volumeName, bucketName, keyName, isOpenKey);
+
         LOG.info("xbis: don't ignoreACLs: aclList: " + aclList +
                  " | key: " + keyName);
         for (OzoneAcl acl : aclList) {
@@ -198,6 +198,7 @@ public final class OzoneAclUtils {
         }
       }
     }
+
     LOG.info("xbis: return bucket owner: " + bucketOwner);
     return bucketOwner;
   }

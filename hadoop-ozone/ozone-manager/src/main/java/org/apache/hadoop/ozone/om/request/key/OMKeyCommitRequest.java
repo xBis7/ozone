@@ -31,6 +31,7 @@ import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
+import org.apache.hadoop.ozone.om.OmMetadataReader;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OzoneFSUtils;
@@ -129,6 +130,10 @@ public class OMKeyCommitRequest extends OMKeyRequest {
       long trxnLogIndex, OzoneManagerDoubleBufferHelper omDoubleBufferHelper) {
 
     CommitKeyRequest commitKeyRequest = getOmRequest().getCommitKeyRequest();
+
+    OmMetadataReader omMetadataReader =
+        (OmMetadataReader) ozoneManager.getOmMetadataReader().get();
+    omMetadataReader.setThreadLocalClientId(commitKeyRequest.getClientID());
 
     KeyArgs commitKeyArgs = commitKeyRequest.getKeyArgs();
 
@@ -340,6 +345,8 @@ public class OMKeyCommitRequest extends OMKeyRequest {
             bucketName);
       }
     }
+
+    omMetadataReader.clearThreadLocalClientId();
 
     // Debug logging for any key commit operation, successful or not
     LOG.debug("Key commit {} with isHSync = {}, omKeyInfo = {}",

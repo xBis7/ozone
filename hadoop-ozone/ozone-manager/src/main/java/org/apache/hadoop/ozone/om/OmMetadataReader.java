@@ -86,6 +86,9 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
   private final AuditLogger audit;
   private final OMPerformanceMetrics perfMetrics;
 
+  private final ThreadLocal<Long> threadLocalClientId =
+      new ThreadLocal<>();
+
   public OmMetadataReader(KeyManager keyManager,
                           PrefixManager prefixManager,
                           OzoneManager ozoneManager,
@@ -151,7 +154,7 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
   }
 
   public List<OzoneAcl> getKeyOzoneAcls(String volumeName,
-      String bucketName, String keyName) throws IOException {
+      String bucketName, String keyName, boolean openKey) throws IOException {
     OmKeyArgs args = new OmKeyArgs.Builder()
                          .setVolumeName(volumeName)
                          .setBucketName(bucketName)
@@ -159,14 +162,15 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
                          .setHeadOp(true)
                          .build();
 
-    keyManager.getMetadataManager().getLock()
-        .acquireReadLock(BUCKET_LOCK, volumeName, bucketName);
+    OmKeyInfo omKeyInfo;
 
-    OzoneFileStatus fileStatus = getFileStatus(args);
-    OmKeyInfo omKeyInfo = fileStatus.getKeyInfo();
-
-    keyManager.getMetadataManager().getLock()
-        .releaseReadLock(BUCKET_LOCK, volumeName, bucketName);
+    if (openKey) {
+      long clientId = threadLocalClientId.get();
+      omKeyInfo = keyManager.getOpenKeyInfo(args, clientId);
+    } else {
+      OzoneFileStatus fileStatus = getFileStatus(args);
+      omKeyInfo = fileStatus.getKeyInfo();
+    }
 
     return omKeyInfo == null ? new ArrayList<>() : omKeyInfo.getAcls();
   }
@@ -591,4 +595,16 @@ public class OmMetadataReader implements IOmMetadataReader, Auditor {
     return ResourceType.KEY;
   }
 
+
+  public void setThreadLocalClientId(long clientId) {
+    this.threadLocalClientId.set(clientId);
+  }
+
+  public void clearThreadLocalClientId() {
+    this.threadLocalClientId.remove();
+  }
+
+  public long getThreadLocalClientId() {
+    return this.threadLocalClientId.get();
+  }
 }

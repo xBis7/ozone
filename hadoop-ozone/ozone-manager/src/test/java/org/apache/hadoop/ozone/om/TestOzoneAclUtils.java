@@ -199,7 +199,7 @@ public class TestOzoneAclUtils {
         .thenReturn(new MockExternalAuthorizer());
 
     when(omMetadataReader.getKeyOzoneAcls(
-        volumeName, bucketName, KEY_NAME)).thenReturn(aclList);
+        volumeName, bucketName, KEY_NAME, false)).thenReturn(aclList);
 
     String owner = OzoneAclUtils.getKeyOwner(
         IAccessAuthorizer.ACLType.DELETE,
