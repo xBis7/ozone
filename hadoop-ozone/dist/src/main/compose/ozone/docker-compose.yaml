@@ -48,6 +48,7 @@ services:
     ports:
       - 9874:9874
       - 9862:9862
+      - 5005:5005
     command: ["ozone","om"]
   scm:
     <<: *common-config
