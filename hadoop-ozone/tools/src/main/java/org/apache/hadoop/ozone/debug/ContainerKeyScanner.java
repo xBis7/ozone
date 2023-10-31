@@ -18,11 +18,19 @@
 
 package org.apache.hadoop.ozone.debug;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import org.apache.hadoop.hdds.cli.SubcommandWithParent;
 import org.kohsuke.MetaInfServices;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -34,7 +42,11 @@ import java.util.concurrent.Callable;
     description = "Parse a list of container IDs"
 )
 @MetaInfServices(SubcommandWithParent.class)
-public class ContainerKeyScanner implements Callable<Void>, SubcommandWithParent {
+public class ContainerKeyScanner implements Callable<Void>,
+                                                SubcommandWithParent {
+
+  private static final Logger LOG =
+      LoggerFactory.getLogger(ContainerKeyScanner.class);
 
   @CommandLine.ParentCommand
   private RDBParser parent;
@@ -42,6 +54,7 @@ public class ContainerKeyScanner implements Callable<Void>, SubcommandWithParent
   @CommandLine.Option(names = {"-ids", "--container-ids"},
       split = ",",
       paramLabel = "containerIDs",
+      required = true,
       description = "List of container IDs to be used for getting all " +
                     "their keys. Example-usage: 1,11,2.(Separated by ',')")
   private List<Long> containerIdList;
@@ -53,7 +66,7 @@ public class ContainerKeyScanner implements Callable<Void>, SubcommandWithParent
     List<ContainerKeyInfo> containerKeyInfos =
         scanDBForContainerKeys(dbPath, containerIdList);
 
-    jsonPrettyPrintList(containerKeyInfos);
+    jsonPrintList(containerKeyInfos);
 
     return null;
   }
@@ -65,13 +78,53 @@ public class ContainerKeyScanner implements Callable<Void>, SubcommandWithParent
 
   private List<ContainerKeyInfo> scanDBForContainerKeys(String dbPath,
       List<Long> containerIdList) {
+    List<ContainerKeyInfo> containerKeyInfos = new ArrayList<>();
 
-    // TODO: code logic for scanning the DB bump.
+    for (long id : containerIdList) {
+      ContainerKeyInfo keyInfo = new ContainerKeyInfo(id,
+          "vol" + id, "bucket" + id, "key" + id);
+      containerKeyInfos.add(keyInfo);
 
-    return new ArrayList<>();
+      ContainerKeyInfo keyInfo2 = new ContainerKeyInfo(id,
+          "v1ol" + id, "b1ucket" + id, "k1ey" + id);
+      containerKeyInfos.add(keyInfo2);
+    }
+    // TODO: replace testing dummy code with
+    //  code logic for scanning the DB dump.
+
+    return containerKeyInfos;
   }
 
-  private void jsonPrettyPrintList(List<ContainerKeyInfo> containerKeyInfos) {
+  private void jsonPrintList(List<ContainerKeyInfo> containerKeyInfos) {
+    if (containerKeyInfos.isEmpty()) {
+      System.out.println("No keys were found for container IDs: " + containerIdList);
+      return;
+    }
 
+    HashMap<Long, List<ContainerKeyInfo>> infoMap = new HashMap<>();
+
+    JsonObject jsonObject = new JsonObject();
+    JsonArray responseArrayList = new JsonArray();
+    JsonElement element;
+
+    for (long id : containerIdList) {
+      List<ContainerKeyInfo> tmpList = new ArrayList<>();
+
+      for (ContainerKeyInfo info : containerKeyInfos) {
+        if (id == info.getContainerID()) {
+          tmpList.add(info);
+        }
+      }
+      infoMap.put(id, tmpList);
+    }
+
+    Gson gson = new GsonBuilder().create();
+    element = gson.toJsonTree(infoMap);
+    responseArrayList.add(element);
+
+    jsonObject.add("Result", responseArrayList);
+    Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
+    String prettyJson = prettyGson.toJson(jsonObject);
+    System.out.println(prettyJson);
   }
 }
