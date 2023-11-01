@@ -17,38 +17,31 @@
  */
 package org.apache.hadoop.ozone.debug;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+import java.util.List;
+import java.util.Map;
+
 /**
- * Class that holds basic key data in relation to container it is in.
+ * Class for response for container key scanner.
  */
-public class ContainerKeyInfo {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class ContainerKeyInfoResponse {
 
-  private final long containerID;
-  private final String volumeName;
-  private final String bucketName;
-  private final String keyName;
+  private final long keysProcessed;
+  private final Map<Long, List<ContainerKeyInfo>> containerKeys;
 
-  public ContainerKeyInfo(
-      long containerID, String volumeName,
-      String bucketName, String keyName) {
-    this.containerID = containerID;
-    this.volumeName = volumeName;
-    this.bucketName = bucketName;
-    this.keyName = keyName;
+  public ContainerKeyInfoResponse(
+      long keysProcessed, Map<Long, List<ContainerKeyInfo>> containerKeys) {
+    this.keysProcessed = keysProcessed;
+    this.containerKeys = containerKeys;
   }
 
-  public long getContainerID() {
-    return containerID;
+  public long getKeysProcessed() {
+    return keysProcessed;
   }
 
-  public String getVolumeName() {
-    return volumeName;
-  }
-
-  public String getBucketName() {
-    return bucketName;
-  }
-
-  public String getKeyName() {
-    return keyName;
+  public Map<Long, List<ContainerKeyInfo>> getContainerKeys() {
+    return containerKeys;
   }
 }

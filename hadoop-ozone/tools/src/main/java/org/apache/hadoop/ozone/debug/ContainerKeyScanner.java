@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 
@@ -77,10 +78,10 @@ public class ContainerKeyScanner implements Callable<Void>,
   public Void call() throws Exception {
     String dbPath = parent.getDbPath();
 
-    List<ContainerKeyInfo> containerKeyInfos =
+    ContainerKeyInfoWrapper containerKeyInfoWrapper =
         scanDBForContainerKeys(dbPath, containerIdList);
 
-    jsonPrintList(containerKeyInfos);
+    jsonPrintList(containerKeyInfoWrapper);
 
     return null;
   }
@@ -90,10 +91,11 @@ public class ContainerKeyScanner implements Callable<Void>,
     return RDBParser.class;
   }
 
-  private List<ContainerKeyInfo> scanDBForContainerKeys(String dbPath,
-                                                        List<Long> containerIds)
+  private ContainerKeyInfoWrapper scanDBForContainerKeys(
+      String dbPath, List<Long> containerIds)
       throws RocksDBException, IOException {
     List<ContainerKeyInfo> containerKeyInfos = new ArrayList<>();
+    long keysProcessed = 0;
 
     List<ColumnFamilyDescriptor> columnFamilyDescriptors =
         RocksDBUtils.getColumnFamilyDescriptors(parent.getDbPath());
@@ -131,6 +133,7 @@ public class ContainerKeyScanner implements Callable<Void>,
               value.getKeyLocationVersions();
           if (Objects.isNull(keyLocationVersions)) {
             iterator.get().next();
+            keysProcessed++;
             continue;
           }
 
@@ -151,10 +154,11 @@ public class ContainerKeyScanner implements Callable<Void>,
                             }
                           })));
           iterator.get().next();
+          keysProcessed++;
         }
       }
     }
-    return containerKeyInfos;
+    return new ContainerKeyInfoWrapper(keysProcessed, containerKeyInfos);
   }
 
   private ColumnFamilyHandle getColumnFamilyHandle(
@@ -180,14 +184,18 @@ public class ContainerKeyScanner implements Callable<Void>,
     return dbPath;
   }
 
-  private void jsonPrintList(List<ContainerKeyInfo> containerKeyInfos) {
+  private void jsonPrintList(ContainerKeyInfoWrapper containerKeyInfoWrapper) {
+    List<ContainerKeyInfo> containerKeyInfos =
+        containerKeyInfoWrapper.getContainerKeyInfos();
     if (containerKeyInfos.isEmpty()) {
       System.out.println("No keys were found for container IDs: " +
           containerIdList);
+      System.out.println(
+          "Keys processed: " + containerKeyInfoWrapper.getKeysProcessed());
       return;
     }
 
-    HashMap<Long, List<ContainerKeyInfo>> infoMap = new HashMap<>();
+    Map<Long, List<ContainerKeyInfo>> infoMap = new HashMap<>();
 
     for (long id : containerIdList) {
       List<ContainerKeyInfo> tmpList = new ArrayList<>();
@@ -201,7 +209,9 @@ public class ContainerKeyScanner implements Callable<Void>,
     }
 
     Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    String prettyJson = gson.toJson(infoMap);
+    String prettyJson = gson.toJson(
+        new ContainerKeyInfoResponse(containerKeyInfoWrapper.getKeysProcessed(),
+            infoMap));
     System.out.println(prettyJson);
   }
 }

@@ -17,38 +17,27 @@
  */
 package org.apache.hadoop.ozone.debug;
 
+import java.util.List;
+
 /**
- * Class that holds basic key data in relation to container it is in.
+ * Class for aggregation of collected data.
  */
-public class ContainerKeyInfo {
+public class ContainerKeyInfoWrapper {
 
-  private final long containerID;
-  private final String volumeName;
-  private final String bucketName;
-  private final String keyName;
+  private final long keysProcessed;
+  private final List<ContainerKeyInfo> containerKeyInfos;
 
-  public ContainerKeyInfo(
-      long containerID, String volumeName,
-      String bucketName, String keyName) {
-    this.containerID = containerID;
-    this.volumeName = volumeName;
-    this.bucketName = bucketName;
-    this.keyName = keyName;
+  public ContainerKeyInfoWrapper(long keysProcessed,
+                                 List<ContainerKeyInfo> containerKeyInfos) {
+    this.keysProcessed = keysProcessed;
+    this.containerKeyInfos = containerKeyInfos;
   }
 
-  public long getContainerID() {
-    return containerID;
+  public long getKeysProcessed() {
+    return keysProcessed;
   }
 
-  public String getVolumeName() {
-    return volumeName;
-  }
-
-  public String getBucketName() {
-    return bucketName;
-  }
-
-  public String getKeyName() {
-    return keyName;
+  public List<ContainerKeyInfo> getContainerKeyInfos() {
+    return containerKeyInfos;
   }
 }
