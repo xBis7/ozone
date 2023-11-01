@@ -28,7 +28,6 @@ import org.apache.hadoop.hdds.utils.db.managed.ManagedRocksDB;
 import org.apache.hadoop.hdds.utils.db.managed.ManagedRocksIterator;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
-import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
 import org.kohsuke.MetaInfServices;
 import org.rocksdb.ColumnFamilyDescriptor;
@@ -44,7 +43,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 
@@ -127,37 +125,35 @@ public class ContainerKeyScanner implements Callable<Void>,
           db.get().newIterator(columnFamilyHandle))) {
         iterator.get().seekToFirst();
         while (iterator.get().isValid()) {
-          Object value = columnFamilyDefinition.getValueCodec()
-              .fromPersistedFormat(iterator.get().value());
+          OmKeyInfo value = ((OmKeyInfo) columnFamilyDefinition.getValueCodec()
+              .fromPersistedFormat(iterator.get().value()));
           List<OmKeyLocationInfoGroup> keyLocationVersions =
-              ((OmKeyInfo) value).getKeyLocationVersions();
+              value.getKeyLocationVersions();
           if (Objects.isNull(keyLocationVersions)) {
             iterator.get().next();
             continue;
           }
 
-          keyLocationVersions.forEach(omKeyLocationInfoGroup -> {
-            Map<Long, List<OmKeyLocationInfo>> locationVersionMap =
-                omKeyLocationInfoGroup.getLocationVersionMap();
-            locationVersionMap.forEach(
-                (k, omKeyLocationInfos) -> omKeyLocationInfos.forEach(
-                    omKeyLocationInfo -> {
-                      if (containerIds.contains(
-                          omKeyLocationInfo.getContainerID())) {
-                        containerKeyInfos.add(
-                            new ContainerKeyInfo(
-                                omKeyLocationInfo.getContainerID(),
-                                ((OmKeyInfo) value).getVolumeName(),
-                                ((OmKeyInfo) value).getBucketName(),
-                                ((OmKeyInfo) value).getKeyName()));
-                      }
-                    }));
-          });
+          keyLocationVersions
+              .forEach(omKeyLocationInfoGroup -> omKeyLocationInfoGroup
+                  .getLocationVersionMap()
+                  .values()
+                  .forEach(omKeyLocationInfos -> omKeyLocationInfos
+                      .forEach(
+                          omKeyLocationInfo -> {
+                            if (containerIds.contains(
+                                omKeyLocationInfo.getContainerID())) {
+                              containerKeyInfos.add(new ContainerKeyInfo(
+                                  omKeyLocationInfo.getContainerID(),
+                                  value.getVolumeName(),
+                                  value.getBucketName(),
+                                  value.getKeyName()));
+                            }
+                          })));
           iterator.get().next();
         }
       }
     }
-
     return containerKeyInfos;
   }
 
