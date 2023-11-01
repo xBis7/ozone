@@ -20,9 +20,6 @@ package org.apache.hadoop.ozone.debug;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.apache.hadoop.hdds.cli.SubcommandWithParent;
 import org.kohsuke.MetaInfServices;
 import org.slf4j.Logger;
@@ -81,13 +78,15 @@ public class ContainerKeyScanner implements Callable<Void>,
     List<ContainerKeyInfo> containerKeyInfos = new ArrayList<>();
 
     for (long id : containerIdList) {
-      ContainerKeyInfo keyInfo = new ContainerKeyInfo(id,
-          "vol" + id, "bucket" + id, "key" + id);
-      containerKeyInfos.add(keyInfo);
+      if (id != 2) {
+        ContainerKeyInfo keyInfo = new ContainerKeyInfo(id,
+            "vol" + id, "bucket" + id, "key" + id);
+        containerKeyInfos.add(keyInfo);
 
-      ContainerKeyInfo keyInfo2 = new ContainerKeyInfo(id,
-          "v1ol" + id, "b1ucket" + id, "k1ey" + id);
-      containerKeyInfos.add(keyInfo2);
+        ContainerKeyInfo keyInfo2 = new ContainerKeyInfo(id,
+            "v1ol" + id, "b1ucket" + id, "k1ey" + id);
+        containerKeyInfos.add(keyInfo2);
+      }
     }
     // TODO: replace testing dummy code with
     //  code logic for scanning the DB dump.
@@ -97,15 +96,12 @@ public class ContainerKeyScanner implements Callable<Void>,
 
   private void jsonPrintList(List<ContainerKeyInfo> containerKeyInfos) {
     if (containerKeyInfos.isEmpty()) {
-      System.out.println("No keys were found for container IDs: " + containerIdList);
+      System.out.println("No keys were found for container IDs: " +
+                         containerIdList);
       return;
     }
 
     HashMap<Long, List<ContainerKeyInfo>> infoMap = new HashMap<>();
-
-    JsonObject jsonObject = new JsonObject();
-    JsonArray responseArrayList = new JsonArray();
-    JsonElement element;
 
     for (long id : containerIdList) {
       List<ContainerKeyInfo> tmpList = new ArrayList<>();
@@ -118,13 +114,8 @@ public class ContainerKeyScanner implements Callable<Void>,
       infoMap.put(id, tmpList);
     }
 
-    Gson gson = new GsonBuilder().create();
-    element = gson.toJsonTree(infoMap);
-    responseArrayList.add(element);
-
-    jsonObject.add("Result", responseArrayList);
-    Gson prettyGson = new GsonBuilder().setPrettyPrinting().create();
-    String prettyJson = prettyGson.toJson(jsonObject);
+    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    String prettyJson = gson.toJson(infoMap);
     System.out.println(prettyJson);
   }
 }
