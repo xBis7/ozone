@@ -69,17 +69,6 @@ public interface StorageContainerNodeProtocol {
    * Send heartbeat to indicate the datanode is alive and doing well.
    * @param datanodeDetails - Datanode ID.
    * @param layoutVersionInfo - Layout Version Proto.
-   * @return Commands to be sent to the datanode.
-   */
-  default List<SCMCommand> processHeartbeat(DatanodeDetails datanodeDetails,
-                                    LayoutVersionProto layoutVersionInfo) {
-    return processHeartbeat(datanodeDetails, layoutVersionInfo, null);
-  };
-
-  /**
-   * Send heartbeat to indicate the datanode is alive and doing well.
-   * @param datanodeDetails - Datanode ID.
-   * @param layoutVersionInfo - Layout Version Proto.
    * @param queueReport - The CommandQueueReportProto report from the
    *                    heartbeating datanode.
    * @return Commands to be sent to the datanode.

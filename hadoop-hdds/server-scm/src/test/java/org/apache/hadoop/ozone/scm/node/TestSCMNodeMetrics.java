@@ -112,7 +112,7 @@ public class TestSCMNodeMetrics {
         .setSoftwareLayoutVersion(versionManager.getSoftwareLayoutVersion())
         .setMetadataLayoutVersion(versionManager.getMetadataLayoutVersion())
         .build();
-    nodeManager.processHeartbeat(registeredDatanode, layoutInfo);
+    nodeManager.processHeartbeat(registeredDatanode, layoutInfo, null);
 
     assertEquals(hbProcessed + 1, getCounter("NumHBProcessed"),
         "NumHBProcessed");
@@ -132,7 +132,7 @@ public class TestSCMNodeMetrics {
         .setMetadataLayoutVersion(versionManager.getMetadataLayoutVersion())
         .build();
     nodeManager.processHeartbeat(MockDatanodeDetails
-        .randomDatanodeDetails(), layoutInfo);
+        .randomDatanodeDetails(), layoutInfo, null);
 
     assertEquals(hbProcessedFailed + 1, getCounter("NumHBProcessingFailed"),
         "NumHBProcessingFailed");
@@ -259,7 +259,7 @@ public class TestSCMNodeMetrics {
         .setSoftwareLayoutVersion(versionManager.getSoftwareLayoutVersion())
         .setMetadataLayoutVersion(versionManager.getMetadataLayoutVersion())
         .build();
-    nodeManager.processHeartbeat(registeredDatanode, layoutInfo);
+    nodeManager.processHeartbeat(registeredDatanode, layoutInfo, null);
     sleep(4000);
     metricsSource = getMetrics(SCMNodeMetrics.SOURCE_NAME);
     assertGauge("InServiceHealthyReadonlyNodes", 0, metricsSource);

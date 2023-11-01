@@ -528,7 +528,7 @@ public class TestStorageContainerManager {
             .build();
         List<SCMCommand> commands = nodeManager.processHeartbeat(
             nodeManager.getNodes(NodeStatus.inServiceHealthy()).get(0),
-            layoutInfo);
+            layoutInfo, null);
         if (commands != null) {
           for (SCMCommand cmd : commands) {
             if (cmd.getType() == SCMCommandProto.Type.deleteBlocksCommand) {

@@ -229,7 +229,7 @@ public class TestSCMNodeManager {
       for (int x = 0; x < registeredNodes; x++) {
         DatanodeDetails datanodeDetails = HddsTestUtils
             .createRandomDatanodeAndRegister(nodeManager);
-        nodeManager.processHeartbeat(datanodeDetails, layoutInfo);
+        nodeManager.processHeartbeat(datanodeDetails, layoutInfo, null);
       }
 
       //TODO: wait for heartbeat to be processed
@@ -344,7 +344,7 @@ public class TestSCMNodeManager {
         allNodes);
 
     // node sends incorrect layout.
-    nodeManager.processHeartbeat(node, layout);
+    nodeManager.processHeartbeat(node, layout, null);
 
     // Its pipelines should be closed then removed, meaning there is not
     // enough nodes for factor 3 pipelines.
@@ -412,8 +412,8 @@ public class TestSCMNodeManager {
       assertPipelineCreationFailsWithNotEnoughNodes(1);
 
       // Heartbeat bad MLV nodes back to healthy.
-      nodeManager.processHeartbeat(badMlvNode1, CORRECT_LAYOUT_PROTO);
-      nodeManager.processHeartbeat(badMlvNode2, CORRECT_LAYOUT_PROTO);
+      nodeManager.processHeartbeat(badMlvNode1, CORRECT_LAYOUT_PROTO, null);
+      nodeManager.processHeartbeat(badMlvNode2, CORRECT_LAYOUT_PROTO, null);
 
       // After moving out of healthy readonly, pipeline creation should be
       // triggered.
@@ -533,7 +533,7 @@ public class TestSCMNodeManager {
     nodeManager.close();
 
     // These should never be processed.
-    nodeManager.processHeartbeat(datanodeDetails, layoutInfo);
+    nodeManager.processHeartbeat(datanodeDetails, layoutInfo, null);
 
     // Let us just wait for 2 seconds to prove that HBs are not processed.
     Thread.sleep(2 * 1000);
@@ -565,7 +565,7 @@ public class TestSCMNodeManager {
       for (int x = 0; x < count; x++) {
         DatanodeDetails datanodeDetails = HddsTestUtils
             .createRandomDatanodeAndRegister(nodeManager);
-        nodeManager.processHeartbeat(datanodeDetails, layoutInfo);
+        nodeManager.processHeartbeat(datanodeDetails, layoutInfo, null);
       }
       //TODO: wait for heartbeat to be processed
       Thread.sleep(4 * 1000);
@@ -639,7 +639,8 @@ public class TestSCMNodeManager {
       // If found mismatch, leader SCM fires a SetNodeOperationalStateCommand
       // to update the opState persisted in Datanode.
       scm.getScmContext().updateLeaderAndTerm(true, 1);
-      List<SCMCommand> commands = nodeManager.processHeartbeat(dn, layoutInfo);
+      List<SCMCommand> commands = nodeManager
+          .processHeartbeat(dn, layoutInfo, null);
 
       assertEquals(SetNodeOperationalStateCommand.class,
           commands.get(0).getClass());
@@ -648,7 +649,7 @@ public class TestSCMNodeManager {
       // If found mismatch, follower SCM update its own opState according
       // to the heartbeat, and no SCMCommand will be fired.
       scm.getScmContext().updateLeaderAndTerm(false, 2);
-      commands = nodeManager.processHeartbeat(dn, layoutInfo);
+      commands = nodeManager.processHeartbeat(dn, layoutInfo, null);
 
       assertEquals(0, commands.size());
 
@@ -694,18 +695,18 @@ public class TestSCMNodeManager {
           nodeManager);
 
       // Heartbeat once
-      nodeManager.processHeartbeat(staleNode, layoutInfo);
+      nodeManager.processHeartbeat(staleNode, layoutInfo, null);
 
       // Heartbeat all other nodes.
       for (DatanodeDetails dn : nodeList) {
-        nodeManager.processHeartbeat(dn, layoutInfo);
+        nodeManager.processHeartbeat(dn, layoutInfo, null);
       }
 
       // Wait for 2 seconds .. and heartbeat good nodes again.
       Thread.sleep(2 * 1000);
 
       for (DatanodeDetails dn : nodeList) {
-        nodeManager.processHeartbeat(dn, layoutInfo);
+        nodeManager.processHeartbeat(dn, layoutInfo, null);
       }
 
       // Wait for 2 seconds, wait a total of 4 seconds to make sure that the
@@ -728,7 +729,7 @@ public class TestSCMNodeManager {
       Thread.sleep(1000);
       // heartbeat good nodes again.
       for (DatanodeDetails dn : nodeList) {
-        nodeManager.processHeartbeat(dn, layoutInfo);
+        nodeManager.processHeartbeat(dn, layoutInfo, null);
       }
 
       //  6 seconds is the dead window for this test , so we wait a total of
@@ -797,8 +798,8 @@ public class TestSCMNodeManager {
       DatanodeDetails node2 =
           HddsTestUtils.createRandomDatanodeAndRegister(nodeManager);
 
-      nodeManager.processHeartbeat(node1, layoutInfo);
-      nodeManager.processHeartbeat(node2, layoutInfo);
+      nodeManager.processHeartbeat(node1, layoutInfo, null);
+      nodeManager.processHeartbeat(node2, layoutInfo, null);
 
       // Sleep so that heartbeat processing thread gets to run.
       Thread.sleep(1000);
@@ -843,7 +844,7 @@ public class TestSCMNodeManager {
       assertEquals(2, nodeManager.getNodeCount(NodeStatus.inServiceHealthy()));
 
       // Step 5 : heartbeat for node1
-      nodeManager.processHeartbeat(node1, layoutInfo);
+      nodeManager.processHeartbeat(node1, layoutInfo, null);
 
       // Step 6 : wait for health check process to run
       Thread.sleep(1000);
@@ -1093,7 +1094,7 @@ public class TestSCMNodeManager {
   public void testScmCheckForErrorOnNullDatanodeDetails()
       throws IOException, AuthenticationException {
     try (SCMNodeManager nodeManager = createNodeManager(getConf())) {
-      nodeManager.processHeartbeat(null, null);
+      nodeManager.processHeartbeat(null, null, null);
     } catch (NullPointerException npe) {
       GenericTestUtils.assertExceptionContains("Heartbeat is missing " +
           "DatanodeDetails.", npe);
@@ -1175,9 +1176,9 @@ public class TestSCMNodeManager {
           HddsTestUtils.createRandomDatanodeAndRegister(nodeManager);
       DatanodeDetails deadNode =
           HddsTestUtils.createRandomDatanodeAndRegister(nodeManager);
-      nodeManager.processHeartbeat(healthyNode, layoutInfo);
-      nodeManager.processHeartbeat(staleNode, layoutInfo);
-      nodeManager.processHeartbeat(deadNode, layoutInfo);
+      nodeManager.processHeartbeat(healthyNode, layoutInfo, null);
+      nodeManager.processHeartbeat(staleNode, layoutInfo, null);
+      nodeManager.processHeartbeat(deadNode, layoutInfo, null);
 
       // Sleep so that heartbeat processing thread gets to run.
       Thread.sleep(500);
@@ -1203,12 +1204,12 @@ public class TestSCMNodeManager {
        * the 3 second windows.
        */
 
-      nodeManager.processHeartbeat(healthyNode, layoutInfo);
-      nodeManager.processHeartbeat(staleNode, layoutInfo);
-      nodeManager.processHeartbeat(deadNode, layoutInfo);
+      nodeManager.processHeartbeat(healthyNode, layoutInfo, null);
+      nodeManager.processHeartbeat(staleNode, layoutInfo, null);
+      nodeManager.processHeartbeat(deadNode, layoutInfo, null);
 
       Thread.sleep(1500);
-      nodeManager.processHeartbeat(healthyNode, layoutInfo);
+      nodeManager.processHeartbeat(healthyNode, layoutInfo, null);
       Thread.sleep(2 * 1000);
       assertEquals(1, nodeManager.getNodeCount(NodeStatus.inServiceHealthy()));
 
@@ -1229,10 +1230,10 @@ public class TestSCMNodeManager {
        * staleNode to move to stale state and deadNode to move to dead state.
        */
 
-      nodeManager.processHeartbeat(healthyNode, layoutInfo);
-      nodeManager.processHeartbeat(staleNode, layoutInfo);
+      nodeManager.processHeartbeat(healthyNode, layoutInfo, null);
+      nodeManager.processHeartbeat(staleNode, layoutInfo, null);
       Thread.sleep(1500);
-      nodeManager.processHeartbeat(healthyNode, layoutInfo);
+      nodeManager.processHeartbeat(healthyNode, layoutInfo, null);
       Thread.sleep(2 * 1000);
 
       // 3.5 seconds have elapsed for stale node, so it moves into Stale.
@@ -1264,9 +1265,9 @@ public class TestSCMNodeManager {
        * Cluster State : let us heartbeat all the nodes and verify that we get
        * back all the nodes in healthy state.
        */
-      nodeManager.processHeartbeat(healthyNode, layoutInfo);
-      nodeManager.processHeartbeat(staleNode, layoutInfo);
-      nodeManager.processHeartbeat(deadNode, layoutInfo);
+      nodeManager.processHeartbeat(healthyNode, layoutInfo, null);
+      nodeManager.processHeartbeat(staleNode, layoutInfo, null);
+      nodeManager.processHeartbeat(deadNode, layoutInfo, null);
       Thread.sleep(500);
       //Assert all nodes are healthy.
       assertEquals(3, nodeManager.getAllNodes().size());
@@ -1291,7 +1292,7 @@ public class TestSCMNodeManager {
         versionManager.getSoftwareLayoutVersion());
     while (!Thread.currentThread().isInterrupted()) {
       for (DatanodeDetails dn : list) {
-        manager.processHeartbeat(dn, layoutInfo);
+        manager.processHeartbeat(dn, layoutInfo, null);
       }
       Thread.sleep(sleepDuration);
     }
@@ -1383,7 +1384,7 @@ public class TestSCMNodeManager {
       // No Thread just one time HBs the node manager, so that these will be
       // marked as dead nodes eventually.
       for (DatanodeDetails dn : deadNodeList) {
-        nodeManager.processHeartbeat(dn, layoutInfo);
+        nodeManager.processHeartbeat(dn, layoutInfo, null);
       }
 
 
@@ -1527,7 +1528,7 @@ public class TestSCMNodeManager {
             .createStorageReport(dnId, storagePath, capacity, used, free, null);
         nodeManager.register(dn, HddsTestUtils.createNodeReport(
             Arrays.asList(report), emptyList()), null);
-        nodeManager.processHeartbeat(dn, layoutInfo);
+        nodeManager.processHeartbeat(dn, layoutInfo, null);
       }
       //TODO: wait for EventQueue to be processed
       eventQueue.processAll(8000L);
@@ -1585,7 +1586,7 @@ public class TestSCMNodeManager {
       LayoutVersionProto layoutInfo = toLayoutVersionProto(
           versionManager.getMetadataLayoutVersion(),
           versionManager.getSoftwareLayoutVersion());
-      nodeManager.processHeartbeat(dn, layoutInfo);
+      nodeManager.processHeartbeat(dn, layoutInfo, null);
       //TODO: wait for EventQueue to be processed
       eventQueue.processAll(8000L);
 
@@ -1645,7 +1646,7 @@ public class TestSCMNodeManager {
         LayoutVersionProto layoutInfo = toLayoutVersionProto(
             versionManager.getMetadataLayoutVersion(),
             versionManager.getSoftwareLayoutVersion());
-        nodeManager.processHeartbeat(datanodeDetails, layoutInfo);
+        nodeManager.processHeartbeat(datanodeDetails, layoutInfo, null);
         Thread.sleep(100);
       }
 
@@ -1726,7 +1727,7 @@ public class TestSCMNodeManager {
           versionManager.getMetadataLayoutVersion(),
           versionManager.getSoftwareLayoutVersion());
 
-      nodeManager.processHeartbeat(datanodeDetails, layoutInfo);
+      nodeManager.processHeartbeat(datanodeDetails, layoutInfo, null);
 
       // Wait up to 5 seconds so that the dead node becomes healthy
       // Verify usage info should be updated.
@@ -1782,7 +1783,7 @@ public class TestSCMNodeManager {
           versionManager.getSoftwareLayoutVersion());
       eq.processAll(1000L);
       List<SCMCommand> command =
-          nodemanager.processHeartbeat(datanodeDetails, layoutInfo);
+          nodemanager.processHeartbeat(datanodeDetails, layoutInfo, null);
       // With dh registered, SCM will send create pipeline command to dn
       assertTrue(command.size() >= 1);
       assertTrue(command.get(0).getClass().equals(
@@ -1942,7 +1943,7 @@ public class TestSCMNodeManager {
           HddsTestUtils.createNodeReport(Arrays.asList(report),
               emptyList()),
           HddsTestUtils.getRandomPipelineReports(), layoutInfo);
-      nodeManager.processHeartbeat(datanodeDetails, layoutInfo);
+      nodeManager.processHeartbeat(datanodeDetails, layoutInfo, null);
       if (i == 5) {
         nodeManager.setNodeOperationalState(datanodeDetails,
             HddsProtos.NodeOperationalState.ENTERING_MAINTENANCE);
