@@ -21,15 +21,34 @@ package org.apache.hadoop.ozone.debug;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.apache.hadoop.hdds.cli.SubcommandWithParent;
+import org.apache.hadoop.hdds.conf.OzoneConfiguration;
+import org.apache.hadoop.hdds.utils.db.DBColumnFamilyDefinition;
+import org.apache.hadoop.hdds.utils.db.DBDefinition;
+import org.apache.hadoop.hdds.utils.db.managed.ManagedRocksDB;
+import org.apache.hadoop.hdds.utils.db.managed.ManagedRocksIterator;
+import org.apache.hadoop.ozone.OzoneConsts;
+import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
+import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
+import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfoGroup;
 import org.kohsuke.MetaInfServices;
+import org.rocksdb.ColumnFamilyDescriptor;
+import org.rocksdb.ColumnFamilyHandle;
+import org.rocksdb.RocksDBException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Parser for a list of container IDs, to scan for keys.
@@ -40,7 +59,7 @@ import java.util.concurrent.Callable;
 )
 @MetaInfServices(SubcommandWithParent.class)
 public class ContainerKeyScanner implements Callable<Void>,
-                                                SubcommandWithParent {
+    SubcommandWithParent {
 
   private static final Logger LOG =
       LoggerFactory.getLogger(ContainerKeyScanner.class);
@@ -53,7 +72,7 @@ public class ContainerKeyScanner implements Callable<Void>,
       paramLabel = "containerIDs",
       required = true,
       description = "List of container IDs to be used for getting all " +
-                    "their keys. Example-usage: 1,11,2.(Separated by ',')")
+          "their keys. Example-usage: 1,11,2.(Separated by ',')")
   private List<Long> containerIdList;
 
   @Override
@@ -74,30 +93,101 @@ public class ContainerKeyScanner implements Callable<Void>,
   }
 
   private List<ContainerKeyInfo> scanDBForContainerKeys(String dbPath,
-      List<Long> containerIdList) {
+                                                        List<Long> containerIds)
+      throws RocksDBException, IOException {
     List<ContainerKeyInfo> containerKeyInfos = new ArrayList<>();
 
-    for (long id : containerIdList) {
-      if (id != 2) {
-        ContainerKeyInfo keyInfo = new ContainerKeyInfo(id,
-            "vol" + id, "bucket" + id, "key" + id);
-        containerKeyInfos.add(keyInfo);
+    List<ColumnFamilyDescriptor> columnFamilyDescriptors =
+        RocksDBUtils.getColumnFamilyDescriptors(parent.getDbPath());
+    final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
 
-        ContainerKeyInfo keyInfo2 = new ContainerKeyInfo(id,
-            "v1ol" + id, "b1ucket" + id, "k1ey" + id);
-        containerKeyInfos.add(keyInfo2);
+    try (ManagedRocksDB db = ManagedRocksDB.openReadOnly(parent.getDbPath(),
+        columnFamilyDescriptors, columnFamilyHandles)) {
+      dbPath = removeTrailingSlashIfNeeded(dbPath);
+      DBDefinition dbDefinition = DBDefinitionFactory.getDefinition(
+          Paths.get(dbPath), new OzoneConfiguration());
+      if (dbDefinition == null) {
+        throw new IllegalStateException("Incorrect DB Path");
+      }
+
+      DBColumnFamilyDefinition<?, ?> columnFamilyDefinition =
+          dbDefinition.getColumnFamily("fileTable");
+      if (columnFamilyDefinition == null) {
+        throw new IllegalStateException("Table with name fileTable not found");
+      }
+
+      ColumnFamilyHandle columnFamilyHandle = getColumnFamilyHandle(
+          columnFamilyDefinition.getName().getBytes(UTF_8),
+          columnFamilyHandles);
+      if (columnFamilyHandle == null) {
+        throw new IllegalStateException("columnFamilyHandle is null");
+      }
+
+      try (ManagedRocksIterator iterator = new ManagedRocksIterator(
+          db.get().newIterator(columnFamilyHandle))) {
+        iterator.get().seekToFirst();
+        while (iterator.get().isValid()) {
+          Object value = columnFamilyDefinition.getValueCodec()
+              .fromPersistedFormat(iterator.get().value());
+          List<OmKeyLocationInfoGroup> keyLocationVersions =
+              ((OmKeyInfo) value).getKeyLocationVersions();
+          if (Objects.isNull(keyLocationVersions)) {
+            iterator.get().next();
+            continue;
+          }
+
+          keyLocationVersions.forEach(omKeyLocationInfoGroup -> {
+            Map<Long, List<OmKeyLocationInfo>> locationVersionMap =
+                omKeyLocationInfoGroup.getLocationVersionMap();
+            locationVersionMap.forEach(
+                (k, omKeyLocationInfos) -> omKeyLocationInfos.forEach(
+                    omKeyLocationInfo -> {
+                      if (containerIds.contains(
+                          omKeyLocationInfo.getContainerID())) {
+                        containerKeyInfos.add(
+                            new ContainerKeyInfo(
+                                omKeyLocationInfo.getContainerID(),
+                                ((OmKeyInfo) value).getVolumeName(),
+                                ((OmKeyInfo) value).getBucketName(),
+                                ((OmKeyInfo) value).getKeyName()));
+                      }
+                    }));
+          });
+          iterator.get().next();
+        }
       }
     }
-    // TODO: replace testing dummy code with
-    //  code logic for scanning the DB dump.
 
     return containerKeyInfos;
+  }
+
+  private ColumnFamilyHandle getColumnFamilyHandle(
+      byte[] name, List<ColumnFamilyHandle> columnFamilyHandles) {
+    return columnFamilyHandles
+        .stream()
+        .filter(
+            handle -> {
+              try {
+                return Arrays.equals(handle.getName(), name);
+              } catch (Exception ex) {
+                throw new RuntimeException(ex);
+              }
+            })
+        .findAny()
+        .orElse(null);
+  }
+
+  private String removeTrailingSlashIfNeeded(String dbPath) {
+    if (dbPath.endsWith(OzoneConsts.OZONE_URI_DELIMITER)) {
+      dbPath = dbPath.substring(0, dbPath.length() - 1);
+    }
+    return dbPath;
   }
 
   private void jsonPrintList(List<ContainerKeyInfo> containerKeyInfos) {
     if (containerKeyInfos.isEmpty()) {
       System.out.println("No keys were found for container IDs: " +
-                         containerIdList);
+          containerIdList);
       return;
     }
 
