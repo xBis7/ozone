@@ -63,6 +63,8 @@ public class ContainerKeyScanner implements Callable<Void>,
 
   private static final Logger LOG =
       LoggerFactory.getLogger(ContainerKeyScanner.class);
+  public static final String FILE_TABLE = "fileTable";
+  public static final String KEY_TABLE = "keyTable";
 
   @CommandLine.ParentCommand
   private RDBParser parent;
@@ -95,11 +97,11 @@ public class ContainerKeyScanner implements Callable<Void>,
   private ContainerKeyInfoWrapper scanDBForContainerKeys(String dbPath)
       throws RocksDBException, IOException {
     List<ContainerKeyInfo> containerKeyInfos = new ArrayList<>();
-    long keysProcessed = 0;
 
     List<ColumnFamilyDescriptor> columnFamilyDescriptors =
         RocksDBUtils.getColumnFamilyDescriptors(parent.getDbPath());
     final List<ColumnFamilyHandle> columnFamilyHandles = new ArrayList<>();
+    long keysProcessed = 0;
 
     try (ManagedRocksDB db = ManagedRocksDB.openReadOnly(parent.getDbPath(),
         columnFamilyDescriptors, columnFamilyHandles)) {
@@ -110,55 +112,72 @@ public class ContainerKeyScanner implements Callable<Void>,
         throw new IllegalStateException("Incorrect DB Path");
       }
 
-      DBColumnFamilyDefinition<?, ?> columnFamilyDefinition =
-          dbDefinition.getColumnFamily("fileTable");
-      if (columnFamilyDefinition == null) {
-        throw new IllegalStateException("Table with name fileTable not found");
-      }
-
-      ColumnFamilyHandle columnFamilyHandle = getColumnFamilyHandle(
-          columnFamilyDefinition.getName().getBytes(UTF_8),
-          columnFamilyHandles);
-      if (columnFamilyHandle == null) {
-        throw new IllegalStateException("columnFamilyHandle is null");
-      }
-
-      try (ManagedRocksIterator iterator = new ManagedRocksIterator(
-          db.get().newIterator(columnFamilyHandle))) {
-        iterator.get().seekToFirst();
-        while (iterator.get().isValid()) {
-          OmKeyInfo value = ((OmKeyInfo) columnFamilyDefinition.getValueCodec()
-              .fromPersistedFormat(iterator.get().value()));
-          List<OmKeyLocationInfoGroup> keyLocationVersions =
-              value.getKeyLocationVersions();
-          if (Objects.isNull(keyLocationVersions)) {
-            iterator.get().next();
-            keysProcessed++;
-            continue;
-          }
-
-          keyLocationVersions
-              .forEach(omKeyLocationInfoGroup -> omKeyLocationInfoGroup
-                  .getLocationVersionMap()
-                  .values()
-                  .forEach(omKeyLocationInfos -> omKeyLocationInfos
-                      .forEach(
-                          omKeyLocationInfo -> {
-                            if (containerIds.contains(
-                                omKeyLocationInfo.getContainerID())) {
-                              containerKeyInfos.add(new ContainerKeyInfo(
-                                  omKeyLocationInfo.getContainerID(),
-                                  value.getVolumeName(),
-                                  value.getBucketName(),
-                                  value.getKeyName()));
-                            }
-                          })));
-          iterator.get().next();
-          keysProcessed++;
-        }
-      }
+      keysProcessed +=
+          processTable(dbDefinition, columnFamilyHandles, db,
+              containerKeyInfos, FILE_TABLE);
+      keysProcessed +=
+          processTable(dbDefinition, columnFamilyHandles, db,
+              containerKeyInfos, KEY_TABLE);
     }
     return new ContainerKeyInfoWrapper(keysProcessed, containerKeyInfos);
+  }
+
+  private long processTable(DBDefinition dbDefinition,
+                            List<ColumnFamilyHandle> columnFamilyHandles,
+                            ManagedRocksDB db,
+                            List<ContainerKeyInfo> containerKeyInfos,
+                            String tableName)
+      throws IOException {
+    long keysProcessed = 0;
+    DBColumnFamilyDefinition<?, ?> columnFamilyDefinition =
+        dbDefinition.getColumnFamily(tableName);
+    if (columnFamilyDefinition == null) {
+      throw new IllegalStateException(
+          "Table with name" + tableName + " not found");
+    }
+
+    ColumnFamilyHandle columnFamilyHandle = getColumnFamilyHandle(
+        columnFamilyDefinition.getName().getBytes(UTF_8),
+        columnFamilyHandles);
+    if (columnFamilyHandle == null) {
+      throw new IllegalStateException("columnFamilyHandle is null");
+    }
+
+    try (ManagedRocksIterator iterator = new ManagedRocksIterator(
+        db.get().newIterator(columnFamilyHandle))) {
+      iterator.get().seekToFirst();
+      while (iterator.get().isValid()) {
+        OmKeyInfo value = ((OmKeyInfo) columnFamilyDefinition.getValueCodec()
+            .fromPersistedFormat(iterator.get().value()));
+        List<OmKeyLocationInfoGroup> keyLocationVersions =
+            value.getKeyLocationVersions();
+        if (Objects.isNull(keyLocationVersions)) {
+          iterator.get().next();
+          keysProcessed++;
+          continue;
+        }
+
+        keyLocationVersions
+            .forEach(omKeyLocationInfoGroup -> omKeyLocationInfoGroup
+                .getLocationVersionMap()
+                .values()
+                .forEach(omKeyLocationInfos -> omKeyLocationInfos
+                    .forEach(
+                        omKeyLocationInfo -> {
+                          if (containerIds.contains(
+                              omKeyLocationInfo.getContainerID())) {
+                            containerKeyInfos.add(new ContainerKeyInfo(
+                                omKeyLocationInfo.getContainerID(),
+                                value.getVolumeName(),
+                                value.getBucketName(),
+                                value.getKeyName()));
+                          }
+                        })));
+        iterator.get().next();
+        keysProcessed++;
+      }
+    }
+    return keysProcessed;
   }
 
   private ColumnFamilyHandle getColumnFamilyHandle(
