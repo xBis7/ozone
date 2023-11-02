@@ -45,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -70,16 +71,16 @@ public class ContainerKeyScanner implements Callable<Void>,
       split = ",",
       paramLabel = "containerIDs",
       required = true,
-      description = "List of container IDs to be used for getting all " +
+      description = "Set of container IDs to be used for getting all " +
           "their keys. Example-usage: 1,11,2.(Separated by ',')")
-  private List<Long> containerIdList;
+  private Set<Long> containerIds;
 
   @Override
   public Void call() throws Exception {
     String dbPath = parent.getDbPath();
 
     ContainerKeyInfoWrapper containerKeyInfoWrapper =
-        scanDBForContainerKeys(dbPath, containerIdList);
+        scanDBForContainerKeys(dbPath);
 
     jsonPrintList(containerKeyInfoWrapper);
 
@@ -91,8 +92,7 @@ public class ContainerKeyScanner implements Callable<Void>,
     return RDBParser.class;
   }
 
-  private ContainerKeyInfoWrapper scanDBForContainerKeys(
-      String dbPath, List<Long> containerIds)
+  private ContainerKeyInfoWrapper scanDBForContainerKeys(String dbPath)
       throws RocksDBException, IOException {
     List<ContainerKeyInfo> containerKeyInfos = new ArrayList<>();
     long keysProcessed = 0;
@@ -189,7 +189,7 @@ public class ContainerKeyScanner implements Callable<Void>,
         containerKeyInfoWrapper.getContainerKeyInfos();
     if (containerKeyInfos.isEmpty()) {
       System.out.println("No keys were found for container IDs: " +
-          containerIdList);
+          containerIds);
       System.out.println(
           "Keys processed: " + containerKeyInfoWrapper.getKeysProcessed());
       return;
@@ -197,7 +197,7 @@ public class ContainerKeyScanner implements Callable<Void>,
 
     Map<Long, List<ContainerKeyInfo>> infoMap = new HashMap<>();
 
-    for (long id : containerIdList) {
+    for (long id : containerIds) {
       List<ContainerKeyInfo> tmpList = new ArrayList<>();
 
       for (ContainerKeyInfo info : containerKeyInfos) {
