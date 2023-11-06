@@ -144,6 +144,8 @@ public class ContainerManagerImpl implements ContainerManager {
   public List<ContainerInfo> getContainers(final ContainerID startID,
                                            final int count) {
     scmContainerManagerMetrics.incNumListContainersOps();
+    LOG.info("xbis: " + containerStateManager.getClass() +
+             " | thread: " + Thread.currentThread().getName());
     return toContainers(filterSortAndLimit(startID, count,
         containerStateManager.getContainerIDs()));
   }

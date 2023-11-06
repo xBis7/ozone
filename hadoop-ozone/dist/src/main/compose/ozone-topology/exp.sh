@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -14,9 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-10.5.0.4	/rack1
-10.5.0.5	/rack1
-10.5.0.6	/rack2
-10.5.0.7	/rack2
-10.5.0.8	/rack3
-10.5.0.9	/rack3
+export OZONE_REPLICATION_FACTOR=3
+
+docker-compose up -d
+
+docker-compose exec -T om ozone freon ockg -t 10 -n 10
+
+docker-compose stop datanode_1
+docker-compose stop datanode_2
+docker-compose stop datanode_3
+
+docker-compose exec -T om ozone admin container report
+
