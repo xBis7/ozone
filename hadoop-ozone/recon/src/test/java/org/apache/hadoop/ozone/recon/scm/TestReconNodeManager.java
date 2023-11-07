@@ -140,7 +140,7 @@ public class TestReconNodeManager {
     // Upon processing the heartbeat, the illegal command should be filtered out
     List<SCMCommand> returnedCmds =
         reconNodeManager.processHeartbeat(datanodeDetails,
-            defaultLayoutVersionProto(), null);
+            defaultLayoutVersionProto());
     assertEquals(1, returnedCmds.size());
     assertEquals(SCMCommandProto.Type.reregisterCommand,
         returnedCmds.get(0).getType());
@@ -150,7 +150,7 @@ public class TestReconNodeManager {
         HddsProtos.NodeOperationalState.DECOMMISSIONED);
     datanodeDetails.setPersistedOpStateExpiryEpochSec(12345L);
     reconNodeManager.processHeartbeat(datanodeDetails,
-        defaultLayoutVersionProto(), null);
+        defaultLayoutVersionProto());
     // Check both persistedOpState and NodeStatus#operationalState
     assertEquals(HddsProtos.NodeOperationalState.DECOMMISSIONED,
         dnDetails.getPersistedOpState());
@@ -240,7 +240,7 @@ public class TestReconNodeManager {
     // Upon processing the heartbeat, the illegal command should be filtered out
     List<SCMCommand> returnedCmds =
         reconNodeManager.processHeartbeat(datanodeDetails,
-            defaultLayoutVersionProto(), null);
+            defaultLayoutVersionProto());
     assertEquals(1, returnedCmds.size());
     assertEquals(SCMCommandProto.Type.reregisterCommand,
         returnedCmds.get(0).getType());

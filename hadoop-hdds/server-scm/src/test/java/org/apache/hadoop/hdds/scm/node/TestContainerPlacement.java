@@ -199,7 +199,7 @@ public class TestContainerPlacement {
             versionManager.getSoftwareLayoutVersion());
     try {
       for (DatanodeDetails datanodeDetails : datanodes) {
-        scmNodeManager.processHeartbeat(datanodeDetails, layoutInfo, null);
+        scmNodeManager.processHeartbeat(datanodeDetails, layoutInfo);
       }
 
       //TODO: wait for heartbeat to be processed
