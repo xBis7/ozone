@@ -170,6 +170,8 @@ public class TestOMKeyRequest {
     when(ozoneManager.getPreallocateBlocksMax()).thenReturn(2);
     when(ozoneManager.isGrpcBlockTokenEnabled()).thenReturn(false);
     when(ozoneManager.getOMNodeId()).thenReturn(UUID.randomUUID().toString());
+    when(ozoneManager.getOMServiceId()).thenReturn(
+        UUID.randomUUID().toString());
     when(scmClient.getBlockClient()).thenReturn(scmBlockLocationProtocol);
     when(ozoneManager.getKeyManager()).thenReturn(keyManager);
     when(ozoneManager.getAccessAuthorizer())
@@ -221,15 +223,16 @@ public class TestOMKeyRequest {
     random = new Random();
     version = 0L;
 
-    Pair<String, String> volumeAndBucket = Pair.of(volumeName, bucketName);
+    ResolvedBucket bucket = new ResolvedBucket(volumeName, bucketName,
+        volumeName, bucketName, "owner", BucketLayout.OBJECT_STORE);
     when(ozoneManager.resolveBucketLink(any(KeyArgs.class),
         any(OMClientRequest.class)))
-        .thenReturn(new ResolvedBucket(volumeAndBucket, volumeAndBucket));
+        .thenReturn(bucket);
     when(ozoneManager.resolveBucketLink(any(Pair.class),
         any(OMClientRequest.class)))
-        .thenReturn(new ResolvedBucket(volumeAndBucket, volumeAndBucket));
+        .thenReturn(bucket);
     when(ozoneManager.resolveBucketLink(any(Pair.class)))
-        .thenReturn(new ResolvedBucket(volumeAndBucket, volumeAndBucket));
+        .thenReturn(bucket);
     OmSnapshotManager omSnapshotManager = new OmSnapshotManager(ozoneManager);
     when(ozoneManager.getOmSnapshotManager())
         .thenReturn(omSnapshotManager);
