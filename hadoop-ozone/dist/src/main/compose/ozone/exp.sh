@@ -28,7 +28,7 @@ docker-compose exec -T scm ozone admin datanode list
 docker-compose exec -T scm ozone admin container info 1
 
 echo ""
-echo "ozone admin datanode decommission -id=scmservice --scm=10.5.0.71:9894 10.5.0.5/ozone-topology-datanode_2-1.ozone-topology_net"
+echo "ozone admin datanode decommission -id=scmservice --scm=172.20.0.6:9894 172.20.0.8/ozone-datanode-2.ozone_default"
 
 docker compose exec scm bash
 

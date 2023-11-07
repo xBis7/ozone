@@ -54,6 +54,8 @@ public class ContainerHealthStatus {
             (!r.getDatanodeDetails().isDecommissioned() &&
              !r.getDatanodeDetails().isMaintenance() &&
              !r.getState().equals((ContainerReplicaProto.State.UNHEALTHY))))
+//        .filter(r -> !r.getState()
+//                          .equals((ContainerReplicaProto.State.UNHEALTHY)))
         .collect(Collectors.toSet());
     this.replicaDelta = repFactor - this.healthyReplicas.size();
     this.placementStatus = getPlacementStatus(placementPolicy, repFactor);
