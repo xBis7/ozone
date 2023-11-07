@@ -19,6 +19,7 @@
 package org.apache.hadoop.ozone.om.request.key;
 
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,12 +32,14 @@ import org.apache.hadoop.ozone.OmUtils;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
+import org.apache.hadoop.ozone.om.helpers.KeyValueUtil;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OzoneFSUtils;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.RepeatedOmKeyInfo;
+import org.apache.hadoop.ozone.om.helpers.WithMetadata;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerDoubleBufferHelper;
 import org.apache.hadoop.ozone.om.request.util.OmResponseUtil;
 import org.apache.hadoop.ozone.om.request.validation.RequestFeatureValidator;
@@ -144,7 +147,7 @@ public class OMKeyCommitRequest extends OMKeyRequest {
     OMResponse.Builder omResponse = OmResponseUtil.getOMResponseBuilder(
         getOmRequest());
 
-    IOException exception = null;
+    Exception exception = null;
     OmKeyInfo omKeyInfo = null;
     OmBucketInfo omBucketInfo = null;
     OMClientResponse omClientResponse = null;
@@ -217,9 +220,19 @@ public class OMKeyCommitRequest extends OMKeyRequest {
       // creation and key commit, old versions will be just overwritten and
       // not kept. Bucket versioning will be effective from the first key
       // creation after the knob turned on.
+      boolean isPreviousCommitHsync = false;
       Map<String, RepeatedOmKeyInfo> oldKeyVersionsToDeleteMap = null;
       OmKeyInfo keyToDelete =
           omMetadataManager.getKeyTable(getBucketLayout()).get(dbOzoneKey);
+      if (null != keyToDelete) {
+        final String clientIdString
+            = String.valueOf(commitKeyRequest.getClientID());
+        isPreviousCommitHsync = java.util.Optional.ofNullable(keyToDelete)
+            .map(WithMetadata::getMetadata)
+            .map(meta -> meta.get(OzoneConsts.HSYNC_CLIENT_ID))
+            .filter(id -> id.equals(clientIdString))
+            .isPresent();
+      }
 
       omKeyInfo =
           omMetadataManager.getOpenKeyTable(getBucketLayout()).get(dbOpenKey);
@@ -231,6 +244,8 @@ public class OMKeyCommitRequest extends OMKeyRequest {
         throw new OMException("Failed to " + action + " key, as " + dbOpenKey +
             "entry is not found in the OpenKey table", KEY_NOT_FOUND);
       }
+      omKeyInfo.getMetadata().putAll(KeyValueUtil.getFromProtobuf(
+          commitKeyArgs.getMetadataList()));
       if (isHSync) {
         omKeyInfo.getMetadata().put(OzoneConsts.HSYNC_CLIENT_ID,
             String.valueOf(commitKeyRequest.getClientID()));
@@ -248,7 +263,7 @@ public class OMKeyCommitRequest extends OMKeyRequest {
       long correctedSpace = omKeyInfo.getReplicatedSize();
       // if keyToDelete isn't null, usedNamespace needn't check and
       // increase.
-      if (keyToDelete != null && isHSync) {
+      if (keyToDelete != null && (isHSync || isPreviousCommitHsync)) {
         correctedSpace -= keyToDelete.getReplicatedSize();
         checkBucketQuotaInBytes(omMetadataManager, omBucketInfo,
             correctedSpace);
@@ -315,7 +330,7 @@ public class OMKeyCommitRequest extends OMKeyRequest {
           oldKeyVersionsToDeleteMap, isHSync);
 
       result = Result.SUCCESS;
-    } catch (IOException ex) {
+    } catch (IOException | InvalidPathException ex) {
       result = Result.FAILURE;
       exception = ex;
       omClientResponse = new OMKeyCommitResponse(createErrorOMResponse(
@@ -380,7 +395,7 @@ public class OMKeyCommitRequest extends OMKeyRequest {
   protected void processResult(CommitKeyRequest commitKeyRequest,
                                String volumeName, String bucketName,
                                String keyName, OMMetrics omMetrics,
-                               IOException exception, OmKeyInfo omKeyInfo,
+                               Exception exception, OmKeyInfo omKeyInfo,
                                Result result) {
     switch (result) {
     case SUCCESS:

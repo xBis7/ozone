@@ -18,7 +18,6 @@
 package org.apache.hadoop.ozone.om.response;
 
 import com.google.common.collect.Iterators;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hdds.client.BlockID;
 import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
@@ -35,6 +34,7 @@ import org.apache.hadoop.ozone.om.OMMetrics;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.ResolvedBucket;
+import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.lock.OzoneLockProvider;
@@ -45,6 +45,7 @@ import org.apache.hadoop.ozone.om.request.key.OMKeyCreateRequest;
 import org.apache.hadoop.ozone.om.response.file.OMFileCreateResponse;
 import org.apache.hadoop.ozone.om.response.key.OMKeyCreateResponse;
 import org.apache.hadoop.ozone.om.response.key.OmKeyResponse;
+import org.apache.hadoop.ozone.om.response.util.OMEchoRPCWriteResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CreateFileRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.CreateKeyRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.KeyArgs;
@@ -128,11 +129,10 @@ public class TestCleanupTableInfo {
     when(om.getMetadataManager()).thenReturn(metaMgr);
     when(om.resolveBucketLink(any(KeyArgs.class), any(OMClientRequest.class)))
         .thenAnswer(
-            invocationOnMock -> {
-              Pair<String, String> pair =
-                  Pair.of(TEST_VOLUME_NAME, TEST_BUCKET_NAME);
-              return new ResolvedBucket(pair, pair);
-            }
+            invocationOnMock -> new ResolvedBucket(
+                TEST_VOLUME_NAME, TEST_BUCKET_NAME,
+                TEST_VOLUME_NAME, TEST_BUCKET_NAME,
+                "owner", BucketLayout.DEFAULT)
         );
     when(om.getAclsEnabled()).thenReturn(false);
     when(om.getAuditLogger()).thenReturn(mock(AuditLogger.class));
@@ -150,6 +150,8 @@ public class TestCleanupTableInfo {
     Set<Class<? extends OMClientResponse>> subTypes = responseClasses();
     // OmKeyResponse is an abstract class that does not need CleanupTable.
     subTypes.remove(OmKeyResponse.class);
+    // OMEchoRPCWriteResponse does not need CleanupTable.
+    subTypes.remove(OMEchoRPCWriteResponse.class);
     subTypes.forEach(aClass -> {
       Assert.assertTrue(aClass + " does not have annotation of" +
               " CleanupTableInfo",

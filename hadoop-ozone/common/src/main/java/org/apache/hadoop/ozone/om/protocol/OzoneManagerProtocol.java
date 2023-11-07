@@ -50,6 +50,7 @@ import org.apache.hadoop.ozone.om.helpers.OmTenantArgs;
 import org.apache.hadoop.ozone.om.helpers.OmVolumeArgs;
 import org.apache.hadoop.ozone.om.helpers.OpenKeySession;
 import org.apache.hadoop.ozone.om.helpers.OzoneFileStatus;
+import org.apache.hadoop.ozone.om.helpers.OzoneFileStatusLight;
 import org.apache.hadoop.ozone.om.helpers.RepeatedOmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.S3SecretValue;
 import org.apache.hadoop.ozone.om.helpers.S3VolumeContext;
@@ -913,6 +914,23 @@ public interface OzoneManagerProtocol
       throws IOException;
 
   /**
+   * Lightweight listStatus API.
+   *
+   * @param keyArgs    Key args
+   * @param recursive  For a directory if true all the descendants of a
+   *                   particular directory are listed
+   * @param startKey   Key from which listing needs to start. If startKey exists
+   *                   its status is included in the final list.
+   * @param numEntries Number of entries to list from the start key
+   * @param allowPartialPrefixes if partial prefixes should be allowed,
+   *                             this is needed in context of ListKeys
+   * @return list of file status
+   */
+  List<OzoneFileStatusLight> listStatusLight(OmKeyArgs keyArgs,
+      boolean recursive, String startKey, long numEntries,
+      boolean allowPartialPrefixes) throws IOException;
+
+  /**
    * Add acl for Ozone object. Return true if acl is added successfully else
    * false.
    * @param obj Ozone object for which acl should be added.
@@ -1039,12 +1057,12 @@ public interface OzoneManagerProtocol
    * to benchmark RPC communication performance.
    * @param payloadReq payload in request.
    * @param payloadSizeResp payload size of response.
+   * @param writeToRatis write to Ratis log if flag is set to true.
    * @throws IOException if there is error in the RPC communication.
    * @return EchoRPCResponse.
    */
-  EchoRPCResponse echoRPCReq(byte[] payloadReq,
-                             int payloadSizeResp)
-          throws IOException;
+  EchoRPCResponse echoRPCReq(byte[] payloadReq, int payloadSizeResp,
+                             boolean writeToRatis) throws IOException;
 
 
   /**

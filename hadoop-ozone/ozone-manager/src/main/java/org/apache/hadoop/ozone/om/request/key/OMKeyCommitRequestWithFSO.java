@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.ozone.om.request.key;
 
+import java.nio.file.InvalidPathException;
 import java.util.HashMap;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -28,12 +29,14 @@ import org.apache.hadoop.ozone.om.OMMetadataManager;
 import org.apache.hadoop.ozone.om.OMMetrics;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
+import org.apache.hadoop.ozone.om.helpers.KeyValueUtil;
 import org.apache.hadoop.ozone.om.helpers.OmBucketInfo;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
 import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.om.helpers.OzoneFSUtils;
 import org.apache.hadoop.ozone.om.helpers.RepeatedOmKeyInfo;
+import org.apache.hadoop.ozone.om.helpers.WithMetadata;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerDoubleBufferHelper;
 import org.apache.hadoop.ozone.om.request.file.OMFileRequest;
 import org.apache.hadoop.ozone.om.request.util.OmResponseUtil;
@@ -93,7 +96,7 @@ public class OMKeyCommitRequestWithFSO extends OMKeyCommitRequest {
     OMResponse.Builder omResponse = OmResponseUtil.getOMResponseBuilder(
             getOmRequest());
 
-    IOException exception = null;
+    Exception exception = null;
     OmKeyInfo omKeyInfo = null;
     OmBucketInfo omBucketInfo = null;
     OMClientResponse omClientResponse = null;
@@ -161,6 +164,8 @@ public class OMKeyCommitRequestWithFSO extends OMKeyCommitRequest {
                 dbOpenFileKey + "entry is not found in the OpenKey table",
                 KEY_NOT_FOUND);
       }
+      omKeyInfo.getMetadata().putAll(KeyValueUtil.getFromProtobuf(
+          commitKeyArgs.getMetadataList()));
       if (isHSync) {
         omKeyInfo.getMetadata().put(OzoneConsts.HSYNC_CLIENT_ID,
             String.valueOf(commitKeyRequest.getClientID()));
@@ -180,15 +185,25 @@ public class OMKeyCommitRequestWithFSO extends OMKeyCommitRequest {
       // creation and key commit, old versions will be just overwritten and
       // not kept. Bucket versioning will be effective from the first key
       // creation after the knob turned on.
+      boolean isPreviousCommitHsync = false;
       Map<String, RepeatedOmKeyInfo> oldKeyVersionsToDeleteMap = null;
       OmKeyInfo keyToDelete =
           omMetadataManager.getKeyTable(getBucketLayout()).get(dbFileKey);
+      if (null != keyToDelete) {
+        final String clientIdString
+            = String.valueOf(commitKeyRequest.getClientID());
+        isPreviousCommitHsync = java.util.Optional.ofNullable(keyToDelete)
+            .map(WithMetadata::getMetadata)
+            .map(meta -> meta.get(OzoneConsts.HSYNC_CLIENT_ID))
+            .filter(id -> id.equals(clientIdString))
+            .isPresent();
+      }
 
       long correctedSpace = omKeyInfo.getReplicatedSize();
 
       // if keyToDelete isn't null, usedNamespace shouldn't check and
       // increase.
-      if (keyToDelete != null && isHSync) {
+      if (keyToDelete != null && (isHSync || isPreviousCommitHsync)) {
         correctedSpace -= keyToDelete.getReplicatedSize();
         checkBucketQuotaInBytes(omMetadataManager, omBucketInfo,
             correctedSpace);
@@ -259,7 +274,7 @@ public class OMKeyCommitRequestWithFSO extends OMKeyCommitRequest {
           oldKeyVersionsToDeleteMap, volumeId, isHSync);
 
       result = Result.SUCCESS;
-    } catch (IOException ex) {
+    } catch (IOException | InvalidPathException ex) {
       result = Result.FAILURE;
       exception = ex;
       omClientResponse = new OMKeyCommitResponseWithFSO(createErrorOMResponse(
