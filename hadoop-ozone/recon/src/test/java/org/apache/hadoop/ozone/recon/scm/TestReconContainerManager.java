@@ -290,11 +290,13 @@ public class TestReconContainerManager
 
   @Test
   public void testDeleteContainer()
-      throws IOException, TimeoutException {
+      throws IOException {
     final ReconContainerManager containerManager = getContainerManager();
     final long longContainerID = ThreadLocalRandom.current().nextLong(100);
     final ContainerID containerID = ContainerID.valueOf(longContainerID);
 
+    assertEquals(0, getContainerManager().getContainerStateManager().getContainerIDs().size());
+//    getContainerManager().getContainerStateManager().get
     Pipeline pipeline = getRandomPipeline();
     getPipelineManager().addPipeline(pipeline);
 
@@ -307,7 +309,7 @@ public class TestReconContainerManager
         newContainerInfo(longContainerID, pipeline);
     containerManager.addNewContainer(
         new ContainerWithPipeline(info, pipeline));
-
+    assertEquals(1, getContainerManager().getContainerStateManager().getContainerIDs().size());
     // Add container in the Recon-SCM containers table.
     reconContainersTable.put(containerID, info);
 

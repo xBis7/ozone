@@ -170,7 +170,7 @@ public class TestContainerStateManager {
     // Refresh containerIDSet
     containerIDSet = containerStateManager.getContainerIDs();
 
-    // Container should not be there
+    // ContainerID should not be there
     Assertions.assertFalse(containerIDSet.contains(containerID));
   }
 

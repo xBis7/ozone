@@ -347,7 +347,7 @@ public class TestContainerHealthTask extends AbstractReconSqlDBTest {
     when(reconScmMock.getContainerManager()
         .getContainers()).thenReturn(mockContainers);
 
-    // Assume datanodes are dead and both containers are missing.
+    // Assume datanodes are down and both containers are missing.
     // In that case, both containers are in CLOSING state
     // and have no replicas.
     for (ContainerInfo containerInfo : mockContainers) {
