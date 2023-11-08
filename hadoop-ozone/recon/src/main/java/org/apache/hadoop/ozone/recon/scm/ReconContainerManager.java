@@ -27,7 +27,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -75,7 +74,6 @@ public class ReconContainerManager extends ContainerManagerImpl {
   private final Map<Long, Map<UUID, ContainerReplicaHistory>> replicaHistoryMap;
   // Pipeline -> # of open containers
   private final Map<PipelineID, Integer> pipelineToOpenContainer;
-  private final Table<ContainerID, ContainerInfo> reconContainerTable;
 
   @SuppressWarnings("parameternumber")
   public ReconContainerManager(
@@ -94,7 +92,6 @@ public class ReconContainerManager extends ContainerManagerImpl {
         pendingOps);
     this.scmClient = scm;
     this.pipelineManager = pipelineManager;
-    this.reconContainerTable = containerStore;
     this.containerHealthSchemaManager = containerHealthSchemaManager;
     this.cdbServiceProvider = reconContainerMetadataManager;
     this.nodeDB = ReconSCMDBDefinition.NODES.getTable(store);
@@ -344,20 +341,10 @@ public class ReconContainerManager extends ContainerManagerImpl {
   @Override
   public void deleteContainer(ContainerID containerID)
       throws IOException {
-    ContainerInfo info = reconContainerTable
-        .getIfExist(containerID);
+    super.deleteContainer(containerID);
 
-    // If the container exists in the table, delete it.
-    if (Objects.nonNull(info)) {
-      reconContainerTable.delete(containerID);
-    }
-
-//    cdbServiceProvider.removeContainerFromMappingTables(
-//        containerID.getProtobuf().getId());
-
-    // Remove container from Recon's ContainerStateMap.
-    getContainerStateManager()
-        .removeContainer(containerID.getProtobuf());
+    cdbServiceProvider.removeContainerFromMappingTables(
+        containerID.getProtobuf().getId());
   }
 
   @VisibleForTesting
