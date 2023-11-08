@@ -338,15 +338,6 @@ public class ReconContainerManager extends ContainerManagerImpl {
     }
   }
 
-  @Override
-  public void deleteContainer(ContainerID containerID)
-      throws IOException {
-    super.deleteContainer(containerID);
-
-    cdbServiceProvider.removeContainerFromMappingTables(
-        containerID.getProtobuf().getId());
-  }
-
   @VisibleForTesting
   public ContainerHealthSchemaManager getContainerSchemaManager() {
     return containerHealthSchemaManager;

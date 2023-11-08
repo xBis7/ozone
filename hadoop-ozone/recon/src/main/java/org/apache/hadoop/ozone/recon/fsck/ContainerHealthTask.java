@@ -85,6 +85,9 @@ public class ContainerHealthTask extends ReconScmTask {
     interval = reconTaskConfig.getMissingContainerTaskInterval().toMillis();
   }
 
+  /**
+   * Container status in SCM enum.
+   */
   public enum ContainerStatusInSCM {
     DELETED,
     NOT_DELETED,
@@ -194,9 +197,8 @@ public class ContainerHealthTask extends ReconScmTask {
                 if (Objects.equals(containerStatus,
                     ContainerStatusInSCM.NOT_FOUND)) {
                   try {
-                    containerManager.deleteContainer(currentContainer
-                                                         .getContainer()
-                                                         .containerID());
+                    containerManager.deleteContainer(
+                        currentContainer.getContainer().containerID());
                   } catch (IOException ex) {
                     LOG.error("Unable to delete container during " +
                               "periodic container health task.");
