@@ -295,7 +295,6 @@ public class TestReconContainerManager
     Pipeline pipeline = getRandomPipeline();
     getPipelineManager().addPipeline(pipeline);
 
-
     assertEquals(0, getContainerManager()
                         .getContainerStateManager()
                         .getContainerIDs().size());

@@ -238,8 +238,8 @@ public class ContainerHealthTask extends ReconScmTask {
       }
       // For containers deleted in SCM, we sync the container state here.
       if (h.isMissing() &&
-          !Objects.equals(containerDeletedInSCM(container),
-              ContainerStatusInSCM.NOT_DELETED)) {
+          Objects.equals(containerDeletedInSCM(container),
+              ContainerStatusInSCM.DELETED)) {
         return;
       }
       containerHealthSchemaManager.insertUnhealthyContainerRecords(
