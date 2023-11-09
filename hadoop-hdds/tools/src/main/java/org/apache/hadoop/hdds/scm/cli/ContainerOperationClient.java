@@ -29,6 +29,7 @@ import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ContainerD
 import org.apache.hadoop.hdds.protocol.datanode.proto.ContainerProtos.ReadContainerResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.DeletedBlocksTransactionInfo;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.DecommissionScmResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.StartContainerBalancerResponseProto;
 import org.apache.hadoop.hdds.scm.DatanodeAdminError;
@@ -327,8 +328,13 @@ public class ContainerOperationClient implements ScmClient {
   }
 
   @Override
-  public void deleteContainerInSCM(long containerId) throws IOException {
-    storageContainerLocationClient.deleteContainer(containerId);
+  public void deleteMissingContainerInSCM(long containerId) throws IOException {
+    List<HddsProtos.SCMContainerReplicaProto> replicas =
+        storageContainerLocationClient
+            .getContainerReplicas(containerId, ClientVersion.CURRENT_VERSION);
+    if (replicas.size() == 0) {
+      storageContainerLocationClient.deleteContainer(containerId);
+    }
   }
 
   @Override
