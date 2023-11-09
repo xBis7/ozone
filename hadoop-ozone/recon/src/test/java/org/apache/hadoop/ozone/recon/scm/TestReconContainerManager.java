@@ -26,6 +26,7 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.getRandom
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.hadoop.hdds.client.RatisReplicationConfig;
@@ -43,6 +45,7 @@ import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolPro
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.ContainerReplicaProto;
 import org.apache.hadoop.hdds.scm.container.ContainerID;
 import org.apache.hadoop.hdds.scm.container.ContainerInfo;
+import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
 import org.apache.hadoop.hdds.scm.ha.SCMHAManager;
@@ -280,5 +283,40 @@ public class TestReconContainerManager
     // And the only entry should match DN02
     assertEquals(uuid2,
         repHistMap.get(cIDlong1).keySet().iterator().next());
+  }
+
+  @Test
+  public void testDeleteContainer()
+      throws IOException {
+    final ReconContainerManager containerManager = getContainerManager();
+    final long longContainerID = ThreadLocalRandom.current().nextLong(100);
+    final ContainerID containerID = ContainerID.valueOf(longContainerID);
+
+    Pipeline pipeline = getRandomPipeline();
+    getPipelineManager().addPipeline(pipeline);
+
+    assertEquals(0, getContainerManager()
+                        .getContainerStateManager()
+                        .getContainerIDs().size());
+
+    // Add a new container.
+    final ContainerInfo info =
+        newContainerInfo(longContainerID, pipeline);
+    containerManager.addNewContainer(
+        new ContainerWithPipeline(info, pipeline));
+
+    assertEquals(1, getContainerManager()
+                        .getContainerStateManager()
+                        .getContainerIDs().size());
+
+    // Operation should succeed without any exceptions.
+    containerManager.getContainer(containerID);
+
+    // Delete container.
+    containerManager.deleteContainer(containerID);
+
+    // Getting the container should throw a ContainerNotFoundException.
+    assertThrows(ContainerNotFoundException.class,
+        () -> containerManager.getContainer(containerID));
   }
 }

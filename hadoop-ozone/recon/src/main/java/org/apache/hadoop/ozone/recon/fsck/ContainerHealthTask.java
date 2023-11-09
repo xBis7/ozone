@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -34,6 +35,7 @@ import org.apache.hadoop.hdds.scm.container.ContainerManager;
 import org.apache.hadoop.hdds.scm.container.ContainerNotFoundException;
 import org.apache.hadoop.hdds.scm.container.ContainerReplica;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
+import org.apache.hadoop.hdds.scm.ha.SCMHAUtils;
 import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.recon.persistence.ContainerHealthSchemaManager;
 import org.apache.hadoop.ozone.recon.scm.ReconScmTask;
@@ -81,6 +83,15 @@ public class ContainerHealthTask extends ReconScmTask {
     this.placementPolicy = placementPolicy;
     this.containerManager = containerManager;
     interval = reconTaskConfig.getMissingContainerTaskInterval().toMillis();
+  }
+
+  /**
+   * Container status in SCM enum.
+   */
+  public enum ContainerStatusInSCM {
+    DELETED,
+    NOT_DELETED,
+    NOT_FOUND
   }
 
   @Override
@@ -175,10 +186,25 @@ public class ContainerHealthTask extends ReconScmTask {
           if (ContainerHealthRecords
               .retainOrUpdateRecord(currentContainer, rec
               )) {
-            // Check if the missing container is deleted in SCM
-            if (currentContainer.isMissing() &&
-                containerDeletedInSCM(currentContainer.getContainer())) {
-              rec.delete();
+            if (currentContainer.isMissing()) {
+              // Check if the missing container is deleted in SCM
+              ContainerStatusInSCM containerStatus =
+                  containerDeletedInSCM(currentContainer.getContainer());
+              if (!Objects.equals(containerStatus,
+                  ContainerStatusInSCM.NOT_DELETED)) {
+                rec.delete();
+
+                if (Objects.equals(containerStatus,
+                    ContainerStatusInSCM.NOT_FOUND)) {
+                  try {
+                    containerManager.deleteContainer(
+                        currentContainer.getContainer().containerID());
+                  } catch (IOException ex) {
+                    LOG.error("Unable to delete container during " +
+                              "periodic container health task.");
+                  }
+                }
+              }
             }
             existingRecords.add(rec.getContainerState());
             if (rec.changed()) {
@@ -211,7 +237,9 @@ public class ContainerHealthTask extends ReconScmTask {
         return;
       }
       // For containers deleted in SCM, we sync the container state here.
-      if (h.isMissing() && containerDeletedInSCM(container)) {
+      if (h.isMissing() &&
+          Objects.equals(containerDeletedInSCM(container),
+              ContainerStatusInSCM.DELETED)) {
         return;
       }
       containerHealthSchemaManager.insertUnhealthyContainerRecords(
@@ -222,7 +250,8 @@ public class ContainerHealthTask extends ReconScmTask {
     }
   }
 
-  private boolean containerDeletedInSCM(ContainerInfo containerInfo) {
+  private ContainerStatusInSCM containerDeletedInSCM(
+      ContainerInfo containerInfo) {
     try {
       ContainerWithPipeline containerWithPipeline =
           scmClient.getContainerWithPipeline(containerInfo.getContainerID());
@@ -239,16 +268,22 @@ public class ContainerHealthTask extends ReconScmTask {
           containerManager.updateContainerState(containerInfo.containerID(),
               HddsProtos.LifeCycleEvent.CLEANUP);
         }
-        return true;
+        return ContainerStatusInSCM.DELETED;
       }
     } catch (InvalidStateTransitionException e) {
       LOG.error("Failed to transition Container state while processing " +
           "container in Container Health task", e);
     } catch (IOException e) {
-      LOG.error("Got exception while processing container in" +
-          " Container Health task", e);
+      Throwable t = SCMHAUtils.unwrapException(e);
+      if (t instanceof ContainerNotFoundException) {
+        LOG.error("Container not present in SCM", t);
+        return ContainerStatusInSCM.NOT_FOUND;
+      } else {
+        LOG.error("Got exception while processing container in" +
+            " Container Health task", e);
+      }
     }
-    return false;
+    return ContainerStatusInSCM.NOT_DELETED;
   }
 
   /**
