@@ -451,6 +451,13 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
             .setScmListContainerResponse(listContainer(
                 request.getScmListContainerRequest()))
             .build();
+      case DeleteContainer:
+        return ScmContainerLocationResponse.newBuilder()
+            .setCmdType(request.getCmdType())
+            .setStatus(Status.OK)
+            .setScmDeleteContainerResponse(deleteContainer(
+                request.getScmDeleteContainerRequest()))
+            .build();
       case QueryNode:
         return ScmContainerLocationResponse.newBuilder()
             .setCmdType(request.getCmdType())

@@ -113,6 +113,13 @@ public interface ScmClient extends Closeable {
   void deleteContainer(long containerId, boolean force) throws IOException;
 
   /**
+   * Checks if the container is missing and then deletes it in the SCM.
+   * @param containerId - ID of the container.
+   * @throws IOException
+   */
+  void deleteMissingContainerInSCM(long containerId) throws IOException;
+
+  /**
    * Lists a range of containers and get their info.
    *
    * @param startContainerID start containerID.
