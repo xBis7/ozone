@@ -521,33 +521,6 @@ public class ReconContainerMetadataManagerImpl
   }
 
   /**
-   * Remove a container from all mapping tables.
-   * Keep the container only in "containerReplicaHistoryTable".
-   */
-  @Override
-  public void removeContainerFromMappingTables(long containerID)
-      throws IOException {
-    try (RDBBatchOperation batchOperation = new RDBBatchOperation()) {
-      // Check if container exists in containerKeyCountTable
-      if (doesContainerExists(containerID)) {
-        containerKeyCountTable
-            .deleteWithBatch(batchOperation, containerID);
-      }
-
-      Map<ContainerKeyPrefix, Integer> keyPrefixesMap =
-          getKeyPrefixesForContainer(containerID);
-      for (ContainerKeyPrefix keyPrefix : keyPrefixesMap.keySet()) {
-        // Deleting from keyContainerTable
-        keyContainerTable.deleteWithBatch(batchOperation,
-            keyPrefix.toKeyPrefixContainer());
-        // Deleting from containerKeyTable
-        containerKeyTable.deleteWithBatch(batchOperation, keyPrefix);
-      }
-      commitBatchOperation(batchOperation);
-    }
-  }
-
-  /**
    * Get total count of containers.
    *
    * @return total count of containers.
@@ -569,16 +542,6 @@ public class ReconContainerMetadataManagerImpl
   @Override
   public TableIterator getKeyContainerTableIterator() throws IOException {
     return keyContainerTable.iterator();
-  }
-
-  @Override
-  public Table<ContainerKeyPrefix, Integer> getContainerKeyTable() {
-    return containerKeyTable;
-  }
-
-  @Override
-  public Table<KeyPrefixContainer, Integer> getKeyContainerTable() {
-    return keyContainerTable;
   }
 
   /**

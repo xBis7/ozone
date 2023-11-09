@@ -23,12 +23,10 @@ import static org.apache.hadoop.ozone.recon.OMMetadataManagerTestUtils.initializ
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.hadoop.hdds.utils.db.RDBBatchOperation;
 import org.apache.hadoop.ozone.recon.ReconTestInjector;
@@ -414,116 +412,6 @@ public class TestReconContainerMetadataManagerImpl {
     keyPrefixMap =
         reconContainerMetadataManager.getKeyPrefixesForContainer(containerId);
     assertEquals(1, keyPrefixMap.size());
-  }
-
-  @Test
-  public void testDeleteContainerFromMappingTables() throws Exception {
-    long containerId1 = ThreadLocalRandom.current().nextLong(100);
-    long containerId2 = containerId1 + 1;
-
-    // Populate keys and store them in
-    // "containerKeyTable" and "KeyContainerTable".
-    // For containerId1, 1 key with keyPrefix1 and 2 keys with keyPrefix2.
-    // For containerId2, 3 keys with keyPrefix3.
-    // 3 total keys for each container.
-    populateKeysInContainers(containerId1, containerId2);
-
-    // ContainerKeyPrefix
-    ContainerKeyPrefix containerKeyPrefix1 = ContainerKeyPrefix
-        .get(containerId1, keyPrefix1, 0);
-    ContainerKeyPrefix containerKeyPrefix2 = ContainerKeyPrefix
-        .get(containerId1, keyPrefix2, 0);
-    ContainerKeyPrefix containerKeyPrefix3 = ContainerKeyPrefix
-        .get(containerId2, keyPrefix3, 0);
-
-    // KeyPrefixContainer
-    KeyPrefixContainer keyPrefixContainer1 =
-        containerKeyPrefix1.toKeyPrefixContainer();
-    KeyPrefixContainer keyPrefixContainer2 =
-        containerKeyPrefix2.toKeyPrefixContainer();
-    KeyPrefixContainer keyPrefixContainer3 =
-        containerKeyPrefix3.toKeyPrefixContainer();
-
-    // Populate "containerKeyCountTable".
-    RDBBatchOperation rdbBatchOperation = new RDBBatchOperation();
-    reconContainerMetadataManager
-        .batchStoreContainerKeyCounts(rdbBatchOperation, containerId1, 3L);
-    reconContainerMetadataManager
-        .batchStoreContainerKeyCounts(rdbBatchOperation, containerId2, 3L);
-    reconContainerMetadataManager.commitBatchOperation(rdbBatchOperation);
-
-    // containerId1 has 2 key prefixes.
-    assertEquals(2, reconContainerMetadataManager
-        .getKeyPrefixesForContainer(containerId1).size());
-
-    // containerId2 has 1 key prefix.
-    assertEquals(1, reconContainerMetadataManager
-        .getKeyPrefixesForContainer(containerId2).size());
-
-    // Check ContainerKeyTable.
-    assertNotNull(reconContainerMetadataManager
-        .getContainerKeyTable().getIfExist(containerKeyPrefix1));
-    assertNotNull(reconContainerMetadataManager
-        .getContainerKeyTable().getIfExist(containerKeyPrefix2));
-    assertNotNull(reconContainerMetadataManager
-        .getContainerKeyTable().getIfExist(containerKeyPrefix3));
-
-    // Check KeyContainerTable.
-    assertNotNull(reconContainerMetadataManager
-        .getKeyContainerTable().getIfExist(keyPrefixContainer1));
-    assertNotNull(reconContainerMetadataManager
-        .getKeyContainerTable().getIfExist(keyPrefixContainer2));
-    assertNotNull(reconContainerMetadataManager
-        .getKeyContainerTable().getIfExist(keyPrefixContainer3));
-
-    // Check container key count table to see if containers exist.
-    assertTrue(reconContainerMetadataManager
-        .doesContainerExists(containerId1));
-    assertTrue(reconContainerMetadataManager
-        .doesContainerExists(containerId2));
-
-    // Both containers should have a key count larger than 0.
-    assertTrue(reconContainerMetadataManager
-        .getKeyCountForContainer(containerId1) > 0);
-    assertTrue(reconContainerMetadataManager
-        .getKeyCountForContainer(containerId2) > 0);
-
-    // Remove containerId1 from the tables.
-    reconContainerMetadataManager
-        .removeContainerFromMappingTables(containerId1);
-
-    // containerId1 shouldn't have any key prefixes or key count.
-    assertEquals(0, reconContainerMetadataManager
-        .getKeyPrefixesForContainer(containerId1).size());
-    assertFalse(reconContainerMetadataManager
-        .doesContainerExists(containerId1));
-    assertEquals(0L, reconContainerMetadataManager
-        .getKeyCountForContainer(containerId1));
-
-    // containerId1 has keyPrefix1 and keyPrefix2,
-    // check that these have been deleted.
-    assertNull(reconContainerMetadataManager
-        .getContainerKeyTable().getIfExist(containerKeyPrefix1));
-    assertNull(reconContainerMetadataManager
-        .getContainerKeyTable().getIfExist(containerKeyPrefix2));
-    assertNull(reconContainerMetadataManager
-        .getKeyContainerTable().getIfExist(keyPrefixContainer1));
-    assertNull(reconContainerMetadataManager
-        .getKeyContainerTable().getIfExist(keyPrefixContainer2));
-
-    // containerId2 should still exist in all tables.
-    assertEquals(1, reconContainerMetadataManager
-        .getKeyPrefixesForContainer(containerId2).size());
-    assertTrue(reconContainerMetadataManager
-        .doesContainerExists(containerId2));
-    assertEquals(3L, reconContainerMetadataManager
-        .getKeyCountForContainer(containerId2));
-
-    // containerId2 has keyPrefix3, check that it still exists.
-    assertNotNull(reconContainerMetadataManager
-        .getContainerKeyTable().getIfExist(containerKeyPrefix3));
-    assertNotNull(reconContainerMetadataManager
-        .getKeyContainerTable().getIfExist(keyPrefixContainer3));
   }
 
   @Test
