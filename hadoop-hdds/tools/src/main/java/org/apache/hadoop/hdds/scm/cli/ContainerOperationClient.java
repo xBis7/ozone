@@ -329,12 +329,13 @@ public class ContainerOperationClient implements ScmClient {
 
   @Override
   public void deleteMissingContainerInSCM(long containerId) throws IOException {
-    List<HddsProtos.SCMContainerReplicaProto> replicas =
-        storageContainerLocationClient
-            .getContainerReplicas(containerId, ClientVersion.CURRENT_VERSION);
-    if (replicas.size() == 0) {
-      storageContainerLocationClient.deleteContainer(containerId);
-    }
+//    List<HddsProtos.SCMContainerReplicaProto> replicas =
+//        storageContainerLocationClient
+//            .getContainerReplicas(containerId, ClientVersion.CURRENT_VERSION);
+//    if (replicas.size() == 0) {
+//      storageContainerLocationClient.deleteContainer(containerId);
+//    }
+    storageContainerLocationClient.deleteContainer(containerId);
   }
 
   @Override

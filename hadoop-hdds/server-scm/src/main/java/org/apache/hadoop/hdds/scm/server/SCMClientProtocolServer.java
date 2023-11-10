@@ -87,6 +87,7 @@ import org.apache.hadoop.ozone.audit.AuditLoggerType;
 import org.apache.hadoop.ozone.audit.AuditMessage;
 import org.apache.hadoop.ozone.audit.Auditor;
 import org.apache.hadoop.ozone.audit.SCMAction;
+import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.upgrade.UpgradeFinalizer.StatusAndMessages;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.token.Token;
@@ -575,14 +576,28 @@ public class SCMClientProtocolServer implements
     auditMap.put("remoteUser", remoteUser.getUserName());
     try {
       getScm().checkAdminAccess(remoteUser, false);
-      scm.getContainerManager().deleteContainer(
-          ContainerID.valueOf(containerID));
+      ContainerID id = ContainerID.valueOf(containerID);
+      // If the container is missing, then it's stuck in a CLOSING state.
+      // Update state to CLOSED, so that it can be updated to DELETING.
+      if (scm.getContainerManager().getContainerReplicas(id).size() == 0 &&
+          scm.getContainerManager().getContainer(id).getState() ==
+          HddsProtos.LifeCycleState.CLOSING) {
+        scm.getContainerManager().updateContainerState(id,
+            HddsProtos.LifeCycleEvent.CLOSE);
+      }
+      // If state is DELETING and container has 0 replicas, then
+      // DeletingContainerHandler will update the state to DELETED.
+      scm.getContainerManager().updateContainerState(id,
+          HddsProtos.LifeCycleEvent.DELETE);
+//      scm.getContainerManager().deleteContainer(
+//          ContainerID.valueOf(containerID));
       AUDIT.logWriteSuccess(buildAuditMessageForSuccess(
           SCMAction.DELETE_CONTAINER, auditMap));
     } catch (Exception ex) {
       AUDIT.logWriteFailure(buildAuditMessageForFailure(
           SCMAction.DELETE_CONTAINER, auditMap, ex));
-      throw ex;
+//      throw ex;
+      LOG.error("Ex: " + ex);
     }
   }
 

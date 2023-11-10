@@ -50,7 +50,7 @@ public class DeleteContainer extends ScmSubcommand {
 
   @Override
   protected void execute(ScmClient client) throws IOException {
-//    client.deleteMissingContainerInSCM(containerID);
-    client.deleteContainer(containerID, force);
+    client.deleteMissingContainerInSCM(containerID);
+//    client.deleteContainer(containerID, force);
   }
 }
