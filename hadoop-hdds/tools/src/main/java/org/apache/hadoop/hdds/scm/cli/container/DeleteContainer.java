@@ -41,8 +41,16 @@ public class DeleteContainer extends ScmSubcommand {
   )
   private long containerID;
 
+  @CommandLine.Option(
+      description = "Container ID",
+      names = {"-f", "--force"},
+      defaultValue = "false"
+  )
+  private boolean force;
+
   @Override
   protected void execute(ScmClient client) throws IOException {
-    client.deleteMissingContainerInSCM(containerID);
+//    client.deleteMissingContainerInSCM(containerID);
+    client.deleteContainer(containerID, force);
   }
 }
