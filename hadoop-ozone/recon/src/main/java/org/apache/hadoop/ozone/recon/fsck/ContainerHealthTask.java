@@ -179,21 +179,6 @@ public class ContainerHealthTask extends ReconScmTask {
             if (currentContainer.isMissing() &&
                 containerDeletedInSCM(currentContainer.getContainer())) {
               rec.delete();
-              ContainerID id = currentContainer.getContainer().containerID();
-              try {
-                if (containerManager.getContainer(id)
-                        .getState() == HddsProtos.LifeCycleState.CLOSING) {
-                  containerManager.updateContainerState(id,
-                      HddsProtos.LifeCycleEvent.CLOSE);
-                }
-                containerManager.updateContainerState(id,
-                    HddsProtos.LifeCycleEvent.DELETE);
-                containerManager.updateContainerState(id,
-                    HddsProtos.LifeCycleEvent.CLEANUP);
-              } catch (InvalidStateTransitionException | IOException ex) {
-                LOG.error("Exception while updating " +
-                          "deleted container state: " + ex);
-              }
             }
             existingRecords.add(rec.getContainerState());
             if (rec.changed()) {
@@ -243,6 +228,10 @@ public class ContainerHealthTask extends ReconScmTask {
           scmClient.getContainerWithPipeline(containerInfo.getContainerID());
       if (containerWithPipeline.getContainerInfo().getState() ==
           HddsProtos.LifeCycleState.DELETED) {
+        if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSING) {
+          containerManager.updateContainerState(containerInfo.containerID(),
+              HddsProtos.LifeCycleEvent.CLOSE);
+        }
         if (containerInfo.getState() == HddsProtos.LifeCycleState.CLOSED) {
           containerManager.updateContainerState(containerInfo.containerID(),
               HddsProtos.LifeCycleEvent.DELETE);
