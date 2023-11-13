@@ -21,28 +21,25 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.RandomUtils;
-import org.apache.hadoop.conf.ReconfigurationException;
 import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto
     .StorageContainerDatanodeProtocolProtos.ContainerReplicaProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerResponseProto;
 import org.apache.hadoop.hdds.scm.ScmConfigKeys;
 import org.apache.hadoop.hdds.scm.container.common.helpers.ContainerWithPipeline;
-import org.apache.hadoop.ipc.Server;
 import org.apache.hadoop.ozone.MiniOzoneCluster;
 import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.scm.server.StorageContainerManager;
 import org.apache.hadoop.ozone.common.statemachine.InvalidStateTransitionException;
 import org.apache.hadoop.ozone.container.common.SCMTestUtils;
-import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authentication.client.AuthenticationException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +51,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_DATANODE_PIPELINE_LIMIT;
-import static org.apache.hadoop.ozone.OzoneConfigKeys.OZONE_ADMINISTRATORS;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests for ContainerStateManager.
@@ -124,8 +119,8 @@ public class TestContainerStateManagerIntegration {
   }
 
   @Test
-  public void testDeleteContainer()
-      throws IOException, ReconfigurationException {
+  public void testDeleteUnhealthyContainerInSCM()
+      throws IOException, InvalidStateTransitionException {
     // Allocate a container
     ContainerWithPipeline containerWithPipeline = scm.getClientProtocolServer()
         .allocateContainer(HddsProtos.ReplicationType.STAND_ALONE,
@@ -133,34 +128,31 @@ public class TestContainerStateManagerIntegration {
     long containerID = containerWithPipeline
         .getContainerInfo().getContainerID();
 
-    // This should succeed
-    scm.getClientProtocolServer().getContainer(containerID);
+    Assertions.assertEquals(
+        HddsProtos.LifeCycleState.OPEN,
+        scm.getClientProtocolServer().getContainer(containerID).getState());
 
-    // Create RemoteUser
-    String ozoneUser = OzoneConsts.OZONE;
-    UserGroupInformation ugi = UserGroupInformation
-        .createRemoteUser(ozoneUser);
+    // Operation should fail because container is OPEN.
+    SCMDeleteUnhealthyContainerResponseProto response =
+        scm.getClientProtocolServer()
+            .deleteUnhealthyContainerInSCM(containerID);
+    Assertions.assertFalse(response.getSuccess());
+    Assertions.assertTrue(response.getErrorMsg().contains("OPEN"));
 
-    // Make the user an SCM admin
-    conf.set(OZONE_ADMINISTRATORS, ozoneUser);
-    scm.getReconfigurationHandler()
-        .reconfigurePropertyImpl(OZONE_ADMINISTRATORS, ozoneUser);
+    // Closing the container from a client, can make the test flaky due to
+    // the possibility of a timeout while waiting for the state to be updated.
+    scm.getContainerManager().getContainerStateManager().updateContainerState(
+        ContainerID.valueOf(containerID).getProtobuf(),
+        HddsProtos.LifeCycleEvent.FINALIZE);
 
-    // DeleteContainer gets the remote user from Server.getCurCall(),
-    // so set the remote user there.
-    Server.Call call = Mockito.mock(Server.Call.class);
-    when(call.getRemoteUser()).thenReturn(ugi);
-    Server.getCurCall().set(call);
+    // Mark container as DELETED.
+    response = scm.getClientProtocolServer()
+                   .deleteUnhealthyContainerInSCM(containerID);
+    Assertions.assertTrue(response.getSuccess());
 
-    // Delete the container
-    scm.getClientProtocolServer().deleteContainer(containerID);
-
-    // Getting a deleted container should result in a ContainerNotFoundException
-    Assertions.assertThrows(ContainerNotFoundException.class,
-        () -> scm.getClientProtocolServer().getContainer(containerID));
-
-    // Reset Server's current call
-    Server.getCurCall().set(null);
+    Assertions.assertEquals(
+        HddsProtos.LifeCycleState.DELETING,
+        scm.getClientProtocolServer().getContainer(containerID).getState());
   }
 
   @Test

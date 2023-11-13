@@ -112,7 +112,7 @@ public class TestContainerStateManager {
 
   @Test
   public void checkReplicationStateOK()
-      throws IOException, TimeoutException {
+      throws IOException {
     //GIVEN
     ContainerInfo c1 = allocateContainer();
 
@@ -134,7 +134,7 @@ public class TestContainerStateManager {
 
   @Test
   public void checkReplicationStateMissingReplica()
-      throws IOException, TimeoutException {
+      throws IOException {
     //GIVEN
 
     ContainerInfo c1 = allocateContainer();
@@ -155,7 +155,7 @@ public class TestContainerStateManager {
 
   @Test
   public void testRemoveContainer()
-      throws IOException, TimeoutException {
+      throws IOException {
     ContainerInfo containerInfo = allocateContainer();
     ContainerID containerID = containerInfo.containerID();
     HddsProtos.ContainerID protoContainerID =
@@ -185,7 +185,7 @@ public class TestContainerStateManager {
   }
 
   private ContainerInfo allocateContainer()
-      throws IOException, TimeoutException {
+      throws IOException {
 
     final ContainerInfo containerInfo = new ContainerInfo.Builder()
         .setState(HddsProtos.LifeCycleState.OPEN)
