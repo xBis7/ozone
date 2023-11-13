@@ -37,6 +37,7 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.ReconfigureProtocolProtos.ReconfigureProtocolService;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.DeletedBlocksTransactionInfo;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.DecommissionScmResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.DecommissionScmResponseProto.Builder;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.StartContainerBalancerResponseProto;
@@ -576,8 +577,44 @@ public class SCMClientProtocolServer implements
     auditMap.put("remoteUser", remoteUser.getUserName());
     try {
       getScm().checkAdminAccess(remoteUser, false);
-      ContainerID id = ContainerID.valueOf(containerID);
-      // If the container is missing, then it's stuck in a CLOSING state.
+      scm.getContainerManager().deleteContainer(
+          ContainerID.valueOf(containerID));
+      AUDIT.logWriteSuccess(buildAuditMessageForSuccess(
+          SCMAction.DELETE_CONTAINER, auditMap));
+    } catch (Exception ex) {
+      AUDIT.logWriteFailure(buildAuditMessageForFailure(
+          SCMAction.DELETE_CONTAINER, auditMap, ex));
+      throw ex;
+    }
+  }
+
+  /**
+   * Marks an unhealthy container as DELETED in SCM.
+   *
+   * @param containerID container ID.
+   */
+  @Override
+  public SCMDeleteUnhealthyContainerResponseProto deleteUnhealthyContainerInSCM(
+      long containerID) throws IOException {
+    Map<String, String> auditMap = Maps.newHashMap();
+    auditMap.put("containerID", String.valueOf(containerID));
+    UserGroupInformation remoteUser = getRemoteUser();
+    auditMap.put("remoteUser", remoteUser.getUserName());
+    ContainerID id = ContainerID.valueOf(containerID);
+    SCMDeleteUnhealthyContainerResponseProto.Builder responseBuilder =
+        SCMDeleteUnhealthyContainerResponseProto.newBuilder();
+    try {
+      getScm().checkAdminAccess(remoteUser, false);
+      // If the container is in OPEN state, then the container is healthy.
+      if (scm.getContainerManager().getContainer(id).getState() ==
+          HddsProtos.LifeCycleState.OPEN) {
+        return responseBuilder
+                   .setSuccess(false)
+                   .setErrorMsg("Container is in OPEN state.")
+                   .build();
+      }
+      // If the container has gone missing, while being in an OPEN state,
+      // then it will be stuck in a CLOSING state.
       // Update state to CLOSED, so that it can be updated to DELETING.
       if (scm.getContainerManager().getContainerReplicas(id).size() == 0 &&
           scm.getContainerManager().getContainer(id).getState() ==
@@ -585,20 +622,40 @@ public class SCMClientProtocolServer implements
         scm.getContainerManager().updateContainerState(id,
             HddsProtos.LifeCycleEvent.CLOSE);
       }
+
+      // For QUASI_CLOSED_STUCK containers.
+      if (scm.getContainerManager().getContainer(id).getState() ==
+          HddsProtos.LifeCycleState.QUASI_CLOSED) {
+        scm.getContainerManager().updateContainerState(id,
+            HddsProtos.LifeCycleEvent.CLOSE);
+        // TODO: If the container is in QUASI_CLOSED_STUCK then
+        //  it's replicas will also be in QUASI_CLOSED state.
+        //  Move the replicas to CLOSED?
+        //  Do we want to proceed and update them to DELETED?
+        //  Moving them to CLOSED might make them healthy and replicable again.
+        //  Return success for now.
+        return responseBuilder
+                   .setSuccess(true)
+                   .build();
+      }
+
       // If state is DELETING and container has 0 replicas, then
       // DeletingContainerHandler will update the state to DELETED.
       scm.getContainerManager().updateContainerState(id,
           HddsProtos.LifeCycleEvent.DELETE);
-//      scm.getContainerManager().deleteContainer(
-//          ContainerID.valueOf(containerID));
       AUDIT.logWriteSuccess(buildAuditMessageForSuccess(
-          SCMAction.DELETE_CONTAINER, auditMap));
+          SCMAction.MARK_UNHEALTHY_CONTAINER_AS_DELETED, auditMap));
     } catch (Exception ex) {
       AUDIT.logWriteFailure(buildAuditMessageForFailure(
-          SCMAction.DELETE_CONTAINER, auditMap, ex));
-//      throw ex;
-      LOG.error("Ex: " + ex);
+          SCMAction.MARK_UNHEALTHY_CONTAINER_AS_DELETED, auditMap, ex));
+      return responseBuilder
+                 .setSuccess(false)
+                 .setErrorMsg(ex.getMessage())
+                 .build();
     }
+    return responseBuilder
+               .setSuccess(true)
+               .build();
   }
 
   @Override

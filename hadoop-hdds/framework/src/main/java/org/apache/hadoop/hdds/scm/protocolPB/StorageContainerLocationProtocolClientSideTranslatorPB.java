@@ -30,6 +30,8 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos.GetScmInfoResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.TransferLeadershipRequestProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.UpgradeFinalizationStatus;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerRequestProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.FinalizeScmUpgradeRequestProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.FinalizeScmUpgradeResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.GetFailedDeletedBlocksTxnRequestProto;
@@ -450,6 +452,27 @@ public final class StorageContainerLocationProtocolClientSideTranslatorPB
     submitRequest(Type.DeleteContainer,
         builder -> builder.setScmDeleteContainerRequest(request));
 
+  }
+
+  /**
+   * Marks an unhealthy container as DELETED in SCM.
+   *
+   * @param containerID container ID.
+   */
+  @Override
+  public SCMDeleteUnhealthyContainerResponseProto deleteUnhealthyContainerInSCM(
+      long containerID) throws IOException {
+    Preconditions.checkState(containerID >= 0,
+        "Container ID cannot be negative");
+    SCMDeleteUnhealthyContainerRequestProto request =
+        SCMDeleteUnhealthyContainerRequestProto
+            .newBuilder()
+            .setContainerID(containerID)
+            .setTraceID(TracingUtil.exportCurrentSpan())
+            .build();
+    return submitRequest(Type.DeleteUnhealthyContainerInSCM,
+        builder -> builder.setScmDeleteUnhealthyContainerRequest(request))
+               .getScmDeleteUnhealthyContainerResponse();
   }
 
   /**

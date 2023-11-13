@@ -21,6 +21,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hdds.annotation.InterfaceStability;
 import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.DeletedBlocksTransactionInfo;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.DecommissionScmResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.StartContainerBalancerResponseProto;
 import org.apache.hadoop.hdds.scm.DatanodeAdminError;
@@ -113,11 +114,14 @@ public interface ScmClient extends Closeable {
   void deleteContainer(long containerId, boolean force) throws IOException;
 
   /**
-   * Checks if the container is missing and then deletes it in the SCM.
-   * @param containerId - ID of the container.
+   * Marks an unhealthy container as DELETED in SCM.
+   *
+   * @param containerId container ID.
+   * @return SCMDeleteUnhealthyContainerResponseProto.
    * @throws IOException
    */
-  void deleteMissingContainerInSCM(long containerId) throws IOException;
+  SCMDeleteUnhealthyContainerResponseProto deleteUnhealthyContainerInSCM(
+      long containerId) throws IOException;
 
   /**
    * Lists a range of containers and get their info.

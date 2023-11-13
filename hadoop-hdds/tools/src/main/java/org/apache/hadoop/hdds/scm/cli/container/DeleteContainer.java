@@ -20,16 +20,18 @@ package org.apache.hadoop.hdds.scm.cli.container;
 import org.apache.hadoop.hdds.cli.HddsVersionProvider;
 import org.apache.hadoop.hdds.scm.cli.ScmSubcommand;
 import org.apache.hadoop.hdds.scm.client.ScmClient;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerResponseProto;
 import picocli.CommandLine;
 
 import java.io.IOException;
 
 /**
- * This is the handler that process container creation command.
+ * This is the handler that processes unhealthy
+ * container deletion in SCM command.
  */
 @CommandLine.Command(
     name = "delete",
-    description = "Delete container",
+    description = "Delete unhealthy container",
     mixinStandardHelpOptions = true,
     versionProvider = HddsVersionProvider.class)
 public class DeleteContainer extends ScmSubcommand {
@@ -41,16 +43,13 @@ public class DeleteContainer extends ScmSubcommand {
   )
   private long containerID;
 
-  @CommandLine.Option(
-      description = "Container ID",
-      names = {"-f", "--force"},
-      defaultValue = "false"
-  )
-  private boolean force;
-
   @Override
   protected void execute(ScmClient client) throws IOException {
-    client.deleteMissingContainerInSCM(containerID);
-//    client.deleteContainer(containerID, force);
+    SCMDeleteUnhealthyContainerResponseProto response =
+        client.deleteUnhealthyContainerInSCM(containerID);
+    String msg = response.getSuccess() ?
+                     "Operation was successful." :
+                     "Operation failed: " + response.getErrorMsg();
+    System.out.println(msg);
   }
 }
