@@ -21,6 +21,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.DeletedBlocksTransactionInfo;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.DecommissionScmResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.StartContainerBalancerResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.Type;
@@ -218,6 +219,14 @@ public interface StorageContainerLocationProtocol extends Closeable {
    *   or container doesn't exist.
    */
   void deleteContainer(long containerID) throws IOException;
+
+  /**
+   * Marks an unhealthy container as DELETED in SCM.
+   *
+   * @param containerID container ID.
+   */
+  SCMDeleteUnhealthyContainerResponseProto deleteUnhealthyContainerInSCM(
+      long containerID) throws IOException;
 
   /**
    *  Queries a list of Node Statuses. Passing a null for either opState or

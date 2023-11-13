@@ -29,6 +29,8 @@ import org.apache.hadoop.hdds.protocol.proto.HddsProtos.TransferLeadershipReques
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.TransferLeadershipResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos.UpgradeFinalizationStatus;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerRequestProto;
+import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.SCMDeleteUnhealthyContainerResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.ActivatePipelineRequestProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.ActivatePipelineResponseProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerLocationProtocolProtos.ClosePipelineRequestProto;
@@ -451,13 +453,6 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
             .setScmListContainerResponse(listContainer(
                 request.getScmListContainerRequest()))
             .build();
-      case DeleteContainer:
-        return ScmContainerLocationResponse.newBuilder()
-            .setCmdType(request.getCmdType())
-            .setStatus(Status.OK)
-            .setScmDeleteContainerResponse(deleteContainer(
-                request.getScmDeleteContainerRequest()))
-            .build();
       case QueryNode:
         return ScmContainerLocationResponse.newBuilder()
             .setCmdType(request.getCmdType())
@@ -699,6 +694,14 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
               .setDecommissionScmResponse(decommissionScm(
                   request.getDecommissionScmRequest()))
               .build();
+      case DeleteUnhealthyContainerInSCM:
+        return ScmContainerLocationResponse.newBuilder()
+               .setCmdType(request.getCmdType())
+               .setStatus(Status.OK)
+               .setScmDeleteUnhealthyContainerResponse(
+                   deleteUnhealthyContainerInSCM(
+                       request.getScmDeleteUnhealthyContainerRequest()))
+               .build();
       default:
         throw new IllegalArgumentException(
             "Unknown command type: " + request.getCmdType());
@@ -1231,5 +1234,10 @@ public final class StorageContainerLocationProtocolServerSideTranslatorPB
       DecommissionScmRequestProto request) throws IOException {
     return impl.decommissionScm(
         request.getScmId());
+  }
+
+  public SCMDeleteUnhealthyContainerResponseProto deleteUnhealthyContainerInSCM(
+      SCMDeleteUnhealthyContainerRequestProto request) throws IOException {
+    return impl.deleteUnhealthyContainerInSCM(request.getContainerID());
   }
 }

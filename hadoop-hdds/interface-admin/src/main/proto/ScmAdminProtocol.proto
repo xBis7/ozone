@@ -81,6 +81,7 @@ message ScmContainerLocationRequest {
   optional TransferLeadershipRequestProto  transferScmLeadershipRequest = 42;
   optional GetFailedDeletedBlocksTxnRequestProto getFailedDeletedBlocksTxnRequest = 43;
   optional DecommissionScmRequestProto decommissionScmRequest = 44;
+  optional SCMDeleteUnhealthyContainerRequestProto scmDeleteUnhealthyContainerRequest = 45;
 }
 
 message ScmContainerLocationResponse {
@@ -133,6 +134,7 @@ message ScmContainerLocationResponse {
   optional TransferLeadershipResponseProto  transferScmLeadershipResponse = 42;
   optional GetFailedDeletedBlocksTxnResponseProto getFailedDeletedBlocksTxnResponse = 43;
   optional DecommissionScmResponseProto decommissionScmResponse = 44;
+  optional SCMDeleteUnhealthyContainerResponseProto scmDeleteUnhealthyContainerResponse = 45;
 
   enum Status {
     OK = 1;
@@ -184,6 +186,7 @@ enum Type {
   TransferLeadership = 38;
   GetFailedDeletedBlocksTransaction = 39;
   DecommissionScm = 40;
+  DeleteUnhealthyContainerInSCM = 41;
 }
 
 /**
@@ -294,6 +297,17 @@ message SCMDeleteContainerRequestProto {
 
 message SCMDeleteContainerResponseProto {
   // Empty response
+}
+
+message SCMDeleteUnhealthyContainerRequestProto {
+  required int64 containerID = 1;
+  optional string traceID = 2;
+
+}
+
+message SCMDeleteUnhealthyContainerResponseProto {
+  required bool success = 1;
+  optional string errorMsg = 2;
 }
 
 message SCMCloseContainerRequestProto {
