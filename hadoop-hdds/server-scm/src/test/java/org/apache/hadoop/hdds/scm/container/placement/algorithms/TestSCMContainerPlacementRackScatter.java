@@ -21,6 +21,7 @@ import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.conf.StorageUnit;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.MockDatanodeDetails;
+import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.MetadataStorageReportProto;
 import org.apache.hadoop.hdds.protocol.proto.StorageContainerDatanodeProtocolProtos.StorageReportProto;
 import org.apache.hadoop.hdds.scm.ContainerPlacementStatus;
@@ -567,6 +568,67 @@ public class TestSCMContainerPlacementRackScatter {
     stat = policy.validateContainerPlacement(dns, 1);
     assertTrue(stat.isPolicySatisfied());
     assertEquals(0, stat.misReplicationCount());
+  }
+
+  @Test
+  public void testOutOfServiceNodes() {
+    //    6 datanodes, 2 per rack.
+    //    /rack0/node0
+    //    /rack0/node1
+    //    /rack1/node2
+    //    /rack1/node3
+    //    /rack2/node4
+    //    /rack2/node5
+    setup(6, 2);
+
+    System.out.println("--xbis--");
+    System.out.println(nodeManager.getClusterNetworkTopologyMap());
+    System.out.println("--xbis--");
+
+    // We consider having 1 replica per datanode
+    // Compare it with the replica param      (??)
+    // Check each nodes rack.
+
+    // Find a scenario of misreplication
+    // Decom one node and set in maintenance another one
+    // and make sure there isn't misreplication anymore.
+    List<DatanodeDetails> dns = new ArrayList<>();
+    dns.add(datanodes.get(0));
+    dns.add(datanodes.get(1));
+    dns.add(datanodes.get(2));
+    dns.add(datanodes.get(3));
+
+    ContainerPlacementStatus status = policy.validateContainerPlacement(dns, 2);
+
+    System.out.println("\nBefore:");
+    // Number of racks, the container is on
+    System.out.println("actual plac count: " + status.actualPlacementCount());
+    // Number of racks the container should be on
+    System.out.println("exp plac count: " + status.expectedPlacementCount());
+    // How many additional replicas need to be placed?
+    System.out.println("mis repl count: " + status.misReplicationCount());
+    System.out.println("mis repl reason: " + status.misReplicatedReason());
+
+    dns = new ArrayList<>();
+    datanodes.get(0).setPersistedOpState(
+        HddsProtos.NodeOperationalState.DECOMMISSIONING);
+    datanodes.get(2).setPersistedOpState(
+        HddsProtos.NodeOperationalState.IN_MAINTENANCE);
+    dns.add(datanodes.get(0));
+    dns.add(datanodes.get(1));
+    dns.add(datanodes.get(2));
+    dns.add(datanodes.get(3));
+
+    status = policy.validateContainerPlacement(dns, 2);
+
+    System.out.println("\nAfter:");
+    // Number of racks, the container is on
+    System.out.println("actual plac count: " + status.actualPlacementCount());
+    // Number of racks the container should be on
+    System.out.println("exp plac count: " + status.expectedPlacementCount());
+    // How many additional replicas need to be placed?
+    System.out.println("mis repl count: " + status.misReplicationCount());
+    System.out.println("mis repl reason: " + status.misReplicatedReason());
   }
 
   public List<DatanodeDetails> getDatanodes(List<Integer> dnIndexes) {

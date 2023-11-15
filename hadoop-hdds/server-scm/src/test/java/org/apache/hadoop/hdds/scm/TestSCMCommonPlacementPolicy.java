@@ -453,6 +453,11 @@ public class TestSCMCommonPlacementPolicy {
     Assertions.assertTrue(usedNodesIdentity.get());
   }
 
+  @Test
+  public void testValidateContainerPlacementWithOutOfServiceNodes() {
+
+  }
+
   private static class DummyPlacementPolicy extends SCMCommonPlacementPolicy {
     private Map<DatanodeDetails, Node> rackMap;
     private List<Node> racks;
