@@ -106,14 +106,21 @@ public class OMSnapshotCreateRequest extends OMClientRequest {
     // Verify name
     OmUtils.validateSnapshotName(snapshotName);
 
-    UserGroupInformation ugi = createUGIForApi();
-    String bucketOwner = ozoneManager.getBucketOwner(volumeName, bucketName,
-        IAccessAuthorizer.ACLType.READ, OzoneObj.ResourceType.BUCKET);
-    if (!ozoneManager.isAdmin(ugi) &&
-        !ozoneManager.isOwner(ugi, bucketOwner)) {
-      throw new OMException(
-          "Only bucket owners and Ozone admins can create snapshots",
-          OMException.ResultCodes.PERMISSION_DENIED);
+    // check Acl
+    if (ozoneManager.getAclsEnabled()) {
+      checkAcls(ozoneManager, OzoneObj.ResourceType.BUCKET,
+          OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.READ,
+          volumeName, bucketName, null);
+    } else {
+      UserGroupInformation ugi = createUGIForApi();
+      String bucketOwner = ozoneManager.getBucketOwner(volumeName, bucketName,
+          IAccessAuthorizer.ACLType.READ, OzoneObj.ResourceType.BUCKET);
+      if (!ozoneManager.isAdmin(ugi) &&
+          !ozoneManager.isOwner(ugi, bucketOwner)) {
+        throw new OMException(
+            "Only bucket owners and Ozone admins can create snapshots",
+            OMException.ResultCodes.PERMISSION_DENIED);
+      }
     }
 
     return omRequest.toBuilder().setCreateSnapshotRequest(
