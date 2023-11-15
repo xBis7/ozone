@@ -43,6 +43,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
@@ -69,6 +70,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -94,6 +96,15 @@ public class TestSCMContainerPlacementRackScatter {
   private static IntStream numDatanodes() {
     return IntStream.concat(IntStream.rangeClosed(3, 15),
         IntStream.of(20, 25, 30));
+  }
+
+  private static Stream<Arguments> outOfServiceNodeStates() {
+    return Stream.of(
+        Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONING),
+        Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONED),
+        Arguments.of(HddsProtos.NodeOperationalState.ENTERING_MAINTENANCE),
+        Arguments.of(HddsProtos.NodeOperationalState.IN_MAINTENANCE)
+    );
   }
 
   private void updateStorageInDatanode(int dnIndex, long used, long remaining) {
@@ -570,65 +581,65 @@ public class TestSCMContainerPlacementRackScatter {
     assertEquals(0, stat.misReplicationCount());
   }
 
-  @Test
-  public void testOutOfServiceNodes() {
-    //    6 datanodes, 2 per rack.
-    //    /rack0/node0
-    //    /rack0/node1
-    //    /rack1/node2
-    //    /rack1/node3
-    //    /rack2/node4
-    //    /rack2/node5
+  @ParameterizedTest
+  @MethodSource("outOfServiceNodeStates")
+  public void testReplicaOnOutOfServiceNode(
+      HddsProtos.NodeOperationalState state) {
     setup(6, 2);
+    //    6 datanodes, 2 per rack.
+    //    /rack0/node0  -> used
+    //    /rack0/node1
+    //    /rack1/node2  -> used
+    //    /rack1/node3
+    //    /rack2/node4  -> used
+    //    /rack2/node5
 
-    System.out.println("--xbis--");
-    System.out.println(nodeManager.getClusterNetworkTopologyMap());
-    System.out.println("--xbis--");
-
-    // We consider having 1 replica per datanode
-    // Compare it with the replica param      (??)
-    // Check each nodes rack.
-
-    // Find a scenario of misreplication
-    // Decom one node and set in maintenance another one
-    // and make sure there isn't misreplication anymore.
     List<DatanodeDetails> dns = new ArrayList<>();
     dns.add(datanodes.get(0));
-    dns.add(datanodes.get(1));
     dns.add(datanodes.get(2));
-    dns.add(datanodes.get(3));
+    dns.add(datanodes.get(4));
 
-    ContainerPlacementStatus status = policy.validateContainerPlacement(dns, 2);
+    // Placement policy is satisfied.
+    ContainerPlacementStatus status = policy.validateContainerPlacement(dns, 3);
+    assertTrue(status.isPolicySatisfied());
+    assertEquals(3, status.actualPlacementCount());
+    assertEquals(3, status.expectedPlacementCount());
+    assertEquals(0, status.misReplicationCount());
+    assertNull(status.misReplicatedReason());
 
-    System.out.println("\nBefore:");
-    // Number of racks, the container is on
-    System.out.println("actual plac count: " + status.actualPlacementCount());
-    // Number of racks the container should be on
-    System.out.println("exp plac count: " + status.expectedPlacementCount());
-    // How many additional replicas need to be placed?
-    System.out.println("mis repl count: " + status.misReplicationCount());
-    System.out.println("mis repl reason: " + status.misReplicatedReason());
+    // If '/rack0/node0' enters decommissioning, a replica will be stored in
+    // '/rock0/node1'. Replica on '/rack0/node0' isn't available and shouldn't
+    // be considered mis-replicated. Placement policy should be satisfied.
 
     dns = new ArrayList<>();
-    datanodes.get(0).setPersistedOpState(
-        HddsProtos.NodeOperationalState.DECOMMISSIONING);
-    datanodes.get(2).setPersistedOpState(
-        HddsProtos.NodeOperationalState.IN_MAINTENANCE);
     dns.add(datanodes.get(0));
     dns.add(datanodes.get(1));
     dns.add(datanodes.get(2));
-    dns.add(datanodes.get(3));
+    dns.add(datanodes.get(4));
 
-    status = policy.validateContainerPlacement(dns, 2);
+    // All 4 nodes are IN_SERVICE, policy isn't satisfied.
+    status = policy.validateContainerPlacement(dns, 3);
+    assertFalse(status.isPolicySatisfied());
+    assertEquals(3, status.actualPlacementCount());
+    assertEquals(3, status.expectedPlacementCount());
+    assertEquals(1, status.misReplicationCount());
+    assertTrue(status.misReplicatedReason()
+                   .contains("number of replicas per rack are [1, 1, 2]"));
 
-    System.out.println("\nAfter:");
-    // Number of racks, the container is on
-    System.out.println("actual plac count: " + status.actualPlacementCount());
-    // Number of racks the container should be on
-    System.out.println("exp plac count: " + status.expectedPlacementCount());
-    // How many additional replicas need to be placed?
-    System.out.println("mis repl count: " + status.misReplicationCount());
-    System.out.println("mis repl reason: " + status.misReplicatedReason());
+    dns = new ArrayList<>();
+    datanodes.get(0).setPersistedOpState(state);
+    dns.add(datanodes.get(0));
+    dns.add(datanodes.get(1));
+    dns.add(datanodes.get(2));
+    dns.add(datanodes.get(4));
+
+    // '/rack0/node0' is out of service, policy is satisfied.
+    status = policy.validateContainerPlacement(dns, 3);
+    assertTrue(status.isPolicySatisfied());
+    assertEquals(3, status.actualPlacementCount());
+    assertEquals(3, status.expectedPlacementCount());
+    assertEquals(0, status.misReplicationCount());
+    assertNull(status.misReplicatedReason());
   }
 
   public List<DatanodeDetails> getDatanodes(List<Integer> dnIndexes) {
