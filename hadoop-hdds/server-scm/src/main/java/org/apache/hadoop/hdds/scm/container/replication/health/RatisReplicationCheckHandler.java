@@ -186,8 +186,15 @@ public class RatisReplicationCheckHandler extends AbstractCheck {
             minReplicasForMaintenance, false);
     boolean sufficientlyReplicated
         = replicaCount.isSufficientlyReplicated(false);
+    LOG.info("xbis: containerID: " + container.getContainerID() +
+             " | sufficientlyRepl: " + sufficientlyReplicated);
     if (!sufficientlyReplicated) {
-      return replicaCount.toUnderHealthResult();
+      LOG.info("xbis: replicas: " + replicas);
+      ContainerHealthResult.UnderReplicatedHealthResult result =
+          replicaCount.toUnderHealthResult();
+      LOG.info("xbis: underReplicatedHealthResult: " + result.toString());
+      return result;
+//      return replicaCount.toUnderHealthResult();
     }
 
     /*

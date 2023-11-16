@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -14,9 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-10.5.0.4	/rack1
-10.5.0.5	/rack1
-10.5.0.6	/rack2
-10.5.0.7	/rack2
-10.5.0.8	/rack3
-10.5.0.9	/rack3
+docker-compose up -d
+
+sleep 30
+
+docker-compose exec -T scm ozone freon ockg -t 10 -n 10
+echo ""
+
+docker-compose exec -T scm ozone admin datanode list
+echo ""
+
+docker-compose exec -T scm ozone admin scm roles
+echo ""
+
+echo "ozone admin container report"
+echo ""
+echo "ozone admin datanode decommission -id=scmservice --scm=10.5.0.71:9894"
+
+docker-compose exec scm bash
