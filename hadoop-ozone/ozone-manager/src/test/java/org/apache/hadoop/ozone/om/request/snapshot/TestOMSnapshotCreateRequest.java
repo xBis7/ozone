@@ -70,6 +70,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -188,8 +189,9 @@ public class TestOMSnapshotCreateRequest {
         omException.getMessage());
   }
 
-  @Test
-  public void testPreExecuteAclsEnabled() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testPreExecuteAclsEnabled(boolean hasAccess) throws Exception {
     when(ozoneManager.getAclsEnabled()).thenReturn(true);
     OMRequest omRequest = createSnapshotRequest(volumeName,
         bucketName, snapshotName1);
@@ -206,15 +208,19 @@ public class TestOMSnapshotCreateRequest {
     OMSnapshotCreateRequest omSnapshotCreateRequestSpy =
         Mockito.spy(omSnapshotCreateRequest);
 
-    doThrow(OMException.class)
-        .when(omSnapshotCreateRequestSpy).checkAcls(ozoneManager, OzoneObj.ResourceType.BUCKET,
-        OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.ALL,
-        volumeName, bucketName, null);
+    if (hasAccess) {
+      omSnapshotCreateRequestSpy.preExecute(ozoneManager);
+    } else {
+      doThrow(OMException.class)
+          .when(omSnapshotCreateRequestSpy).checkAcls(ozoneManager,
+              OzoneObj.ResourceType.BUCKET,
+              OzoneObj.StoreType.OZONE,
+              IAccessAuthorizer.ACLType.ALL,
+              volumeName, bucketName, null);
 
-    OMRequest modifiedRequest =
-        omSnapshotCreateRequestSpy.preExecute(ozoneManager);
-
-//    doPreExecute(omRequest);
+      assertThrows(OMException.class,
+          () -> omSnapshotCreateRequestSpy.preExecute(ozoneManager));
+    }
   }
 
   @Test
