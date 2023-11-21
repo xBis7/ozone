@@ -84,14 +84,20 @@ public class OMSnapshotDeleteRequest extends OMClientRequest {
     String bucketName = deleteSnapshotRequest.getBucketName();
 
     // Permission check
-    UserGroupInformation ugi = createUGIForApi();
-    String bucketOwner = ozoneManager.getBucketOwner(volumeName, bucketName,
-        IAccessAuthorizer.ACLType.READ, OzoneObj.ResourceType.BUCKET);
-    if (!ozoneManager.isAdmin(ugi) &&
-        !ozoneManager.isOwner(ugi, bucketOwner)) {
-      throw new OMException(
-          "Only bucket owners and Ozone admins can delete snapshots",
-          OMException.ResultCodes.PERMISSION_DENIED);
+    if (ozoneManager.getAclsEnabled()) {
+      checkAcls(ozoneManager, OzoneObj.ResourceType.BUCKET,
+          OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.ALL,
+          volumeName, bucketName, null);
+    } else {
+      UserGroupInformation ugi = createUGIForApi();
+      String bucketOwner = ozoneManager.getBucketOwner(volumeName, bucketName,
+          IAccessAuthorizer.ACLType.READ, OzoneObj.ResourceType.BUCKET);
+      if (!ozoneManager.isAdmin(ugi) &&
+          !ozoneManager.isOwner(ugi, bucketOwner)) {
+        throw new OMException(
+            "Only bucket owners and Ozone admins can delete snapshots",
+            OMException.ResultCodes.PERMISSION_DENIED);
+      }
     }
 
     // Set deletion time here so OM leader and follower would have the

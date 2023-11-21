@@ -24,9 +24,11 @@ import org.apache.hadoop.hdds.utils.db.BatchOperation;
 import org.apache.hadoop.hdds.utils.db.Table;
 import org.apache.hadoop.ozone.audit.AuditLogger;
 import org.apache.hadoop.ozone.audit.AuditMessage;
+import org.apache.hadoop.ozone.om.IOmMetadataReader;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
 import org.apache.hadoop.ozone.om.OMMetrics;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
+import org.apache.hadoop.ozone.om.OmMetadataReader;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
 import org.apache.hadoop.ozone.om.helpers.BucketLayout;
@@ -38,10 +40,14 @@ import org.apache.hadoop.ozone.om.request.OMRequestTestUtils;
 import org.apache.hadoop.ozone.om.response.OMClientResponse;
 import org.apache.hadoop.ozone.om.response.key.OMKeyRenameResponse;
 import org.apache.hadoop.ozone.om.response.key.OMKeyRenameResponseWithFSO;
+import org.apache.hadoop.ozone.om.snapshot.ReferenceCounted;
+import org.apache.hadoop.ozone.om.snapshot.SnapshotCache;
 import org.apache.hadoop.ozone.om.upgrade.OMLayoutVersionManager;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
+import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
+import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -66,6 +72,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -179,6 +186,35 @@ public class TestOMSnapshotCreateRequest {
         () -> doPreExecute(omRequest));
     assertEquals("Only bucket owners and Ozone admins can create snapshots",
         omException.getMessage());
+  }
+
+  @Test
+  public void testPreExecuteAclsEnabled() throws Exception {
+    when(ozoneManager.getAclsEnabled()).thenReturn(true);
+    OMRequest omRequest = createSnapshotRequest(volumeName,
+        bucketName, snapshotName1);
+
+    OmMetadataReader omMetadataReader = Mockito.mock(OmMetadataReader.class);
+    ReferenceCounted<IOmMetadataReader, SnapshotCache> rcOmMetadataReader =
+        new ReferenceCounted<>(omMetadataReader, true, null);
+
+    when(ozoneManager.getOmMetadataReader()).thenReturn(rcOmMetadataReader);
+
+    OMSnapshotCreateRequest omSnapshotCreateRequest =
+        new OMSnapshotCreateRequest(omRequest);
+
+    OMSnapshotCreateRequest omSnapshotCreateRequestSpy =
+        Mockito.spy(omSnapshotCreateRequest);
+
+    doThrow(OMException.class)
+        .when(omSnapshotCreateRequestSpy).checkAcls(ozoneManager, OzoneObj.ResourceType.BUCKET,
+        OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.ALL,
+        volumeName, bucketName, null);
+
+    OMRequest modifiedRequest =
+        omSnapshotCreateRequestSpy.preExecute(ozoneManager);
+
+//    doPreExecute(omRequest);
   }
 
   @Test
