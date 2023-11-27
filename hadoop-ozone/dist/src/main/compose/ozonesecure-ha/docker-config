@@ -21,6 +21,8 @@ CORE-SITE.XML_hadoop.proxyuser.httpfs.groups=*
 CORE-SITE.XML_fs.defaultFS=ofs://omservice
 CORE-SITE.XML_fs.trash.interval=1
 
+OZONE-SITE.XML_ozone.om.enable.filesystem.paths=true
+
 OZONE-SITE.XML_ozone.om.service.ids=omservice
 OZONE-SITE.XML_ozone.om.internal.service.id=omservice
 OZONE-SITE.XML_ozone.om.nodes.omservice=om1,om2,om3
@@ -99,9 +101,10 @@ HDFS-SITE.XML_dfs.web.authentication.kerberos.principal=HTTP/ozone@EXAMPLE.COM
 HDFS-SITE.XML_dfs.web.authentication.kerberos.keytab=/etc/security/keytabs/HTTP.keytab
 
 
-OZONE-SITE.XML_ozone.security.http.kerberos.enabled=true
+OZONE-SITE.XML_ozone.security.http.kerberos.enabled=false
 OZONE-SITE.XML_ozone.s3g.secret.http.enabled=true
-OZONE-SITE.XML_ozone.http.filter.initializers=org.apache.hadoop.security.AuthenticationFilterInitializer
+#OZONE-SITE.XML_ozone.http.filter.initializers=org.apache.hadoop.security.AuthenticationFilterInitializer
+OZONE-SITE.XML_ozone.http.filter.initializers=
 
 OZONE-SITE.XML_ozone.om.http.auth.type=kerberos
 OZONE-SITE.XML_hdds.scm.http.auth.type=kerberos
