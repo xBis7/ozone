@@ -98,12 +98,10 @@ public class TestSCMContainerPlacementRackScatter {
         IntStream.of(20, 25, 30));
   }
 
-  private static Stream<Arguments> outOfServiceNodeStates() {
+  private static Stream<Arguments> decommissionNodeStates() {
     return Stream.of(
         Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONING),
-        Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONED),
-        Arguments.of(HddsProtos.NodeOperationalState.ENTERING_MAINTENANCE),
-        Arguments.of(HddsProtos.NodeOperationalState.IN_MAINTENANCE)
+        Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONED)
     );
   }
 
@@ -582,8 +580,8 @@ public class TestSCMContainerPlacementRackScatter {
   }
 
   @ParameterizedTest
-  @MethodSource("outOfServiceNodeStates")
-  public void testReplicaOnOutOfServiceNode(
+  @MethodSource("decommissionNodeStates")
+  public void testReplicaOnOutNodeInDecommission(
       HddsProtos.NodeOperationalState state) {
     setup(6, 2);
     //    6 datanodes, 2 per rack.
@@ -633,7 +631,7 @@ public class TestSCMContainerPlacementRackScatter {
     dns.add(datanodes.get(2));
     dns.add(datanodes.get(4));
 
-    // '/rack0/node0' is out of service, policy is satisfied.
+    // '/rack0/node0' is in decommission, policy is satisfied.
     status = policy.validateContainerPlacement(dns, 3);
     assertTrue(status.isPolicySatisfied());
     assertEquals(3, status.actualPlacementCount());

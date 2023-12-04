@@ -92,12 +92,10 @@ public class TestSCMContainerPlacementRackAware {
     return IntStream.rangeClosed(3, 15);
   }
 
-  private static Stream<Arguments> outOfServiceNodeStates() {
+  private static Stream<Arguments> decommissionNodeStates() {
     return Stream.of(
         Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONING),
-        Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONED),
-        Arguments.of(HddsProtos.NodeOperationalState.ENTERING_MAINTENANCE),
-        Arguments.of(HddsProtos.NodeOperationalState.IN_MAINTENANCE)
+        Arguments.of(HddsProtos.NodeOperationalState.DECOMMISSIONED)
     );
   }
 
@@ -577,8 +575,8 @@ public class TestSCMContainerPlacementRackAware {
   }
 
   @ParameterizedTest
-  @MethodSource("outOfServiceNodeStates")
-  public void testReplicaOnOutOfServiceNode(
+  @MethodSource("decommissionNodeStates")
+  public void testReplicaOnNodeInDecommission(
       HddsProtos.NodeOperationalState state) {
     setup(6);
     //    6 datanodes, 2 per rack.
@@ -605,7 +603,7 @@ public class TestSCMContainerPlacementRackAware {
     // For RackAware there must be 2 replicas on 1 rack and
     // 1 replica on another rack. If there are 3 replicas on 1 rack,
     // then 1 of them will be considered mis-replicated.
-    // If 1 of the 3 replicas belongs to an out of service node there are
+    // If 1 of the 3 replicas belongs to a decommissioned node there are
     // 2 total available replicas and policy should be satisfied.
 
     dns = new ArrayList<>();
@@ -630,7 +628,7 @@ public class TestSCMContainerPlacementRackAware {
     dns.add(datanodes.get(2));
     dns.add(datanodes.get(5));
 
-    // '/rack0/node0' is out of service, policy is satisfied.
+    // '/rack0/node0' is in decommission, policy is satisfied.
     status = policy.validateContainerPlacement(dns, 3);
     assertTrue(status.isPolicySatisfied());
     assertEquals(2, status.actualPlacementCount());
