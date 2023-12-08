@@ -192,7 +192,7 @@ public class ContainerHealthStatus {
                    replicas, new ArrayList<>(),
                    rmConf.getMaintenanceRemainingRedundancy()) :
                // This class ignores unhealthy replicas,
-               // therefore set considerUnhealthy to false.
+               // therefore set 'considerUnhealthy' to false.
                new RatisContainerReplicaCount(container,
                    replicas, new ArrayList<>(),
                    rmConf.getMaintenanceReplicaMinimum(), false);

@@ -18,6 +18,7 @@ package org.apache.hadoop.ozone.recon;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.server.http.HttpConfig;
@@ -54,8 +55,28 @@ public final class TestReconEndpointUtil {
       LoggerFactory.getLogger(TestReconEndpointUtil.class);
 
   private static final String CONTAINER_ENDPOINT = "/api/v1/containers";
+  private static final String OM_DB_SYNC_ENDPOINT = "/api/v1/triggerdbsync/om";
 
   private TestReconEndpointUtil() {
+  }
+
+  public static void triggerReconDbSyncWithOm(
+      OzoneConfiguration conf) {
+    StringBuilder urlBuilder = new StringBuilder();
+    urlBuilder.append(getReconWebAddress(conf))
+        .append(OM_DB_SYNC_ENDPOINT);
+
+    String response = "";
+    try {
+      response = makeHttpCall(conf, urlBuilder);
+    } catch (Exception e) {
+      LOG.error("Error getting db sync response from Recon");
+    }
+
+    if (!Strings.isNullOrEmpty(response) &&
+        !response.equals("true")) {
+      LOG.error("Triggering Recon DB sync with OM failed.");
+    }
   }
 
   public static UnhealthyContainersResponse getUnhealthyContainersFromRecon(
