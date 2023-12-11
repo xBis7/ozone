@@ -75,6 +75,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -239,7 +240,9 @@ public class TestReconAndAdminContainerCLI {
 
     UnHealthyContainerStates containerStateForTesting =
         UnHealthyContainerStates.MISSING;
-    compareRMReportToReconResponse(containerStateForTesting.toString());
+    long currentTimeStamp = System.currentTimeMillis();
+    compareRMReportToReconResponse(
+        containerStateForTesting.toString(), currentTimeStamp);
   }
 
   @ParameterizedTest
@@ -275,8 +278,11 @@ public class TestReconAndAdminContainerCLI {
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeToGoOffline1, initialState);
 
-    compareRMReportToReconResponse(underReplicatedState.toString());
-    compareRMReportToReconResponse(overReplicatedState.toString());
+    long currentTimeStamp = System.currentTimeMillis();
+    compareRMReportToReconResponse(
+        underReplicatedState.toString(), currentTimeStamp);
+    compareRMReportToReconResponse(
+        overReplicatedState.toString(), currentTimeStamp);
 
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeToGoOffline1, finalState);
@@ -287,8 +293,11 @@ public class TestReconAndAdminContainerCLI {
       TestHelper.waitForReplicaCount(containerIdR3, 4, cluster);
     }
 
-    compareRMReportToReconResponse(underReplicatedState.toString());
-    compareRMReportToReconResponse(overReplicatedState.toString());
+    currentTimeStamp = System.currentTimeMillis();
+    compareRMReportToReconResponse(
+        underReplicatedState.toString(), currentTimeStamp);
+    compareRMReportToReconResponse(
+        overReplicatedState.toString(), currentTimeStamp);
 
     // Second node goes offline.
     if (isMaintenance) {
@@ -302,8 +311,11 @@ public class TestReconAndAdminContainerCLI {
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeToGoOffline2, initialState);
 
-    compareRMReportToReconResponse(underReplicatedState.toString());
-    compareRMReportToReconResponse(overReplicatedState.toString());
+    currentTimeStamp = System.currentTimeMillis();
+    compareRMReportToReconResponse(
+        underReplicatedState.toString(), currentTimeStamp);
+    compareRMReportToReconResponse(
+        overReplicatedState.toString(), currentTimeStamp);
 
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeToGoOffline2, finalState);
@@ -313,8 +325,11 @@ public class TestReconAndAdminContainerCLI {
     int expectedReplicaNum = isMaintenance ? 4 : 5;
     TestHelper.waitForReplicaCount(containerIdR3, expectedReplicaNum, cluster);
 
-    compareRMReportToReconResponse(underReplicatedState.toString());
-    compareRMReportToReconResponse(overReplicatedState.toString());
+    currentTimeStamp = System.currentTimeMillis();
+    compareRMReportToReconResponse(
+        underReplicatedState.toString(), currentTimeStamp);
+    compareRMReportToReconResponse(
+        overReplicatedState.toString(), currentTimeStamp);
 
     scmClient.recommissionNodes(Arrays.asList(
         TestNodeUtil.getDNHostAndPort(nodeToGoOffline1),
@@ -330,8 +345,11 @@ public class TestReconAndAdminContainerCLI {
     TestNodeUtil.waitForDnToReachPersistedOpState(
         nodeToGoOffline2, IN_SERVICE);
 
-    compareRMReportToReconResponse(underReplicatedState.toString());
-    compareRMReportToReconResponse(overReplicatedState.toString());
+    currentTimeStamp = System.currentTimeMillis();
+    compareRMReportToReconResponse(
+        underReplicatedState.toString(), currentTimeStamp);
+    compareRMReportToReconResponse(
+        overReplicatedState.toString(), currentTimeStamp);
   }
 
   /**
@@ -340,10 +358,27 @@ public class TestReconAndAdminContainerCLI {
    * Recon and the ReplicationManager.
    */
   private static void compareRMReportToReconResponse(
-      String containerState) throws IOException {
+      String containerState, long currentTimeStamp)
+      throws IOException, InterruptedException, TimeoutException {
     Assertions.assertFalse(Strings.isNullOrEmpty(containerState));
 
+    // Thread runs every 1 second. 10000 millis is more than enough.
+    GenericTestUtils.waitFor(
+        () -> {
+          try {
+            return scmClient.getReplicationManagerReport()
+                       .getReportTimeStamp() >= currentTimeStamp;
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        },
+        100, 10000);
+
     ReplicationManagerReport rmReport = scmClient.getReplicationManagerReport();
+    System.out.println("xbis: currentTimeStamp: " +
+                       currentTimeStamp +
+                       " | rmReport TimeStamp: " +
+                       rmReport.getReportTimeStamp());
     UnhealthyContainersResponse reconResponse =
         TestReconEndpointUtil
             .getUnhealthyContainersFromRecon(CONF, containerState);
@@ -360,12 +395,24 @@ public class TestReconAndAdminContainerCLI {
     // Check that all counters have the same values.
     Assertions.assertEquals(rmMissingCounter,
         reconResponse.getMissingCount());
+    System.out.println("xbis: compare: " + containerState +
+                       " | rmMissingCounter: " + rmMissingCounter +
+                       " | recon: " + reconResponse.getMissingCount());
     Assertions.assertEquals(rmUnderReplCounter,
         reconResponse.getUnderReplicatedCount());
+    System.out.println("xbis: compare: " + containerState +
+                       " | rmUnderReplCounter: " + rmUnderReplCounter +
+                       " | recon: " + reconResponse.getUnderReplicatedCount());
     Assertions.assertEquals(rmOverReplCounter,
         reconResponse.getOverReplicatedCount());
+    System.out.println("xbis: compare: " + containerState +
+                       " | rmOverReplCounter: " + rmOverReplCounter +
+                       " | recon: " + reconResponse.getOverReplicatedCount());
     Assertions.assertEquals(rmMisReplCounter,
         reconResponse.getMisReplicatedCount());
+    System.out.println("xbis: compare: " + containerState +
+                       " | rmMisReplCounter: " + rmMisReplCounter +
+                       " | recon: " + reconResponse.getMisReplicatedCount());
 
     // Recon's UnhealthyContainerResponse contains a list of containers
     // for a particular state. Check if RMs sample of containers can be
@@ -455,16 +502,14 @@ public class TestReconAndAdminContainerCLI {
     CONF.set(ScmConfigKeys.OZONE_SCM_PIPELINE_DESTROY_TIMEOUT, "5s");
 
     CONF.setTimeDuration(HDDS_RECON_HEARTBEAT_INTERVAL,
-        3, TimeUnit.SECONDS);
+        1, TimeUnit.SECONDS);
     CONF.setTimeDuration(OZONE_RECON_OM_SNAPSHOT_TASK_INTERVAL_DELAY,
-        3, TimeUnit.SECONDS);
+        1, TimeUnit.SECONDS);
 
-    CONF.set(HDDS_CONTAINER_REPORT_INTERVAL, "3s");
-    CONF.set(HDDS_PIPELINE_REPORT_INTERVAL, "3s");
     CONF.set(ScmUtils.getContainerReportConfPrefix() +
-             ".queue.wait.threshold", "3");
+             ".queue.wait.threshold", "1");
     CONF.set(ScmUtils.getContainerReportConfPrefix() +
-             ".execute.wait.threshold", "3");
+             ".execute.wait.threshold", "1");
 
     ReplicationManager.ReplicationManagerConfiguration replicationConf =
         CONF.getObject(ReplicationManager
