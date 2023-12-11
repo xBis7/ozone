@@ -428,8 +428,8 @@ jobs:
   integration:
     needs:
       - build-info
-      - build
-      - basic
+#      - build
+#      - basic
     runs-on: ubuntu-20.04
     timeout-minutes: 150
     if: needs.build-info.outputs.needs-integration-tests == 'true'
