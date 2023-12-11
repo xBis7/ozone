@@ -267,11 +267,14 @@ public class TestReconAndAdminContainerCLI {
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeForDecom1, initialState);
 
-    // Add a check to make sure both RM and Recon health task
-    // have executed once, before getting the info. To avoid flakiness.
+    // TODO: Add a check to make sure both RM and Recon health task
+    //  have executed once, before getting the info. To avoid flakiness.
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
+
+    // TODO: organize it in an array just like the snapdiff manager
+    //  step1, check, step2, check, ...
 
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeForDecom1, finalState);
@@ -279,8 +282,8 @@ public class TestReconAndAdminContainerCLI {
     // a new replica-copy is made to another node.
     TestHelper.waitForReplicaCount(containerIdR3, 4, cluster);
 
-    // Add a check to make sure both RM and Recon health task
-    // have executed once, before getting the info. To avoid flakiness.
+    // TODO: Add a check to make sure both RM and Recon health task
+    //  have executed once, before getting the info. To avoid flakiness.
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
@@ -292,8 +295,8 @@ public class TestReconAndAdminContainerCLI {
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeForDecom2, initialState);
 
-    // Add a check to make sure both RM and Recon health task
-    // have executed once, before getting the info. To avoid flakiness.
+    // TODO: Add a check to make sure both RM and Recon health task
+    //  have executed once, before getting the info. To avoid flakiness.
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
@@ -302,8 +305,8 @@ public class TestReconAndAdminContainerCLI {
         nodeForDecom2, finalState);
     TestHelper.waitForReplicaCount(containerIdR3, 5, cluster);
 
-    // Add a check to make sure both RM and Recon health task
-    // have executed once, before getting the info. To avoid flakiness.
+    // TODO: Add a check to make sure both RM and Recon health task
+    //  have executed once, before getting the info. To avoid flakiness.
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
@@ -315,8 +318,8 @@ public class TestReconAndAdminContainerCLI {
         nodeForDecom1, IN_SERVICE);
     TestNodeUtil.waitForDnToReachPersistedOpState(nodeForDecom2, IN_SERVICE);
 
-    // Add a check to make sure both RM and Recon health task
-    // have executed once, before getting the info. To avoid flakiness.
+    // TODO: Add a check to make sure both RM and Recon health task
+    //  have executed once, before getting the info. To avoid flakiness.
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
