@@ -127,7 +127,7 @@ public class TestReconAndAdminContainerCLI {
       throws Exception {
     setupConfigKeys();
     cluster = MiniOzoneCluster.newBuilder(CONF)
-                  .setNumDatanodes(7)
+                  .setNumDatanodes(5)
                   .includeRecon(true)
                   .build();
     cluster.waitForClusterToBeReady();
@@ -160,7 +160,6 @@ public class TestReconAndAdminContainerCLI {
 
     // Verify if all nodes are registered with Recon.
     NodeManager reconNodeManager = reconScm.getScmNodeManager();
-    NodeManager scmNodeManager = scm.getScmNodeManager();
     Assertions.assertEquals(scmNodeManager.getAllNodes().size(),
         reconNodeManager.getAllNodes().size());
 
@@ -285,6 +284,7 @@ public class TestReconAndAdminContainerCLI {
         nodeToGoOffline1, finalState);
     // Every time a node goes into decommission,
     // a new replica-copy is made to another node.
+    // For maintenance, there is no replica-copy.
     if (!isMaintenance) {
       TestHelper.waitForReplicaCount(containerIdR3, 4, cluster);
     }
@@ -310,6 +310,8 @@ public class TestReconAndAdminContainerCLI {
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeToGoOffline2, finalState);
 
+    // There will be a replica copy for both maintenance and decommission.
+    // maintenance 3 -> 4, decommission 4 -> 5.
     int expectedReplicaNum = isMaintenance ? 4 : 5;
     TestHelper.waitForReplicaCount(containerIdR3, expectedReplicaNum, cluster);
 
@@ -454,8 +456,10 @@ public class TestReconAndAdminContainerCLI {
     CONF.set(ScmConfigKeys.OZONE_SCM_PIPELINE_SCRUB_INTERVAL, "2s");
     CONF.set(ScmConfigKeys.OZONE_SCM_PIPELINE_DESTROY_TIMEOUT, "5s");
 
-    CONF.setTimeDuration(HDDS_RECON_HEARTBEAT_INTERVAL, 3, TimeUnit.SECONDS);
-    CONF.setTimeDuration(OZONE_RECON_OM_SNAPSHOT_TASK_INTERVAL_DELAY, 3, TimeUnit.SECONDS);
+    CONF.setTimeDuration(HDDS_RECON_HEARTBEAT_INTERVAL,
+        3, TimeUnit.SECONDS);
+    CONF.setTimeDuration(OZONE_RECON_OM_SNAPSHOT_TASK_INTERVAL_DELAY,
+        3, TimeUnit.SECONDS);
 
     CONF.set(HDDS_CONTAINER_REPORT_INTERVAL, "3s");
     CONF.set(HDDS_PIPELINE_REPORT_INTERVAL, "3s");
@@ -465,7 +469,8 @@ public class TestReconAndAdminContainerCLI {
              ".execute.wait.threshold", "3");
 
     ReplicationManager.ReplicationManagerConfiguration replicationConf =
-        CONF.getObject(ReplicationManager.ReplicationManagerConfiguration.class);
+        CONF.getObject(ReplicationManager
+                           .ReplicationManagerConfiguration.class);
     replicationConf.setInterval(Duration.ofSeconds(1));
     replicationConf.setUnderReplicatedInterval(Duration.ofSeconds(1));
     replicationConf.setOverReplicatedInterval(Duration.ofSeconds(1));
