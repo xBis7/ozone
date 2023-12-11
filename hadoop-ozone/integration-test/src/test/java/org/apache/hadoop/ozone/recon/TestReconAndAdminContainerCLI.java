@@ -108,7 +108,6 @@ public class TestReconAndAdminContainerCLI {
   private static final String KEY_RATIS_THREE = "key2";
   private static ScmClient scmClient;
   private static MiniOzoneCluster cluster;
-  private static PipelineManager reconPipelineManager;
   private static NodeManager scmNodeManager;
   private static long containerIdR1;
   private static long containerIdR3;
@@ -123,8 +122,7 @@ public class TestReconAndAdminContainerCLI {
   }
 
   @BeforeAll
-  public static void init()
-      throws Exception {
+  public static void init() throws Exception {
     setupConfigKeys();
     cluster = MiniOzoneCluster.newBuilder(CONF)
                   .setNumDatanodes(5)
@@ -142,12 +140,12 @@ public class TestReconAndAdminContainerCLI {
     ReconStorageContainerManagerFacade reconScm =
         (ReconStorageContainerManagerFacade)
             cluster.getReconServer().getReconStorageContainerManager();
-    reconPipelineManager = reconScm.getPipelineManager();
+    PipelineManager reconPipelineManager = reconScm.getPipelineManager();
 
     LambdaTestUtils.await(60000, 5000,
         () -> (reconPipelineManager.getPipelines().size() >= 4));
 
-    // Verify if Recon has all the pipelines from SCM.
+    // Verify that Recon has all the pipelines from SCM.
     scmPipelineManager.getPipelines().forEach(p -> {
       try {
         Assertions.assertNotNull(reconPipelineManager.getPipeline(p.getId()));
@@ -158,24 +156,24 @@ public class TestReconAndAdminContainerCLI {
 
     Assertions.assertTrue(scmContainerManager.getContainers().isEmpty());
 
-    // Verify if all nodes are registered with Recon.
+    // Verify that all nodes are registered with Recon.
     NodeManager reconNodeManager = reconScm.getScmNodeManager();
     Assertions.assertEquals(scmNodeManager.getAllNodes().size(),
         reconNodeManager.getAllNodes().size());
 
-    // Create keys and containers.
     ContainerManager reconContainerManager = reconScm.getContainerManager();
 
     OzoneClient client = cluster.newClient();
     OzoneBucket bucket = TestDataUtil.createVolumeAndBucket(
         client, VOLUME, BUCKET, BucketLayout.FILE_SYSTEM_OPTIMIZED);
 
+    // Create keys and containers.
     OmKeyInfo omKeyInfoR1 = createTestKey(bucket, KEY_RATIS_ONE,
         RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.ONE));
     OmKeyInfo omKeyInfoR3 = createTestKey(bucket, KEY_RATIS_THREE,
         RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.THREE));
 
-    // Sync Recon with OM, to force Recon to get the new key entries.
+    // Sync Recon with OM, to force it to get the new key entries.
     TestReconEndpointUtil.triggerReconDbSyncWithOm(CONF);
 
     List<Long> containerIDsR1 = getContainerIdsForKey(omKeyInfoR1);
@@ -284,7 +282,7 @@ public class TestReconAndAdminContainerCLI {
         nodeToGoOffline1, finalState);
     // Every time a node goes into decommission,
     // a new replica-copy is made to another node.
-    // For maintenance, there is no replica-copy.
+    // For maintenance, there is no replica-copy in this case.
     if (!isMaintenance) {
       TestHelper.waitForReplicaCount(containerIdR3, 4, cluster);
     }
