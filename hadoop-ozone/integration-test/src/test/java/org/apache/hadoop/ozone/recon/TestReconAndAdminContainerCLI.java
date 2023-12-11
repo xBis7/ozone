@@ -19,6 +19,7 @@ package org.apache.hadoop.ozone.recon;
 import com.google.common.base.Strings;
 import org.apache.hadoop.hdds.HddsConfigKeys;
 import org.apache.hadoop.hdds.client.RatisReplicationConfig;
+import org.apache.hadoop.hdds.client.ReplicationConfig;
 import org.apache.hadoop.hdds.conf.OzoneConfiguration;
 import org.apache.hadoop.hdds.protocol.DatanodeDetails;
 import org.apache.hadoop.hdds.protocol.proto.HddsProtos;
@@ -87,8 +88,6 @@ import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_NODE_REPORT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_PIPELINE_REPORT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_RECON_HEARTBEAT_INTERVAL;
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeOperationalState.IN_SERVICE;
-import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.ONE;
-import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.ReplicationFactor.THREE;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_DEADNODE_INTERVAL;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_HEARTBEAT_PROCESS_INTERVAL;
@@ -116,10 +115,10 @@ public class TestReconAndAdminContainerCLI {
 
   private static Stream<Arguments> outOfServiceNodeStateArgs() {
     return Stream.of(
-        Arguments.of(NodeOperationalState.DECOMMISSIONING,
-            NodeOperationalState.DECOMMISSIONED),
         Arguments.of(NodeOperationalState.ENTERING_MAINTENANCE,
-            NodeOperationalState.IN_MAINTENANCE)
+            NodeOperationalState.IN_MAINTENANCE, true),
+        Arguments.of(NodeOperationalState.DECOMMISSIONING,
+            NodeOperationalState.DECOMMISSIONED, false)
     );
   }
 
@@ -128,7 +127,7 @@ public class TestReconAndAdminContainerCLI {
       throws Exception {
     setupConfigKeys();
     cluster = MiniOzoneCluster.newBuilder(CONF)
-                  .setNumDatanodes(5)
+                  .setNumDatanodes(7)
                   .includeRecon(true)
                   .build();
     cluster.waitForClusterToBeReady();
@@ -172,8 +171,10 @@ public class TestReconAndAdminContainerCLI {
     OzoneBucket bucket = TestDataUtil.createVolumeAndBucket(
         client, VOLUME, BUCKET, BucketLayout.FILE_SYSTEM_OPTIMIZED);
 
-    OmKeyInfo omKeyInfoR1 = createTestKey(bucket, KEY_RATIS_ONE, ONE);
-    OmKeyInfo omKeyInfoR3 = createTestKey(bucket, KEY_RATIS_THREE, THREE);
+    OmKeyInfo omKeyInfoR1 = createTestKey(bucket, KEY_RATIS_ONE,
+        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.ONE));
+    OmKeyInfo omKeyInfoR3 = createTestKey(bucket, KEY_RATIS_THREE,
+        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.THREE));
 
     // Sync Recon with OM, to force Recon to get the new key entries.
     TestReconEndpointUtil.triggerReconDbSyncWithOm(CONF);
@@ -216,6 +217,10 @@ public class TestReconAndAdminContainerCLI {
     }
   }
 
+  /**
+   * It's the same regardless of the ReplicationConfig,
+   * but it's easier to test with Ratis ONE.
+   */
   @Test
   public void testMissingContainer() throws Exception {
     Pipeline pipeline =
@@ -243,83 +248,87 @@ public class TestReconAndAdminContainerCLI {
   @ParameterizedTest
   @MethodSource("outOfServiceNodeStateArgs")
   public void testNodesInDecommissionOrMaintenance(
-      NodeOperationalState initialState,
-      NodeOperationalState finalState) throws Exception {
+      NodeOperationalState initialState, NodeOperationalState finalState,
+      boolean isMaintenance) throws Exception {
     Pipeline pipeline =
         scmClient.getContainerWithPipeline(containerIdR3).getPipeline();
 
-    List<DatanodeDetails> details = pipeline.getNodes();
-    // Pipeline should have 3 nodes.
-    Assertions.assertEquals(3, details.size());
+    List<DatanodeDetails> details =
+        pipeline.getNodes().stream()
+            .filter(d -> d.getPersistedOpState().equals(IN_SERVICE))
+            .collect(Collectors.toList());
 
-    final DatanodeDetails nodeForDecom1 = details.get(0);
-    final DatanodeDetails nodeForDecom2 = details.get(1);
+    final DatanodeDetails nodeToGoOffline1 = details.get(0);
+    final DatanodeDetails nodeToGoOffline2 = details.get(1);
 
     UnHealthyContainerStates underReplicatedState =
         UnHealthyContainerStates.UNDER_REPLICATED;
     UnHealthyContainerStates overReplicatedState =
         UnHealthyContainerStates.OVER_REPLICATED;
 
-    // Decommission first node.
-    scmClient.decommissionNodes(Collections.singletonList(
-        TestNodeUtil.getDNHostAndPort(nodeForDecom1)));
+    // First node goes offline.
+    if (isMaintenance) {
+      scmClient.startMaintenanceNodes(Collections.singletonList(
+          TestNodeUtil.getDNHostAndPort(nodeToGoOffline1)), 0);
+    } else {
+      scmClient.decommissionNodes(Collections.singletonList(
+          TestNodeUtil.getDNHostAndPort(nodeToGoOffline1)));
+    }
 
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
-        nodeForDecom1, initialState);
-
-    // TODO: Add a check to make sure both RM and Recon health task
-    //  have executed once, before getting the info. To avoid flakiness.
+        nodeToGoOffline1, initialState);
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
 
-    // TODO: organize it in an array just like the snapdiff manager
-    //  step1, check, step2, check, ...
-
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
-        nodeForDecom1, finalState);
+        nodeToGoOffline1, finalState);
     // Every time a node goes into decommission,
     // a new replica-copy is made to another node.
-    TestHelper.waitForReplicaCount(containerIdR3, 4, cluster);
-
-    // TODO: Add a check to make sure both RM and Recon health task
-    //  have executed once, before getting the info. To avoid flakiness.
-
-    compareRMReportToReconResponse(underReplicatedState.toString());
-    compareRMReportToReconResponse(overReplicatedState.toString());
-
-    // Decommission second node.
-    scmClient.decommissionNodes(Collections.singletonList(
-        TestNodeUtil.getDNHostAndPort(nodeForDecom2)));
-
-    TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
-        nodeForDecom2, initialState);
-
-    // TODO: Add a check to make sure both RM and Recon health task
-    //  have executed once, before getting the info. To avoid flakiness.
+    if (!isMaintenance) {
+      TestHelper.waitForReplicaCount(containerIdR3, 4, cluster);
+    }
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
 
-    TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
-        nodeForDecom2, finalState);
-    TestHelper.waitForReplicaCount(containerIdR3, 5, cluster);
+    // Second node goes offline.
+    if (isMaintenance) {
+      scmClient.startMaintenanceNodes(Collections.singletonList(
+          TestNodeUtil.getDNHostAndPort(nodeToGoOffline2)), 0);
+    } else {
+      scmClient.decommissionNodes(Collections.singletonList(
+          TestNodeUtil.getDNHostAndPort(nodeToGoOffline2)));
+    }
 
-    // TODO: Add a check to make sure both RM and Recon health task
-    //  have executed once, before getting the info. To avoid flakiness.
+    TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
+        nodeToGoOffline2, initialState);
+
+    compareRMReportToReconResponse(underReplicatedState.toString());
+    compareRMReportToReconResponse(overReplicatedState.toString());
+
+    TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
+        nodeToGoOffline2, finalState);
+
+    int expectedReplicaNum = isMaintenance ? 4 : 5;
+    TestHelper.waitForReplicaCount(containerIdR3, expectedReplicaNum, cluster);
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
 
     scmClient.recommissionNodes(Arrays.asList(
-        TestNodeUtil.getDNHostAndPort(nodeForDecom1),
-        TestNodeUtil.getDNHostAndPort(nodeForDecom2)));
-    TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
-        nodeForDecom1, IN_SERVICE);
-    TestNodeUtil.waitForDnToReachPersistedOpState(nodeForDecom2, IN_SERVICE);
+        TestNodeUtil.getDNHostAndPort(nodeToGoOffline1),
+        TestNodeUtil.getDNHostAndPort(nodeToGoOffline2)));
 
-    // TODO: Add a check to make sure both RM and Recon health task
-    //  have executed once, before getting the info. To avoid flakiness.
+    TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
+        nodeToGoOffline1, IN_SERVICE);
+    TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
+        nodeToGoOffline2, IN_SERVICE);
+
+    TestNodeUtil.waitForDnToReachPersistedOpState(
+        nodeToGoOffline1, IN_SERVICE);
+    TestNodeUtil.waitForDnToReachPersistedOpState(
+        nodeToGoOffline2, IN_SERVICE);
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
@@ -395,17 +404,17 @@ public class TestReconAndAdminContainerCLI {
   }
 
   private static OmKeyInfo createTestKey(OzoneBucket ozoneBucket,
-      String keyName, HddsProtos.ReplicationFactor factor)
+      String keyName, ReplicationConfig replicationConfig)
       throws IOException {
     byte[] textBytes = "Testing".getBytes(UTF_8);
-    try (OutputStream out = ozoneBucket.createKey(keyName, textBytes.length,
-        RatisReplicationConfig.getInstance(factor), emptyMap())) {
+    try (OutputStream out = ozoneBucket.createKey(keyName,
+        textBytes.length, replicationConfig, emptyMap())) {
       out.write(textBytes);
     }
 
     OmKeyArgs keyArgs = new OmKeyArgs.Builder()
-                            .setVolumeName(VOLUME)
-                            .setBucketName(BUCKET)
+                            .setVolumeName(ozoneBucket.getVolumeName())
+                            .setBucketName(ozoneBucket.getName())
                             .setKeyName(keyName)
                             .build();
     return cluster.getOzoneManager().lookupKey(keyArgs);
