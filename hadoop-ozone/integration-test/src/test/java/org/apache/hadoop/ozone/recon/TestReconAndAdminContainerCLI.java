@@ -53,6 +53,7 @@ import org.apache.hadoop.ozone.recon.api.types.UnhealthyContainersResponse;
 import org.apache.hadoop.ozone.recon.scm.ReconNodeManager;
 import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
 import org.apache.hadoop.ozone.recon.spi.ReconContainerMetadataManager;
+import org.apache.hadoop.ozone.recon.tasks.ReconTaskConfig;
 import org.apache.hadoop.ozone.scm.node.TestNodeUtil;
 import org.apache.ozone.test.GenericTestUtils;
 import org.apache.ozone.test.LambdaTestUtils;
@@ -510,6 +511,10 @@ public class TestReconAndAdminContainerCLI {
              ".queue.wait.threshold", "1");
     CONF.set(ScmUtils.getContainerReportConfPrefix() +
              ".execute.wait.threshold", "1");
+
+    ReconTaskConfig reconTaskConfig = CONF.getObject(ReconTaskConfig.class);
+    reconTaskConfig.setMissingContainerTaskInterval(Duration.ofSeconds(1));
+    CONF.setFromObject(reconTaskConfig);
 
     ReplicationManager.ReplicationManagerConfiguration replicationConf =
         CONF.getObject(ReplicationManager

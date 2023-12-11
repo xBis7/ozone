@@ -56,7 +56,7 @@ public class ReconTaskConfig {
           "unhealthy containers in the cluster as reported " +
           "by Datanodes."
   )
-  private Duration missingContainerTaskInterval = Duration.ofSeconds(3);
+  private Duration missingContainerTaskInterval = Duration.ofMinutes(5);
 
   public Duration getMissingContainerTaskInterval() {
     return missingContainerTaskInterval;

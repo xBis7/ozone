@@ -104,7 +104,6 @@ public class ContainerHealthTask extends ReconScmTask {
   public void run() {
     try {
       while (canRun()) {
-        LOG.info("xbis: running a health task");
         triggerContainerHealthCheck();
         Thread.sleep(interval);
       }
