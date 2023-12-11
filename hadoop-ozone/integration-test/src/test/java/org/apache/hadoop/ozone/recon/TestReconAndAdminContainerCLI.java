@@ -50,6 +50,7 @@ import org.apache.hadoop.ozone.om.helpers.OmKeyInfo;
 import org.apache.hadoop.ozone.om.helpers.OmKeyLocationInfo;
 import org.apache.hadoop.ozone.recon.api.types.UnhealthyContainerMetadata;
 import org.apache.hadoop.ozone.recon.api.types.UnhealthyContainersResponse;
+import org.apache.hadoop.ozone.recon.fsck.ContainerHealthTask;
 import org.apache.hadoop.ozone.recon.scm.ReconNodeManager;
 import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
 import org.apache.hadoop.ozone.recon.spi.ReconContainerMetadataManager;
@@ -374,6 +375,12 @@ public class TestReconAndAdminContainerCLI {
           }
         },
         100, 10000);
+
+    GenericTestUtils.LogCapturer logCapturer =
+        GenericTestUtils.LogCapturer.captureLogs(ContainerHealthTask.LOG);
+    GenericTestUtils.waitFor(() -> logCapturer.getOutput()
+                                       .contains("**Container State Stats:**"),
+        1000, 20000);
 
     ReplicationManagerReport rmReport = scmClient.getReplicationManagerReport();
     System.out.println("xbis: currentTimeStamp: " +
