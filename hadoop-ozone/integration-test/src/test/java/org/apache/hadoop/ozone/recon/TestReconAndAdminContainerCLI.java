@@ -247,6 +247,8 @@ public class TestReconAndAdminContainerCLI {
       cluster.restartHddsDatanode(details, false);
       TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
           details, IN_SERVICE);
+      TestNodeUtil.waitForDnToReachPersistedOpState(
+          details, IN_SERVICE);
     }
   }
 
@@ -372,7 +374,7 @@ public class TestReconAndAdminContainerCLI {
             rmUnderReplCounter == reconResponse.getUnderReplicatedCount() &&
             rmOverReplCounter == reconResponse.getOverReplicatedCount() &&
             rmMisReplCounter == reconResponse.getMisReplicatedCount()
-        , 1000, 60000);
+        , 1000, 40000);
 
     // Recon's UnhealthyContainerResponse contains a list of containers
     // for a particular state. Check if RMs sample of containers can be
