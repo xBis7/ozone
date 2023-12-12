@@ -55,6 +55,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Stubber;
 
 import java.io.File;
 import java.io.IOException;
@@ -73,6 +74,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -185,8 +187,8 @@ public class TestOMSnapshotCreateRequest {
 
     OMException omException = assertThrows(OMException.class,
         () -> doPreExecute(omRequest));
-    assertEquals("Only bucket owners and Ozone admins can create snapshots",
-        omException.getMessage());
+    assertEquals("ACLs disabled, only bucket owners and " +
+                 "Ozone admins can create snapshots", omException.getMessage());
   }
 
   @ParameterizedTest
@@ -204,20 +206,20 @@ public class TestOMSnapshotCreateRequest {
 
     OMSnapshotCreateRequest omSnapshotCreateRequest =
         new OMSnapshotCreateRequest(omRequest);
-
     OMSnapshotCreateRequest omSnapshotCreateRequestSpy =
         Mockito.spy(omSnapshotCreateRequest);
+
+    Stubber stubber = hasAccess ? doNothing() : doThrow(OMException.class);
+    stubber.when(omSnapshotCreateRequestSpy)
+         .checkAcls(ozoneManager,
+             OzoneObj.ResourceType.BUCKET,
+             OzoneObj.StoreType.OZONE,
+             IAccessAuthorizer.ACLType.ALL,
+             volumeName, bucketName, null);
 
     if (hasAccess) {
       omSnapshotCreateRequestSpy.preExecute(ozoneManager);
     } else {
-      doThrow(OMException.class)
-          .when(omSnapshotCreateRequestSpy).checkAcls(ozoneManager,
-              OzoneObj.ResourceType.BUCKET,
-              OzoneObj.StoreType.OZONE,
-              IAccessAuthorizer.ACLType.ALL,
-              volumeName, bucketName, null);
-
       assertThrows(OMException.class,
           () -> omSnapshotCreateRequestSpy.preExecute(ozoneManager));
     }

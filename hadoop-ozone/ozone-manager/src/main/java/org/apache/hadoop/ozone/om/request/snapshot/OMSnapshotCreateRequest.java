@@ -106,7 +106,7 @@ public class OMSnapshotCreateRequest extends OMClientRequest {
     // Verify name
     OmUtils.validateSnapshotName(snapshotName);
 
-    // check Acl
+    // Permission check
     if (ozoneManager.getAclsEnabled()) {
       checkAcls(ozoneManager, OzoneObj.ResourceType.BUCKET,
           OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.ALL,
@@ -118,7 +118,8 @@ public class OMSnapshotCreateRequest extends OMClientRequest {
       if (!ozoneManager.isAdmin(ugi) &&
           !ozoneManager.isOwner(ugi, bucketOwner)) {
         throw new OMException(
-            "Only bucket owners and Ozone admins can create snapshots",
+            "ACLs disabled, only bucket owners and Ozone admins " +
+            "can create snapshots",
             OMException.ResultCodes.PERMISSION_DENIED);
       }
     }

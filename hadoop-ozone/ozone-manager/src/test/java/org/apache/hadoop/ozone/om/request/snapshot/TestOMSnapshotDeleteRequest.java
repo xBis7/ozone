@@ -24,9 +24,11 @@ import org.apache.hadoop.hdds.utils.db.cache.CacheKey;
 import org.apache.hadoop.hdds.utils.db.cache.CacheValue;
 import org.apache.hadoop.ozone.audit.AuditLogger;
 import org.apache.hadoop.ozone.audit.AuditMessage;
+import org.apache.hadoop.ozone.om.IOmMetadataReader;
 import org.apache.hadoop.ozone.om.OMConfigKeys;
 import org.apache.hadoop.ozone.om.OMMetrics;
 import org.apache.hadoop.ozone.om.OmMetadataManagerImpl;
+import org.apache.hadoop.ozone.om.OmMetadataReader;
 import org.apache.hadoop.ozone.om.OmSnapshotManager;
 import org.apache.hadoop.ozone.om.OzoneManager;
 import org.apache.hadoop.ozone.om.exceptions.OMException;
@@ -34,11 +36,14 @@ import org.apache.hadoop.ozone.om.helpers.SnapshotInfo;
 import org.apache.hadoop.ozone.om.ratis.utils.OzoneManagerDoubleBufferHelper;
 import org.apache.hadoop.ozone.om.request.OMRequestTestUtils;
 import org.apache.hadoop.ozone.om.response.OMClientResponse;
+import org.apache.hadoop.ozone.om.snapshot.ReferenceCounted;
 import org.apache.hadoop.ozone.om.snapshot.SnapshotCache;
 import org.apache.hadoop.ozone.om.upgrade.OMLayoutVersionManager;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMRequest;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.OMResponse;
 import org.apache.hadoop.ozone.protocol.proto.OzoneManagerProtocolProtos.Status;
+import org.apache.hadoop.ozone.security.acl.IAccessAuthorizer;
+import org.apache.hadoop.ozone.security.acl.OzoneObj;
 import org.apache.hadoop.util.Time;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +52,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Stubber;
 
 import java.io.File;
 import java.util.UUID;
@@ -64,6 +70,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -177,8 +185,42 @@ public class TestOMSnapshotDeleteRequest {
 
     OMException omException = assertThrows(OMException.class,
         () -> doPreExecute(omRequest));
-    assertEquals("Only bucket owners and Ozone admins can delete snapshots",
-        omException.getMessage());
+    assertEquals("ACLs disabled, only bucket owners and " +
+                 "Ozone admins can delete snapshots", omException.getMessage());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testPreExecuteAclsEnabled(boolean hasAccess) throws Exception {
+    when(ozoneManager.getAclsEnabled()).thenReturn(true);
+    OMRequest omRequest = deleteSnapshotRequest(volumeName,
+        bucketName, snapshotName);
+
+    OmMetadataReader omMetadataReader = Mockito.mock(OmMetadataReader.class);
+    ReferenceCounted<IOmMetadataReader, SnapshotCache> rcOmMetadataReader =
+        new ReferenceCounted<>(omMetadataReader, true, null);
+
+    when(ozoneManager.getOmMetadataReader()).thenReturn(rcOmMetadataReader);
+
+    OMSnapshotDeleteRequest omSnapshotDeleteRequest =
+        new OMSnapshotDeleteRequest(omRequest);
+    OMSnapshotDeleteRequest omSnapshotDeleteRequestSpy =
+        Mockito.spy(omSnapshotDeleteRequest);
+
+    Stubber stubber = hasAccess ? doNothing() : doThrow(OMException.class);
+    stubber.when(omSnapshotDeleteRequestSpy)
+        .checkAcls(ozoneManager,
+            OzoneObj.ResourceType.BUCKET,
+            OzoneObj.StoreType.OZONE,
+            IAccessAuthorizer.ACLType.ALL,
+            volumeName, bucketName, null);
+
+    if (hasAccess) {
+      omSnapshotDeleteRequestSpy.preExecute(ozoneManager);
+    } else {
+      assertThrows(OMException.class,
+          () -> omSnapshotDeleteRequestSpy.preExecute(ozoneManager));
+    }
   }
 
   @Test

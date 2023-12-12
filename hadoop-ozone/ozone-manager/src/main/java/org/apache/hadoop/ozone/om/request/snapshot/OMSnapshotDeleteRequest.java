@@ -95,7 +95,8 @@ public class OMSnapshotDeleteRequest extends OMClientRequest {
       if (!ozoneManager.isAdmin(ugi) &&
           !ozoneManager.isOwner(ugi, bucketOwner)) {
         throw new OMException(
-            "Only bucket owners and Ozone admins can delete snapshots",
+            "ACLs disabled, only bucket owners and Ozone admins " +
+            "can delete snapshots",
             OMException.ResultCodes.PERMISSION_DENIED);
       }
     }
