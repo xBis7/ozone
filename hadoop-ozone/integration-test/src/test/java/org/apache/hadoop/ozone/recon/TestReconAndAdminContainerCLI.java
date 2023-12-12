@@ -293,6 +293,7 @@ public class TestReconAndAdminContainerCLI {
     // For maintenance, there is no replica-copy in this case.
     if (!isMaintenance) {
       TestHelper.waitForReplicaCount(containerIdR3, 4, cluster);
+      System.out.println("xbis: replicas: " + scmClient.getContainerReplicas(containerIdR3));
     }
 
     currentTimeStamp = System.currentTimeMillis();
@@ -324,6 +325,7 @@ public class TestReconAndAdminContainerCLI {
 
     // There will be a replica copy for both maintenance and decommission.
     // maintenance 3 -> 4, decommission 4 -> 5.
+    System.out.println("xbis: replicas: " + scmClient.getContainerReplicas(containerIdR3));
     int expectedReplicaNum = isMaintenance ? 4 : 5;
     TestHelper.waitForReplicaCount(containerIdR3, expectedReplicaNum, cluster);
 
@@ -364,23 +366,22 @@ public class TestReconAndAdminContainerCLI {
       throws IOException, InterruptedException, TimeoutException {
     Assertions.assertFalse(Strings.isNullOrEmpty(containerState));
 
-    // Thread runs every 1 second. 10000 millis is more than enough.
+    GenericTestUtils.LogCapturer logCapturer =
+        GenericTestUtils.LogCapturer.captureLogs(ContainerHealthTask.LOG);
+    // Both threads are running every 1 second.
+    // 10000 millis are more than enough.
     GenericTestUtils.waitFor(
         () -> {
           try {
             return scmClient.getReplicationManagerReport()
-                       .getReportTimeStamp() >= currentTimeStamp;
+                       .getReportTimeStamp() >= currentTimeStamp &&
+                   logCapturer.getOutput()
+                       .contains("**Container State Stats:**");
           } catch (IOException e) {
             throw new RuntimeException(e);
           }
         },
         100, 10000);
-
-    GenericTestUtils.LogCapturer logCapturer =
-        GenericTestUtils.LogCapturer.captureLogs(ContainerHealthTask.LOG);
-    GenericTestUtils.waitFor(() -> logCapturer.getOutput()
-                                       .contains("**Container State Stats:**"),
-        1000, 20000);
 
     ReplicationManagerReport rmReport = scmClient.getReplicationManagerReport();
     System.out.println("xbis: currentTimeStamp: " +
