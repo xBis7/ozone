@@ -38,6 +38,7 @@ import org.apache.hadoop.hdds.scm.pipeline.Pipeline;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineManager;
 import org.apache.hadoop.hdds.scm.pipeline.PipelineNotFoundException;
 import org.apache.hadoop.hdds.scm.server.StorageContainerManager;
+import org.apache.hadoop.ozone.HddsDatanodeService;
 import org.apache.hadoop.ozone.MiniOzoneCluster;
 import org.apache.hadoop.ozone.OzoneConfigKeys;
 import org.apache.hadoop.ozone.TestDataUtil;
@@ -61,6 +62,7 @@ import org.hadoop.ozone.recon.schema.ContainerSchemaDefinition.UnHealthyContaine
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -216,6 +218,14 @@ public class TestReconAndAdminContainerCLI {
     }
   }
 
+  @BeforeEach
+  public void setup() throws Exception {
+    for (HddsDatanodeService service : cluster.getHddsDatanodes()) {
+    TestNodeUtil.waitForDnToReachPersistedOpState(
+        service.getDatanodeDetails(), IN_SERVICE);
+    }
+  }
+
   /**
    * It's the same regardless of the ReplicationConfig,
    * but it's easier to test with Ratis ONE.
@@ -246,8 +256,6 @@ public class TestReconAndAdminContainerCLI {
     for (DatanodeDetails details : pipeline.getNodes()) {
       cluster.restartHddsDatanode(details, false);
       TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
-          details, IN_SERVICE);
-      TestNodeUtil.waitForDnToReachPersistedOpState(
           details, IN_SERVICE);
     }
   }

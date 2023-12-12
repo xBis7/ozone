@@ -99,6 +99,6 @@ public final class TestNodeUtil {
       throws TimeoutException, InterruptedException {
     GenericTestUtils.waitFor(
         () -> dn.getPersistedOpState().equals(state),
-        200, 40000);
+        200, 30000);
   }
 }
