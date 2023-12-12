@@ -109,7 +109,7 @@ public class OMSnapshotCreateRequest extends OMClientRequest {
     // Permission check
     if (ozoneManager.getAclsEnabled()) {
       checkAcls(ozoneManager, OzoneObj.ResourceType.BUCKET,
-          OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.ALL,
+          OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.CREATE,
           volumeName, bucketName, null);
     } else {
       UserGroupInformation ugi = createUGIForApi();

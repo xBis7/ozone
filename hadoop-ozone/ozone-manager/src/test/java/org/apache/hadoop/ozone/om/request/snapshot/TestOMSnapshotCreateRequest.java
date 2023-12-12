@@ -213,7 +213,7 @@ public class TestOMSnapshotCreateRequest {
          .checkAcls(ozoneManager,
              OzoneObj.ResourceType.BUCKET,
              OzoneObj.StoreType.OZONE,
-             IAccessAuthorizer.ACLType.ALL,
+             IAccessAuthorizer.ACLType.CREATE,
              volumeName, bucketName, null);
 
     if (hasAccess) {

@@ -86,7 +86,7 @@ public class OMSnapshotDeleteRequest extends OMClientRequest {
     // Permission check
     if (ozoneManager.getAclsEnabled()) {
       checkAcls(ozoneManager, OzoneObj.ResourceType.BUCKET,
-          OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.ALL,
+          OzoneObj.StoreType.OZONE, IAccessAuthorizer.ACLType.DELETE,
           volumeName, bucketName, null);
     } else {
       UserGroupInformation ugi = createUGIForApi();

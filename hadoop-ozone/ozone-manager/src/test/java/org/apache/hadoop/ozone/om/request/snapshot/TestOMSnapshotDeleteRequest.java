@@ -212,7 +212,7 @@ public class TestOMSnapshotDeleteRequest {
         .checkAcls(ozoneManager,
             OzoneObj.ResourceType.BUCKET,
             OzoneObj.StoreType.OZONE,
-            IAccessAuthorizer.ACLType.ALL,
+            IAccessAuthorizer.ACLType.DELETE,
             volumeName, bucketName, null);
 
     if (hasAccess) {
