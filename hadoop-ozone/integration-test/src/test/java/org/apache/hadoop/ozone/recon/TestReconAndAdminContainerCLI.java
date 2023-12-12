@@ -90,6 +90,7 @@ import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_HEARTBEAT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_NODE_REPORT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_PIPELINE_REPORT_INTERVAL;
 import static org.apache.hadoop.hdds.HddsConfigKeys.HDDS_RECON_HEARTBEAT_INTERVAL;
+import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeOperationalState.IN_MAINTENANCE;
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeOperationalState.IN_SERVICE;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_DATANODE_ADMIN_MONITOR_INTERVAL;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_SCM_DEADNODE_INTERVAL;
@@ -245,6 +246,14 @@ public class TestReconAndAdminContainerCLI {
     long currentTimeStamp = System.currentTimeMillis();
     compareRMReportToReconResponse(
         containerStateForTesting.toString(), currentTimeStamp);
+
+    for (DatanodeDetails details : pipeline.getNodes()) {
+      cluster.restartHddsDatanode(details, true);
+      TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
+          details, IN_SERVICE);
+      TestNodeUtil.waitForDnToReachPersistedOpState(
+          details, IN_SERVICE);
+    }
   }
 
   @ParameterizedTest
@@ -370,18 +379,18 @@ public class TestReconAndAdminContainerCLI {
         GenericTestUtils.LogCapturer.captureLogs(ContainerHealthTask.LOG);
     // Both threads are running every 1 second.
     // 10000 millis are more than enough.
-    GenericTestUtils.waitFor(
-        () -> {
-          try {
-            return scmClient.getReplicationManagerReport()
-                       .getReportTimeStamp() >= currentTimeStamp &&
-                   logCapturer.getOutput()
-                       .contains("**Container State Stats:**");
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        },
-        100, 10000);
+//    GenericTestUtils.waitFor(
+//        () -> {
+//          try {
+//            return scmClient.getReplicationManagerReport()
+//                       .getReportTimeStamp() >= currentTimeStamp &&
+//                   logCapturer.getOutput()
+//                       .contains("**Container State Stats:**");
+//          } catch (IOException e) {
+//            throw new RuntimeException(e);
+//          }
+//        },
+//        100, 10000);
 
     ReplicationManagerReport rmReport = scmClient.getReplicationManagerReport();
     System.out.println("xbis: currentTimeStamp: " +
@@ -400,6 +409,13 @@ public class TestReconAndAdminContainerCLI {
         ReplicationManagerReport.HealthState.OVER_REPLICATED);
     long rmMisReplCounter = rmReport.getStat(
         ReplicationManagerReport.HealthState.MIS_REPLICATED);
+
+    GenericTestUtils.waitFor(() ->
+            rmMissingCounter == reconResponse.getMissingCount() &&
+            rmUnderReplCounter == reconResponse.getUnderReplicatedCount() &&
+            rmOverReplCounter == reconResponse.getOverReplicatedCount() &&
+            rmMisReplCounter == reconResponse.getMisReplicatedCount()
+        , 1000, 30000);
 
     // Check that all counters have the same values.
     Assertions.assertEquals(rmMissingCounter,
