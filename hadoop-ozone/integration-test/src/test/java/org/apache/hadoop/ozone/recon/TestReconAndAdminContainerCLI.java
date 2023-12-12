@@ -128,7 +128,7 @@ public class TestReconAndAdminContainerCLI {
   public static void init() throws Exception {
     setupConfigKeys();
     cluster = MiniOzoneCluster.newBuilder(CONF)
-                  .setNumDatanodes(5)
+                  .setNumDatanodes(7)
                   .includeRecon(true)
                   .build();
     cluster.waitForClusterToBeReady();
