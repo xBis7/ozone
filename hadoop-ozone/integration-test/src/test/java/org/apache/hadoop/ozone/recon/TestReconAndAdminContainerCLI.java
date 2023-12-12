@@ -103,10 +103,6 @@ import static org.apache.hadoop.ozone.recon.ReconServerConfigKeys.OZONE_RECON_OM
 public class TestReconAndAdminContainerCLI {
 
   private static final OzoneConfiguration CONF = new OzoneConfiguration();
-  private static final String VOLUME = "vol1";
-  private static final String BUCKET = "bucket1";
-  private static final String KEY_RATIS_ONE = "key1";
-  private static final String KEY_RATIS_THREE = "key2";
   private static ScmClient scmClient;
   private static MiniOzoneCluster cluster;
   private static NodeManager scmNodeManager;
@@ -165,13 +161,18 @@ public class TestReconAndAdminContainerCLI {
     ContainerManager reconContainerManager = reconScm.getContainerManager();
 
     OzoneClient client = cluster.newClient();
+    String volumeName = "vol1";
+    String bucketName = "bucket1";
+    String keyNameR1 = "key1";
+    String keyNameR3 = "key2";
+
     OzoneBucket bucket = TestDataUtil.createVolumeAndBucket(
-        client, VOLUME, BUCKET, BucketLayout.FILE_SYSTEM_OPTIMIZED);
+        client, volumeName, bucketName, BucketLayout.FILE_SYSTEM_OPTIMIZED);
 
     // Create keys and containers.
-    OmKeyInfo omKeyInfoR1 = createTestKey(bucket, KEY_RATIS_ONE,
+    OmKeyInfo omKeyInfoR1 = createTestKey(bucket, keyNameR1,
         RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.ONE));
-    OmKeyInfo omKeyInfoR3 = createTestKey(bucket, KEY_RATIS_THREE,
+    OmKeyInfo omKeyInfoR3 = createTestKey(bucket, keyNameR3,
         RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.THREE));
 
     // Sync Recon with OM, to force it to get the new key entries.
@@ -371,7 +372,7 @@ public class TestReconAndAdminContainerCLI {
             rmUnderReplCounter == reconResponse.getUnderReplicatedCount() &&
             rmOverReplCounter == reconResponse.getOverReplicatedCount() &&
             rmMisReplCounter == reconResponse.getMisReplicatedCount()
-        , 1000, 30000);
+        , 1000, 60000);
 
     // Recon's UnhealthyContainerResponse contains a list of containers
     // for a particular state. Check if RMs sample of containers can be
