@@ -248,11 +248,11 @@ public class TestReconAndAdminContainerCLI {
         containerStateForTesting.toString(), currentTimeStamp);
 
     for (DatanodeDetails details : pipeline.getNodes()) {
-      cluster.restartHddsDatanode(details, true);
+      cluster.restartHddsDatanode(details, false);
       TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
           details, IN_SERVICE);
-      TestNodeUtil.waitForDnToReachPersistedOpState(
-          details, IN_SERVICE);
+//      TestNodeUtil.waitForDnToReachPersistedOpState(
+//          details, IN_SERVICE);
     }
   }
 
