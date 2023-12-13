@@ -64,7 +64,7 @@ import static org.apache.hadoop.ozone.recon.ReconConstants.TOTAL_USED_BYTES;
  */
 public class ContainerHealthTask extends ReconScmTask {
 
-  public static final Logger LOG =
+  private static final Logger LOG =
       LoggerFactory.getLogger(ContainerHealthTask.class);
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
