@@ -61,6 +61,7 @@ import org.hadoop.ozone.recon.schema.ContainerSchemaDefinition.UnHealthyContaine
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -76,6 +77,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -108,6 +110,9 @@ public class TestReconAndAdminContainerCLI {
   private static NodeManager scmNodeManager;
   private static long containerIdR1;
   private static long containerIdR3;
+  private static OzoneBucket ozoneBucket;
+  private static ContainerManager scmContainerManager;
+  private static ContainerManager reconContainerManager;
 
   private static Stream<Arguments> outOfServiceNodeStateArgs() {
     return Stream.of(
@@ -131,7 +136,7 @@ public class TestReconAndAdminContainerCLI {
     scmClient = new ContainerOperationClient(CONF);
     StorageContainerManager scm = cluster.getStorageContainerManager();
     PipelineManager scmPipelineManager = scm.getPipelineManager();
-    ContainerManager scmContainerManager = scm.getContainerManager();
+    scmContainerManager = scm.getContainerManager();
     scmNodeManager = scm.getScmNodeManager();
 
     ReconStorageContainerManagerFacade reconScm =
@@ -158,55 +163,57 @@ public class TestReconAndAdminContainerCLI {
     Assertions.assertEquals(scmNodeManager.getAllNodes().size(),
         reconNodeManager.getAllNodes().size());
 
-    ContainerManager reconContainerManager = reconScm.getContainerManager();
+    reconContainerManager = reconScm.getContainerManager();
 
     OzoneClient client = cluster.newClient();
     String volumeName = "vol1";
     String bucketName = "bucket1";
+
+    ozoneBucket = TestDataUtil.createVolumeAndBucket(
+        client, volumeName, bucketName, BucketLayout.FILE_SYSTEM_OPTIMIZED);
+
     String keyNameR1 = "key1";
     String keyNameR3 = "key2";
 
-    OzoneBucket bucket = TestDataUtil.createVolumeAndBucket(
-        client, volumeName, bucketName, BucketLayout.FILE_SYSTEM_OPTIMIZED);
-
-    // Create keys and containers.
-    OmKeyInfo omKeyInfoR1 = createTestKey(bucket, keyNameR1,
-        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.ONE));
-    OmKeyInfo omKeyInfoR3 = createTestKey(bucket, keyNameR3,
-        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.THREE));
-
-    // Sync Recon with OM, to force it to get the new key entries.
-    TestReconEndpointUtil.triggerReconDbSyncWithOm(CONF);
-
-    List<Long> containerIDsR1 = getContainerIdsForKey(omKeyInfoR1);
-    // The list has only 1 containerID.
-    Assertions.assertEquals(1, containerIDsR1.size());
-    containerIdR1 = containerIDsR1.get(0);
-
-    List<Long> containerIDsR3 = getContainerIdsForKey(omKeyInfoR3);
-    // The list has only 1 containerID.
-    Assertions.assertEquals(1, containerIDsR3.size());
-    containerIdR3 = containerIDsR3.get(0);
-
-    // Verify Recon picked up the new containers.
-    Assertions.assertEquals(scmContainerManager.getContainers(),
-        reconContainerManager.getContainers());
-
-    ReconContainerMetadataManager reconContainerMetadataManager =
-        cluster.getReconServer().getReconContainerMetadataManager();
-
-    // Verify Recon picked up the new keys and
-    // updated its container key mappings.
-    GenericTestUtils.waitFor(() -> {
-      try {
-        return reconContainerMetadataManager
-                   .getKeyCountForContainer(containerIdR1) > 0 &&
-               reconContainerMetadataManager
-                   .getKeyCountForContainer(containerIdR3) > 0;
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }, 1000, 20000);
+//    // Create keys and containers.
+//    OmKeyInfo omKeyInfoR1 = createTestKey(keyNameR1,
+//        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.ONE));
+//    OmKeyInfo omKeyInfoR3 = createTestKey(keyNameR3,
+//        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.THREE));
+//
+//    // Sync Recon with OM, to force it to get the new key entries.
+//    TestReconEndpointUtil.triggerReconDbSyncWithOm(CONF);
+//
+//    List<Long> containerIDsR1 = getContainerIdsForKey(omKeyInfoR1);
+//    // The list has only 1 containerID.
+//    Assertions.assertEquals(1, containerIDsR1.size());
+//    containerIdR1 = containerIDsR1.get(0);
+//
+//    List<Long> containerIDsR3 = getContainerIdsForKey(omKeyInfoR3);
+//    // The list has only 1 containerID.
+//    Assertions.assertEquals(1, containerIDsR3.size());
+//    containerIdR3 = containerIDsR3.get(0);
+//
+//    // Verify Recon picked up the new containers.
+//    Assertions.assertEquals(scmContainerManager.getContainers(),
+//        reconContainerManager.getContainers());
+//
+//    ReconContainerMetadataManager reconContainerMetadataManager =
+//        cluster.getReconServer().getReconContainerMetadataManager();
+//
+//    // Verify Recon picked up the new keys and
+//    // updated its container key mappings.
+//    GenericTestUtils.waitFor(() -> {
+//      try {
+//        return reconContainerMetadataManager
+//                   .getKeyCountForContainer(containerIdR1) > 0 &&
+//               reconContainerMetadataManager
+//                   .getKeyCountForContainer(containerIdR3) > 0;
+//      } catch (IOException e) {
+//        throw new RuntimeException(e);
+//      }
+//    }, 1000, 20000);
+    setupRatis3Key();
   }
 
   @AfterAll
@@ -216,12 +223,25 @@ public class TestReconAndAdminContainerCLI {
     }
   }
 
+//  @BeforeEach
+//  public void before() throws InterruptedException, TimeoutException {
+//    List<Pipeline> pipelines = cluster.getStorageContainerManager()
+//                                   .getPipelineManager().getPipelines();
+//    for (Pipeline pipeline : pipelines) {
+//      GenericTestUtils.waitFor(
+//          () -> pipeline.getPipelineState() == Pipeline.PipelineState.OPEN,
+//          100, 20000);
+//    }
+//  }
+
   /**
    * It's the same regardless of the ReplicationConfig,
    * but it's easier to test with Ratis ONE.
    */
   @Test
   public void testMissingContainer() throws Exception {
+    setupRatis1Key();
+
     Pipeline pipeline =
         scmClient.getContainerWithPipeline(containerIdR1).getPipeline();
 
@@ -245,9 +265,9 @@ public class TestReconAndAdminContainerCLI {
 
     for (DatanodeDetails details : pipeline.getNodes()) {
       cluster.restartHddsDatanode(details, false);
-      TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
-          details, IN_SERVICE);
+      TestNodeUtil.waitForDnToReachOpState(scmNodeManager, details, IN_SERVICE);
       System.out.println("xbis: persisted state: " + details.getPersistedOpState());
+//      TestNodeUtil.waitForDnToReachPersistedOpState(details, IN_SERVICE);
       // It's failing to update the node's persisted state to IN_SERVICE.
       // We need to wait for the next heartbeat.
     }
@@ -258,6 +278,8 @@ public class TestReconAndAdminContainerCLI {
   public void testNodesInDecommissionOrMaintenance(
       NodeOperationalState initialState, NodeOperationalState finalState,
       boolean isMaintenance) throws Exception {
+//    setupRatis3Key();
+
     Pipeline pipeline =
         scmClient.getContainerWithPipeline(containerIdR3).getPipeline();
 
@@ -336,13 +358,80 @@ public class TestReconAndAdminContainerCLI {
     TestNodeUtil.waitForDnToReachOpState(scmNodeManager,
         nodeToGoOffline2, IN_SERVICE);
 
-    TestNodeUtil.waitForDnToReachPersistedOpState(
-        nodeToGoOffline1, IN_SERVICE);
-    TestNodeUtil.waitForDnToReachPersistedOpState(
-        nodeToGoOffline2, IN_SERVICE);
+    TestNodeUtil.waitForDnToReachPersistedOpState(nodeToGoOffline1, IN_SERVICE);
+    TestNodeUtil.waitForDnToReachPersistedOpState(nodeToGoOffline2, IN_SERVICE);
 
     compareRMReportToReconResponse(underReplicatedState.toString());
     compareRMReportToReconResponse(overReplicatedState.toString());
+  }
+
+  private static void setupRatis1Key() throws Exception {
+    String keyNameR1 = "key1";
+
+    // Create keys and containers.
+    OmKeyInfo omKeyInfoR1 = createTestKey(keyNameR1,
+        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.ONE));
+
+    // Sync Recon with OM, to force it to get the new key entries.
+    TestReconEndpointUtil.triggerReconDbSyncWithOm(CONF);
+
+    List<Long> containerIDsR1 = getContainerIdsForKey(omKeyInfoR1);
+    // The list has only 1 containerID.
+    Assertions.assertEquals(1, containerIDsR1.size());
+    containerIdR1 = containerIDsR1.get(0);
+
+
+
+    // Verify Recon picked up the new containers.
+    Assertions.assertEquals(scmContainerManager.getContainers(),
+        reconContainerManager.getContainers());
+
+    ReconContainerMetadataManager reconContainerMetadataManager =
+        cluster.getReconServer().getReconContainerMetadataManager();
+
+    // Verify Recon picked up the new keys and
+    // updated its container key mappings.
+    GenericTestUtils.waitFor(() -> {
+      try {
+        return reconContainerMetadataManager
+                   .getKeyCountForContainer(containerIdR1) > 0;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }, 1000, 20000);
+  }
+
+  private static void setupRatis3Key() throws Exception {
+    String keyNameR3 = "key2";
+
+    OmKeyInfo omKeyInfoR3 = createTestKey(keyNameR3,
+        RatisReplicationConfig.getInstance(HddsProtos.ReplicationFactor.THREE));
+
+    // Sync Recon with OM, to force it to get the new key entries.
+    TestReconEndpointUtil.triggerReconDbSyncWithOm(CONF);
+
+    List<Long> containerIDsR3 = getContainerIdsForKey(omKeyInfoR3);
+    // The list has only 1 containerID.
+    Assertions.assertEquals(1, containerIDsR3.size());
+    containerIdR3 = containerIDsR3.get(0);
+
+    // Verify Recon picked up the new containers.
+    Assertions.assertEquals(scmContainerManager.getContainers(),
+        reconContainerManager.getContainers());
+
+    ReconContainerMetadataManager reconContainerMetadataManager =
+        cluster.getReconServer().getReconContainerMetadataManager();
+
+    // Verify Recon picked up the new keys and
+    // updated its container key mappings.
+    GenericTestUtils.waitFor(() -> {
+      try {
+        return reconContainerMetadataManager
+                   .getKeyCountForContainer(containerIdR3) > 0;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }, 1000, 20000);
   }
 
   /**
@@ -370,11 +459,21 @@ public class TestReconAndAdminContainerCLI {
 
     // Both threads are running every 1 second.
     // Wait until all values are equal.
-    GenericTestUtils.waitFor(() ->
-            rmMissingCounter == reconResponse.getMissingCount() &&
+    GenericTestUtils.waitFor(() -> {
+            System.out.printf("xbis: counters: " +
+                              "\nrmMissing: %d - reconMissing: %d " +
+                              "\nrmUnder: %d - reconUnder: %d " +
+                              "\nrmOver: %d - reconOver: %d " +
+                              "\nrmMis: %d - reconMis: %d \n",
+                rmMissingCounter, reconResponse.getMissingCount(),
+                rmUnderReplCounter, reconResponse.getUnderReplicatedCount(),
+                rmOverReplCounter, reconResponse.getOverReplicatedCount(),
+                rmMisReplCounter, reconResponse.getMisReplicatedCount());
+            return rmMissingCounter == reconResponse.getMissingCount() &&
             rmUnderReplCounter == reconResponse.getUnderReplicatedCount() &&
             rmOverReplCounter == reconResponse.getOverReplicatedCount() &&
-            rmMisReplCounter == reconResponse.getMisReplicatedCount()
+            rmMisReplCounter == reconResponse.getMisReplicatedCount();
+  }
         , 1000, 40000);
 
     // Recon's UnhealthyContainerResponse contains a list of containers
@@ -413,8 +512,8 @@ public class TestReconAndAdminContainerCLI {
     Assertions.assertTrue(reconContainerIDs.containsAll(rmIDsToLong));
   }
 
-  private static OmKeyInfo createTestKey(OzoneBucket ozoneBucket,
-      String keyName, ReplicationConfig replicationConfig)
+  private static OmKeyInfo createTestKey(String keyName,
+      ReplicationConfig replicationConfig)
       throws IOException {
     byte[] textBytes = "Testing".getBytes(UTF_8);
     try (OutputStream out = ozoneBucket.createKey(keyName,
