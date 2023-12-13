@@ -214,8 +214,6 @@ public class TestReconAndAdminContainerCLI {
     for (DatanodeDetails details : pipeline.getNodes()) {
       cluster.restartHddsDatanode(details, false);
       TestNodeUtil.waitForDnToReachOpState(scmNodeManager, details, IN_SERVICE);
-      System.out.println("xbis: persisted state: " +
-                         details.getPersistedOpState());
     }
   }
 
@@ -338,8 +336,8 @@ public class TestReconAndAdminContainerCLI {
             rmMissingCounter == reconResponse.getMissingCount() &&
             rmUnderReplCounter == reconResponse.getUnderReplicatedCount() &&
             rmOverReplCounter == reconResponse.getOverReplicatedCount() &&
-            rmMisReplCounter == reconResponse.getMisReplicatedCount()
-        , 1000, 40000);
+            rmMisReplCounter == reconResponse.getMisReplicatedCount(),
+        1000, 40000);
 
     // Recon's UnhealthyContainerResponse contains a list of containers
     // for a particular state. Check if RMs sample of containers can be
