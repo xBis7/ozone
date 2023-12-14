@@ -628,6 +628,9 @@ public class TestSCMContainerPlacementRackAware {
     assertNull(status.misReplicatedReason());
   }
 
+  // TODO: Test for excessive replicas and offline nodes
+  //  e.g. 4/5 nodes IN_SERVICE, 2 nodes DECOMMISSION
+
   @ParameterizedTest
   @MethodSource("numDatanodes")
   public void testOutOfServiceNodesNotSelected(int datanodeCount) {
