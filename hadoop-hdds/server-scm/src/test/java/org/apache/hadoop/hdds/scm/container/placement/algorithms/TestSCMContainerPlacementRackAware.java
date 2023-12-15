@@ -53,6 +53,7 @@ import org.mockito.Mockito;
 import org.apache.commons.lang3.StringUtils;
 
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeOperationalState.DECOMMISSIONED;
+import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeOperationalState.IN_SERVICE;
 import static org.apache.hadoop.hdds.protocol.proto.HddsProtos.NodeState.HEALTHY;
 import static org.apache.hadoop.hdds.scm.ScmConfigKeys.OZONE_DATANODE_RATIS_VOLUME_FREE_SPACE_MIN;
 import static org.apache.hadoop.hdds.scm.net.NetConstants.LEAF_SCHEMA;
@@ -567,8 +568,7 @@ public class TestSCMContainerPlacementRackAware {
 
   @ParameterizedTest
   @MethodSource("org.apache.hadoop.hdds.scm.node.NodeStatus#decommissionStates")
-  public void testReplicaOnNodeInDecommission(
-      HddsProtos.NodeOperationalState state) {
+  public void testReplicaOnNodeInDecommission(HddsProtos.NodeOperationalState state) {
     setup(6);
     //    6 datanodes, 2 per rack.
     //    /rack0/node0  -> used
@@ -609,8 +609,7 @@ public class TestSCMContainerPlacementRackAware {
     assertEquals(2, status.actualPlacementCount());
     assertEquals(2, status.expectedPlacementCount());
     assertEquals(1, status.misReplicationCount());
-    assertTrue(status.misReplicatedReason()
-                   .contains("number of replicas per rack are [1, 3]"));
+    assertTrue(status.misReplicatedReason().contains("number of replicas per rack are [1, 3]"));
 
     dns = new ArrayList<>();
     datanodes.get(0).setPersistedOpState(state);
@@ -626,6 +625,64 @@ public class TestSCMContainerPlacementRackAware {
     assertEquals(2, status.expectedPlacementCount());
     assertEquals(0, status.misReplicationCount());
     assertNull(status.misReplicatedReason());
+  }
+
+  @Test
+  public void testExcessiveUnhealthyReplicas() {
+
+  }
+
+  @ParameterizedTest
+  @MethodSource("org.apache.hadoop.hdds.scm.node.NodeStatus#outOfServiceStates")
+  public void testOverReplicationAndOutOfServiceNodes(HddsProtos.NodeOperationalState state) {
+    // We have 3 in_service and 4 out_of_service nodes. 2 of the out_of_service come back online,
+    // and we end up with 5 available replicas and 2 replicas on offline nodes.
+    // Placement policy shouldn't be satisfied as the excessive replicas belong to online nodes.
+    // The container is over-replicated and all the extra replicas are available.
+
+    // Setup 7 datanodes.
+    setup(7);
+
+    //    7 datanodes, 2 per rack.
+    //    /rack0/node0  -> in_service       > used
+    //    /rack0/node1  -> in_service       > used
+    //    /rack0/node2  -> offline
+    //    /rack0/node3  -> offline
+    //    /rack0/node4  -> offline
+    //    /rack1/node5  -> in_service       > used
+    //    /rack1/node6  -> offline
+    datanodes.get(2).setPersistedOpState(state);
+    datanodes.get(3).setPersistedOpState(state);
+    datanodes.get(4).setPersistedOpState(state);
+    datanodes.get(6).setPersistedOpState(state);
+    List<DatanodeDetails> dns = new ArrayList<>(datanodes);
+
+    // Placement policy is satisfied.
+    ContainerPlacementStatus status = policy.validateContainerPlacement(dns, 3);
+    assertTrue(status.isPolicySatisfied());
+    assertEquals(2, status.actualPlacementCount());
+    assertEquals(2, status.expectedPlacementCount());
+    assertEquals(0, status.misReplicationCount());
+    assertNull(status.misReplicatedReason());
+
+    //    7 datanodes, 2 per rack.
+    //    /rack0/node0  -> in_service           > used
+    //    /rack0/node1  -> in_service           > used
+    //    /rack0/node2  -> offline > in_service > used
+    //    /rack0/node3  -> offline
+    //    /rack0/node4  -> offline
+    //    /rack1/node5  -> in_service           > used
+    //    /rack1/node6  -> offline > in_service > used
+    datanodes.get(2).setPersistedOpState(IN_SERVICE);
+    datanodes.get(6).setPersistedOpState(IN_SERVICE);
+    dns = new ArrayList<>(datanodes);
+
+    status = policy.validateContainerPlacement(dns, 3);
+    assertFalse(status.isPolicySatisfied());
+    assertEquals(2, status.actualPlacementCount());
+    assertEquals(2, status.expectedPlacementCount());
+    assertEquals(2, status.misReplicationCount());
+    assertTrue(status.misReplicatedReason().contains("number of replicas per rack are [2, 3]"));
   }
 
   // TODO: Test for excessive replicas and offline nodes
