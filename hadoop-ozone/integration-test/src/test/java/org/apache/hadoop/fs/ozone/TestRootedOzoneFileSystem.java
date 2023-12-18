@@ -1116,6 +1116,8 @@ public class TestRootedOzoneFileSystem {
           statusFromFS.isDirectory());
       assertEquals(statusFromAdapter.getModificationTime(),
           statusFromFS.getModificationTime());
+      assertEquals(statusFromAdapter.getOwner(), statusFromFS.getOwner());
+      assertEquals(statusFromAdapter.getGroup(), statusFromFS.getGroup());
     }
   }
 
