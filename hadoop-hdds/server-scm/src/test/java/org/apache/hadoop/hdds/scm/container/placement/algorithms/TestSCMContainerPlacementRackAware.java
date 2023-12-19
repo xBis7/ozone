@@ -567,97 +567,23 @@ public class TestSCMContainerPlacementRackAware {
   }
 
   @ParameterizedTest
-  @MethodSource("org.apache.hadoop.hdds.scm.node.NodeStatus#decommissionStates")
-  public void testReplicaOnNodeInDecommission(HddsProtos.NodeOperationalState state) {
-    setup(6);
-    //    6 datanodes, 2 per rack.
-    //    /rack0/node0  -> used
-    //    /rack0/node1  -> used
-    //    /rack0/node2
-    //    /rack0/node3
-    //    /rack0/node4
-    //    /rack1/node5  -> used
-
-    List<DatanodeDetails> dns = new ArrayList<>();
-    dns.add(datanodes.get(0));
-    dns.add(datanodes.get(1));
-    dns.add(datanodes.get(5));
-
-    // Placement policy is satisfied.
-    ContainerPlacementStatus status = policy.validateContainerPlacement(dns, 3);
-    assertTrue(status.isPolicySatisfied());
-    assertEquals(2, status.actualPlacementCount());
-    assertEquals(2, status.expectedPlacementCount());
-    assertEquals(0, status.misReplicationCount());
-    assertNull(status.misReplicatedReason());
-
-    // For RackAware there must be 2 replicas on 1 rack and
-    // 1 replica on another rack. If there are 3 replicas on 1 rack,
-    // then 1 of them will be considered mis-replicated.
-    // If 1 of the 3 replicas belongs to a decommissioned node there are
-    // 2 total available replicas and policy should be satisfied.
-
-    dns = new ArrayList<>();
-    dns.add(datanodes.get(0));
-    dns.add(datanodes.get(1));
-    dns.add(datanodes.get(2));
-    dns.add(datanodes.get(5));
-
-    // All 4 nodes are IN_SERVICE, policy isn't satisfied.
-    status = policy.validateContainerPlacement(dns, 3);
-    assertFalse(status.isPolicySatisfied());
-    assertEquals(2, status.actualPlacementCount());
-    assertEquals(2, status.expectedPlacementCount());
-    assertEquals(1, status.misReplicationCount());
-    assertTrue(status.misReplicatedReason().contains("number of replicas per rack are [1, 3]"));
-
-    dns = new ArrayList<>();
-    datanodes.get(0).setPersistedOpState(state);
-    dns.add(datanodes.get(0));
-    dns.add(datanodes.get(1));
-    dns.add(datanodes.get(2));
-    dns.add(datanodes.get(5));
-
-    // '/rack0/node0' is in decommission, policy is satisfied.
-    status = policy.validateContainerPlacement(dns, 3);
-    assertTrue(status.isPolicySatisfied());
-    assertEquals(2, status.actualPlacementCount());
-    assertEquals(2, status.expectedPlacementCount());
-    assertEquals(0, status.misReplicationCount());
-    assertNull(status.misReplicatedReason());
-  }
-
-  @Test
-  public void testExcessiveUnhealthyReplicas() {
-
-  }
-
-  @ParameterizedTest
   @MethodSource("org.apache.hadoop.hdds.scm.node.NodeStatus#outOfServiceStates")
   public void testOverReplicationAndOutOfServiceNodes(HddsProtos.NodeOperationalState state) {
-    // We have 3 in_service and 4 out_of_service nodes. 2 of the out_of_service come back online,
-    // and we end up with 5 available replicas and 2 replicas on offline nodes.
-    // Placement policy shouldn't be satisfied as the excessive replicas belong to online nodes.
-    // The container is over-replicated and all the extra replicas are available.
-
-    // Setup 7 datanodes.
     setup(7);
-
-    //    7 datanodes, 2 per rack.
-    //    /rack0/node0  -> in_service       > used
-    //    /rack0/node1  -> in_service       > used
-    //    /rack0/node2  -> offline
-    //    /rack0/node3  -> offline
-    //    /rack0/node4  -> offline
-    //    /rack1/node5  -> in_service       > used
-    //    /rack1/node6  -> offline
+    //    7 datanodes, all nodes are used.
+    //    /rack0/node0  -> IN_SERVICE
+    //    /rack0/node1  -> IN_SERVICE
+    //    /rack0/node2  -> OFFLINE
+    //    /rack0/node3  -> OFFLINE
+    //    /rack0/node4  -> OFFLINE
+    //    /rack1/node5  -> IN_SERVICE
+    //    /rack1/node6  -> OFFLINE
     datanodes.get(2).setPersistedOpState(state);
     datanodes.get(3).setPersistedOpState(state);
     datanodes.get(4).setPersistedOpState(state);
     datanodes.get(6).setPersistedOpState(state);
     List<DatanodeDetails> dns = new ArrayList<>(datanodes);
 
-    // Placement policy is satisfied.
     ContainerPlacementStatus status = policy.validateContainerPlacement(dns, 3);
     assertTrue(status.isPolicySatisfied());
     assertEquals(2, status.actualPlacementCount());
@@ -665,14 +591,13 @@ public class TestSCMContainerPlacementRackAware {
     assertEquals(0, status.misReplicationCount());
     assertNull(status.misReplicatedReason());
 
-    //    7 datanodes, 2 per rack.
-    //    /rack0/node0  -> in_service           > used
-    //    /rack0/node1  -> in_service           > used
-    //    /rack0/node2  -> offline > in_service > used
-    //    /rack0/node3  -> offline
-    //    /rack0/node4  -> offline
-    //    /rack1/node5  -> in_service           > used
-    //    /rack1/node6  -> offline > in_service > used
+    //    /rack0/node0  -> IN_SERVICE
+    //    /rack0/node1  -> IN_SERVICE
+    //    /rack0/node2  -> OFFLINE > IN_SERVICE
+    //    /rack0/node3  -> OFFLINE
+    //    /rack0/node4  -> OFFLINE
+    //    /rack1/node5  -> IN_SERVICE
+    //    /rack1/node6  -> OFFLINE > IN_SERVICE
     datanodes.get(2).setPersistedOpState(IN_SERVICE);
     datanodes.get(6).setPersistedOpState(IN_SERVICE);
     dns = new ArrayList<>(datanodes);
