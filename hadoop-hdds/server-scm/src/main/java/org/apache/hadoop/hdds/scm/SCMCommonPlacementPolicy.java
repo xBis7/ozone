@@ -461,16 +461,9 @@ public abstract class SCMCommonPlacementPolicy implements
     int maxReplicasPerRack = getMaxReplicasPerRack(replicas,
             Math.min(requiredRacks, numRacks));
 
-    boolean offlineNodeReplicas = dns.stream()
-        .anyMatch(d -> d.isMaintenance() || d.isDecommissioned());
-    // What about stale or dead nodes?
+    // Adjust max replicas per rack for excessive replicas.
 
-    // Without this check, everytime there is over-replication,
-    // we adjust upwards and the policy is satisfied, where it shouldn't be.
-    if (offlineNodeReplicas) {
-      // Adjust max replicas per rack for excessive replicas belonging to offline nodes.
-      maxReplicasPerRack += Math.max(0, dns.size() - replicas);
-    }
+    maxReplicasPerRack += Math.max(0, dns.size() - replicas);
     return new ContainerPlacementStatusDefault(
         currentRackCount.size(), requiredRacks, numRacks, maxReplicasPerRack,
             currentRackCount);

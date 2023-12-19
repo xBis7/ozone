@@ -678,15 +678,12 @@ public class TestSCMContainerPlacementRackAware {
     dns = new ArrayList<>(datanodes);
 
     status = policy.validateContainerPlacement(dns, 3);
-    assertFalse(status.isPolicySatisfied());
+    assertTrue(status.isPolicySatisfied());
     assertEquals(2, status.actualPlacementCount());
     assertEquals(2, status.expectedPlacementCount());
-    assertEquals(2, status.misReplicationCount());
-    assertTrue(status.misReplicatedReason().contains("number of replicas per rack are [2, 3]"));
+    assertEquals(0, status.misReplicationCount());
+    assertNull(status.misReplicatedReason());
   }
-
-  // TODO: Test for excessive replicas and offline nodes
-  //  e.g. 4/5 nodes IN_SERVICE, 2 nodes DECOMMISSION
 
   @ParameterizedTest
   @MethodSource("numDatanodes")

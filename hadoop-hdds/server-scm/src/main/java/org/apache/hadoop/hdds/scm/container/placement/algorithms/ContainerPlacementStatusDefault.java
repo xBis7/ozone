@@ -58,6 +58,7 @@ public class ContainerPlacementStatusDefault
       return false;
     }
     return rackReplicaCnts.stream().allMatch(cnt -> cnt <= maxReplicasPerRack);
+//        cnt <= maxReplicasPerRack && maxReplicasPerRack - cnt <= 1);
   }
 
   @Override
