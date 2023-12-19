@@ -695,7 +695,7 @@ public class TestOMRatisSnapshots {
     }
 
     // Verify the metrics
-    /* HDDS-8876
+    /* HDDS-8876 */
     GenericTestUtils.waitFor(() -> {
       DBCheckpointMetrics dbMetrics =
           leaderOM.getMetrics().getDBCheckpointMetrics();
@@ -713,7 +713,7 @@ public class TestOMRatisSnapshots {
           leaderOM.getMetrics().getDBCheckpointMetrics();
       return dbMetrics.getNumCheckpoints() >= 3;
     }, 100, 30_000);
-    */
+    /* end of flaky part */
 
     // Verify RPC server is running
     GenericTestUtils.waitFor(() -> {
