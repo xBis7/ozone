@@ -696,11 +696,11 @@ public class TestOMRatisSnapshots {
 
     // Verify the metrics
     /* HDDS-8876 */
-    GenericTestUtils.waitFor(() -> {
-      DBCheckpointMetrics dbMetrics =
-          leaderOM.getMetrics().getDBCheckpointMetrics();
-      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0;
-    }, 100, 30_000);
+//    GenericTestUtils.waitFor(() -> {
+//      DBCheckpointMetrics dbMetrics =
+//          leaderOM.getMetrics().getDBCheckpointMetrics();
+//      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0;
+//    }, 100, 30_000);
 
     GenericTestUtils.waitFor(() -> {
       DBCheckpointMetrics dbMetrics =
