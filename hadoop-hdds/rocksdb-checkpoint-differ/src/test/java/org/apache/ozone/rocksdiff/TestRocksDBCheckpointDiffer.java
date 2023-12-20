@@ -109,7 +109,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class TestRocksDBCheckpointDiffer {
 
-  private static final Logger LOG =
+  public static final Logger LOG =
       LoggerFactory.getLogger(TestRocksDBCheckpointDiffer.class);
 
   private static final int NUM_ROW = 250000;
