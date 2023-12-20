@@ -226,8 +226,8 @@ public class DBCheckpointServlet extends HttpServlet
       LOG.info("Time taken to write the checkpoint to response output " +
           "stream: {} milliseconds", duration);
 
-      LOG.info("Excluded SST {} from the latest checkpoint, Thread: {}.",
-          excludedSstList, Thread.currentThread().getName());
+      LOG.info("Excluded SST, Thread: {}, List {} from the latest checkpoint.",
+          Thread.currentThread().getName(), excludedSstList);
       if (!excludedSstList.isEmpty()) {
         dbMetrics.incNumIncrementalCheckpoint();
       }
