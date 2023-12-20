@@ -621,11 +621,14 @@ public class TestOMRatisSnapshots {
 
     // Start the inactive OM. Checkpoint installation will happen spontaneously.
     cluster.startInactiveOM(followerNodeId);
+    System.out.println("xbis: test: after starting the inactive OM");
 
     // Wait the follower download the snapshot,but get stuck by injector
     GenericTestUtils.waitFor(() -> {
       return followerOM.getOmSnapshotProvider().getNumDownloaded() == 1;
     }, 1000, 30_000);
+
+    System.out.println("xbis: test: followerOM, installed snapshot, getNumDownloaded = 1");
 
     // Do some transactions, let leader OM take a new snapshot and purge the
     // old logs, so that follower must download the new snapshot again.
@@ -644,6 +647,8 @@ public class TestOMRatisSnapshots {
       return followerOM.getOmSnapshotProvider().getNumDownloaded() == 2;
     }, 1000, 30_000);
 
+    System.out.println("xbis: test: followerOM, installed incremental snapshot, getNumDownloaded = 2, stuck by injector");
+
     // Corrupt the mixed checkpoint in the candidate DB dir
     File followerCandidateDir = followerOM.getOmSnapshotProvider().
         getCandidateDir();
@@ -655,6 +660,8 @@ public class TestOMRatisSnapshots {
       File victimSst = new File(followerCandidateDir, sst);
       Assertions.assertTrue(victimSst.delete());
     }
+
+    System.out.println("xbis: test: after deleting the SSTs");
 
     // Resume the follower thread, it would download the full snapshot again
     // as the installation will fail for the corruption detected.
@@ -675,6 +682,8 @@ public class TestOMRatisSnapshots {
           >= leaderOMSnapshotIndex - 1;
     }, 1000, 30_000);
 
+    System.out.println("xbis: test: followerOM is on the same index as the leader");
+
     // Verify that the follower OM's DB contains the transactions which were
     // made while it was inactive.
     OMMetadataManager followerOMMetaMngr = followerOM.getMetadataManager();
@@ -694,33 +703,27 @@ public class TestOMRatisSnapshots {
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
 
+    System.out.println("xbis: test: after checking followerOM has the data, before checking DBCheckpointMetrics");
+
     // Verify the metrics
     /* HDDS-8876 */
     GenericTestUtils.waitFor(() -> {
       DBCheckpointMetrics dbMetrics =
           leaderOM.getMetrics().getDBCheckpointMetrics();
-      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0 &&
-          dbMetrics.getNumIncrementalCheckpoints() >= 1 &&
-          dbMetrics.getNumCheckpoints() >= 3;
+      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0;
     }, 100, 30_000);
 
-//    GenericTestUtils.waitFor(() -> {
-//      DBCheckpointMetrics dbMetrics =
-//          leaderOM.getMetrics().getDBCheckpointMetrics();
-//      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0;
-//    }, 100, 30_000);
-//
-//    GenericTestUtils.waitFor(() -> {
-//      DBCheckpointMetrics dbMetrics =
-//          leaderOM.getMetrics().getDBCheckpointMetrics();
-//      return dbMetrics.getNumIncrementalCheckpoints() >= 1;
-//    }, 100, 30_000);
-//
-//    GenericTestUtils.waitFor(() -> {
-//      DBCheckpointMetrics dbMetrics =
-//          leaderOM.getMetrics().getDBCheckpointMetrics();
-//      return dbMetrics.getNumCheckpoints() >= 3;
-//    }, 100, 30_000);
+    GenericTestUtils.waitFor(() -> {
+      DBCheckpointMetrics dbMetrics =
+          leaderOM.getMetrics().getDBCheckpointMetrics();
+      return dbMetrics.getNumIncrementalCheckpoints() >= 1;
+    }, 100, 30_000);
+
+    GenericTestUtils.waitFor(() -> {
+      DBCheckpointMetrics dbMetrics =
+          leaderOM.getMetrics().getDBCheckpointMetrics();
+      return dbMetrics.getNumCheckpoints() >= 3;
+    }, 100, 30_000);
     /* end of flaky part */
 
     // Verify RPC server is running

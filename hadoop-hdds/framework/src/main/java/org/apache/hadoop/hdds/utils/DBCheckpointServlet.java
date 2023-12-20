@@ -133,6 +133,7 @@ public class DBCheckpointServlet extends HttpServlet
    */
   private void generateSnapshotCheckpoint(HttpServletRequest request,
       HttpServletResponse response, boolean isFormData) {
+    System.out.println("xbis: doPost: inside generateSnapshotCheckpoint");
     if (dbStore == null) {
       LOG.error(
           "Unable to process metadata snapshot request. DB Store is null");

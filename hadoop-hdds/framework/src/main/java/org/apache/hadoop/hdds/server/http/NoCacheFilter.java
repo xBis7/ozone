@@ -39,6 +39,7 @@ public class NoCacheFilter implements Filter {
   public void doFilter(ServletRequest req, ServletResponse res,
       FilterChain chain)
       throws IOException, ServletException {
+    System.out.println("xbis: doFilter");
     HttpServletResponse httpRes = (HttpServletResponse) res;
     httpRes.setHeader("Cache-Control", "no-cache");
     long now = System.currentTimeMillis();
