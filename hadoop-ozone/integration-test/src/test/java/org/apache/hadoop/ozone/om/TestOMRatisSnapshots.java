@@ -596,6 +596,7 @@ public class TestOMRatisSnapshots {
   @Test
   @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
+    System.out.println("xbis: test: start");
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
         .getFailoverProxyProvider(objectStore.getClientProxy())
@@ -747,6 +748,7 @@ public class TestOMRatisSnapshots {
         getCandidateDir().list();
     assertNotNull(filesInCandidate);
     assertEquals(0, filesInCandidate.length);
+    System.out.println("xbis: test: end");
   }
 
   @Test
