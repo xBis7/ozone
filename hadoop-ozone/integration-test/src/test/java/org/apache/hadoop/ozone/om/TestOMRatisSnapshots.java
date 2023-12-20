@@ -669,7 +669,7 @@ public class TestOMRatisSnapshots {
     long leaderOMSnapshotIndex = leaderOMTermIndex.getIndex();
 
     // Wait & for follower to update transactions to leader snapshot index.
-    // Timeout error if follower does not load update within 10s
+    // Timeout error if follower does not load update within 30s
     GenericTestUtils.waitFor(() -> {
       return followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex()
           >= leaderOMSnapshotIndex - 1;
@@ -696,29 +696,35 @@ public class TestOMRatisSnapshots {
 
     // Verify the metrics
     /* HDDS-8876 */
+    GenericTestUtils.waitFor(() -> {
+      DBCheckpointMetrics dbMetrics =
+          leaderOM.getMetrics().getDBCheckpointMetrics();
+      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0 &&
+          dbMetrics.getNumIncrementalCheckpoints() >= 1 &&
+          dbMetrics.getNumCheckpoints() >= 3;
+    }, 100, 30_000);
+
 //    GenericTestUtils.waitFor(() -> {
 //      DBCheckpointMetrics dbMetrics =
 //          leaderOM.getMetrics().getDBCheckpointMetrics();
 //      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0;
 //    }, 100, 30_000);
-
-    GenericTestUtils.waitFor(() -> {
-      DBCheckpointMetrics dbMetrics =
-          leaderOM.getMetrics().getDBCheckpointMetrics();
-      return dbMetrics.getNumIncrementalCheckpoints() >= 1;
-    }, 100, 30_000);
-
-    GenericTestUtils.waitFor(() -> {
-      DBCheckpointMetrics dbMetrics =
-          leaderOM.getMetrics().getDBCheckpointMetrics();
-      return dbMetrics.getNumCheckpoints() >= 3;
-    }, 100, 30_000);
+//
+//    GenericTestUtils.waitFor(() -> {
+//      DBCheckpointMetrics dbMetrics =
+//          leaderOM.getMetrics().getDBCheckpointMetrics();
+//      return dbMetrics.getNumIncrementalCheckpoints() >= 1;
+//    }, 100, 30_000);
+//
+//    GenericTestUtils.waitFor(() -> {
+//      DBCheckpointMetrics dbMetrics =
+//          leaderOM.getMetrics().getDBCheckpointMetrics();
+//      return dbMetrics.getNumCheckpoints() >= 3;
+//    }, 100, 30_000);
     /* end of flaky part */
 
     // Verify RPC server is running
-    GenericTestUtils.waitFor(() -> {
-      return followerOM.isOmRpcServerRunning();
-    }, 100, 30_000);
+    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 30_000);
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
