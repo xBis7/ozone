@@ -114,6 +114,7 @@ public abstract class RDBSnapshotProvider implements Closeable {
     while (true) {
       String snapshotFileName = getSnapshotFileName(leaderNodeID);
       File targetFile = new File(snapshotDir, snapshotFileName);
+      System.out.println("xbis: RDBSnapshotProvider, before downloadSnapshot: Thread: " + Thread.currentThread().getName());
       downloadSnapshot(leaderNodeID, targetFile);
       LOG.info(
           "Successfully download the latest snapshot {} from leader OM: {}",

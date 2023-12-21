@@ -712,8 +712,13 @@ public class TestOMRatisSnapshots {
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
 
+    GenericTestUtils.waitFor(() -> {
+      return followerOM.getOmSnapshotProvider().getNumDownloaded() == 3;
+    }, 1000, 30_000);
+
     System.out.println("xbis: test: after checking followerOM has the data, before checking DBCheckpointMetrics");
 
+//    Thread.sleep(40000);
     // Verify the metrics
     /* HDDS-8876 */
     GenericTestUtils.waitFor(() -> {

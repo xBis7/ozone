@@ -230,6 +230,8 @@ public class DBCheckpointServlet extends HttpServlet
           Thread.currentThread().getName(), excludedSstList);
       if (!excludedSstList.isEmpty()) {
         dbMetrics.incNumIncrementalCheckpoint();
+      } else {
+        System.out.println("xbis: empty excludedSstList: Thread: " + Thread.currentThread().getName());
       }
       dbMetrics.setLastCheckpointStreamingNumSSTExcluded(
           excludedSstList.size());

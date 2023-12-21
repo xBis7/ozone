@@ -143,8 +143,8 @@ public class OmRatisSnapshotProvider extends RDBSnapshotProvider {
     OMNodeDetails leader = peerNodesMap.get(leaderNodeID);
     URL omCheckpointUrl = leader.getOMDBCheckpointEndpointUrl(
         httpPolicy.isHttpEnabled(), true);
-    LOG.info("Downloading latest checkpoint from Leader OM {}. Checkpoint " +
-        "URL: {}", leaderNodeID, omCheckpointUrl);
+    LOG.info("Downloading latest checkpoint from Leader OM {}. Thread: {}, Checkpoint " +
+        "URL: {}", leaderNodeID, Thread.currentThread().getName(), omCheckpointUrl);
     SecurityUtil.doAsCurrentUser(() -> {
       HttpURLConnection connection = (HttpURLConnection)
           connectionFactory.openConnection(omCheckpointUrl, spnegoEnabled);
@@ -166,6 +166,7 @@ public class OmRatisSnapshotProvider extends RDBSnapshotProvider {
       }
 
       try (InputStream inputStream = connection.getInputStream()) {
+        System.out.println("xbis: before copying the downloaded checkpoint: Thread: " + Thread.currentThread().getName());
         FileUtils.copyInputStreamToFile(inputStream, targetFile);
       } catch (IOException ex) {
         boolean deleted = FileUtils.deleteQuietly(targetFile);
@@ -177,6 +178,7 @@ public class OmRatisSnapshotProvider extends RDBSnapshotProvider {
       } finally {
         connection.disconnect();
       }
+      System.out.println("xbis: finished copying and closed connection: Thread: " + Thread.currentThread().getName());
       return null;
     });
   }
