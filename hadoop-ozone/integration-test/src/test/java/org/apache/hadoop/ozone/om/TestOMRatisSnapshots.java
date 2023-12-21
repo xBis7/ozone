@@ -1205,7 +1205,9 @@ public class TestOMRatisSnapshots {
     public void resume() throws IOException {
       // Make sure injector pauses before resuming.
       try {
+        System.out.println("xbis: before await: Thread: " + Thread.currentThread().getName() + " | ready.getCount(): " + ready.getCount());
         ready.await();
+        System.out.println("xbis: after await: Thread: " + Thread.currentThread().getName() + " | ready.getCount(): " + ready.getCount());
       } catch (InterruptedException e) {
         e.printStackTrace();
         assertTrue(Fail.fail("resume interrupted"));
