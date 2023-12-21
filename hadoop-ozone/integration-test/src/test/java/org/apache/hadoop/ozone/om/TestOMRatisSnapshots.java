@@ -712,9 +712,24 @@ public class TestOMRatisSnapshots {
           .get(followerOMMetaMngr.getOzoneKey(volumeName, bucketName, key)));
     }
 
-    GenericTestUtils.waitFor(() -> {
-      return followerOM.getOmSnapshotProvider().getNumDownloaded() == 3;
-    }, 1000, 30_000);
+//    GenericTestUtils.waitFor(() -> {
+//      System.out.println("xbis: waiting for NumDownloaded: " + followerOM.getOmSnapshotProvider().getNumDownloaded());
+//      return followerOM.getOmSnapshotProvider().getNumDownloaded() == 3;
+//    }, 1000, 30_000);
+
+    int counter = 0;
+    while (counter < 30) {
+      if (followerOM.getOmSnapshotProvider().getNumDownloaded() == 3) {
+        break;
+      }
+
+      if (counter == 29) {
+        System.out.println("xbis: waiting for NumDownloaded: " + followerOM.getOmSnapshotProvider().getNumDownloaded());
+      }
+      counter++;
+
+      Thread.sleep(1000);
+    }
 
     System.out.println("xbis: test: after checking followerOM has the data, before checking DBCheckpointMetrics");
 
