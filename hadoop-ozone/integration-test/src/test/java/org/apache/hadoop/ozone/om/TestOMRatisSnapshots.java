@@ -1211,6 +1211,7 @@ public class TestOMRatisSnapshots {
         assertTrue(Fail.fail("resume interrupted"));
       }
       wait.countDown();
+      System.out.println("xbis: Thread: " + Thread.currentThread().getName() + " | wait.countDown(): " + wait.getCount());
     }
 
     @Override

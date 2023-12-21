@@ -287,6 +287,7 @@ public class DBCheckpointServlet extends HttpServlet
         sstParam.add(Streams.asString(item.openStream()));
       }
     } catch (Exception e) {
+      System.out.println("xbis: sstParam size: " + sstParam.size());
       LOG.warn("Exception occured during form data parsing {}", e.getMessage());
     }
 
