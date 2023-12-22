@@ -717,43 +717,8 @@ public class TestOMRatisSnapshots {
 //      return followerOM.getOmSnapshotProvider().getNumDownloaded() == 3;
 //    }, 1000, 30_000);
 
-    int counter = 0;
-    while (counter < 30) {
-      if (followerOM.getOmSnapshotProvider().getNumDownloaded() == 3) {
-        break;
-      }
-
-      if (counter == 29) {
-        System.out.println("xbis: waiting for NumDownloaded: " + followerOM.getOmSnapshotProvider().getNumDownloaded());
-      }
-      counter++;
-
-      Thread.sleep(1000);
-    }
-
     System.out.println("xbis: test: after checking followerOM has the data, before checking DBCheckpointMetrics");
 
-//    Thread.sleep(40000);
-    // Verify the metrics
-    /* HDDS-8876 */
-    GenericTestUtils.waitFor(() -> {
-      DBCheckpointMetrics dbMetrics =
-          leaderOM.getMetrics().getDBCheckpointMetrics();
-      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0;
-    }, 100, 30_000);
-
-    GenericTestUtils.waitFor(() -> {
-      DBCheckpointMetrics dbMetrics =
-          leaderOM.getMetrics().getDBCheckpointMetrics();
-      return dbMetrics.getNumIncrementalCheckpoints() >= 1;
-    }, 100, 30_000);
-
-    GenericTestUtils.waitFor(() -> {
-      DBCheckpointMetrics dbMetrics =
-          leaderOM.getMetrics().getDBCheckpointMetrics();
-      return dbMetrics.getNumCheckpoints() >= 3;
-    }, 100, 30_000);
-    /* end of flaky part */
 
     // Verify RPC server is running
     GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 30_000);
@@ -777,6 +742,41 @@ public class TestOMRatisSnapshots {
     assertNotNull(filesInCandidate);
     assertEquals(0, filesInCandidate.length);
 
+    int counter = 0;
+    while (counter < 30) {
+      if (followerOM.getOmSnapshotProvider().getNumDownloaded() == 3) {
+        break;
+      }
+
+      if (counter == 29) {
+        System.out.println("xbis: waiting for NumDownloaded: " + followerOM.getOmSnapshotProvider().getNumDownloaded());
+      }
+      counter++;
+
+      Thread.sleep(1000);
+    }
+
+//    Thread.sleep(40000);
+    // Verify the metrics
+    /* HDDS-8876 */
+    GenericTestUtils.waitFor(() -> {
+      DBCheckpointMetrics dbMetrics =
+          leaderOM.getMetrics().getDBCheckpointMetrics();
+      return dbMetrics.getLastCheckpointStreamingNumSSTExcluded() == 0;
+    }, 100, 30_000);
+
+    GenericTestUtils.waitFor(() -> {
+      DBCheckpointMetrics dbMetrics =
+          leaderOM.getMetrics().getDBCheckpointMetrics();
+      return dbMetrics.getNumIncrementalCheckpoints() >= 1;
+    }, 100, 30_000);
+
+    GenericTestUtils.waitFor(() -> {
+      DBCheckpointMetrics dbMetrics =
+          leaderOM.getMetrics().getDBCheckpointMetrics();
+      return dbMetrics.getNumCheckpoints() >= 3;
+    }, 100, 30_000);
+    /* end of flaky part */
 
 //    GenericTestUtils.waitFor(() -> logCapturer.getOutput().contains("Can't find SST"), 1000, 80000);
 
