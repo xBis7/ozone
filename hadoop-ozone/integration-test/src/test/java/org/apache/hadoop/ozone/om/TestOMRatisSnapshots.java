@@ -663,22 +663,14 @@ public class TestOMRatisSnapshots {
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     Assertions.assertTrue(sstList.size() > 0);
     System.out.println("xbis: test: list before shuffle: " + sstList);
-//    Collections.shuffle(sstList);
-//    System.out.println("xbis: test: list after shuffle: " + sstList);
-//    List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
-//    System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
-//    for (String sst: victimSstList) {
-//      File victimSst = new File(followerCandidateDir, sst);
-//      Assertions.assertTrue(victimSst.delete());
-//    }
-    File victimSst0 = new File(followerCandidateDir, sstList.get(9));
-    File victimSst1 = new File(followerCandidateDir, sstList.get(0));
-    File victimSst2 = new File(followerCandidateDir, sstList.get(1));
-//    File victimSst3 = new File(followerCandidateDir, sstList.get(sstList.size()-2));
-    Assertions.assertTrue(victimSst0.delete());
-    Assertions.assertTrue(victimSst1.delete());
-    Assertions.assertTrue(victimSst2.delete());
-//    Assertions.assertTrue(victimSst3.delete());
+    Collections.shuffle(sstList);
+    System.out.println("xbis: test: list after shuffle: " + sstList);
+    List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
+    System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
+    for (String sst: victimSstList) {
+      File victimSst = new File(followerCandidateDir, sst);
+      Assertions.assertTrue(victimSst.delete());
+    }
 
     GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
         .captureLogs(LoggerFactory.getLogger(GrpcLogAppender.class));
