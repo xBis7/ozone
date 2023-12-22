@@ -355,6 +355,7 @@ public final class HAUtils {
    */
   public static List<String> getExistingSstFiles(File db) throws IOException {
     List<String> sstList = new ArrayList<>();
+    System.out.println("xbis: getExistingSstFiles: file.exists: " + db.exists() + " | Thread: " + Thread.currentThread().getName());
     if (!db.exists()) {
       return sstList;
     }
@@ -370,6 +371,7 @@ public final class HAUtils {
         LOG.debug("Scanned SST files {} in {}.", sstList, db.getAbsolutePath());
       }
     }
+    System.out.println("xbis: getExistingSstFiles: Thread: " + Thread.currentThread().getName() + ", sstList " + sstList);
     return sstList;
   }
 

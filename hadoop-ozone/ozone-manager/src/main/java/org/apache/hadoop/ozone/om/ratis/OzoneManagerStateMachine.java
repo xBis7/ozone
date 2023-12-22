@@ -235,6 +235,7 @@ public class OzoneManagerStateMachine extends BaseStateMachine {
     case SNAPSHOT_UNAVAILABLE:
       // Currently, only trigger for the one who installed snapshot
       if (ozoneManager.getOmRatisServer().getServer().getPeer().equals(peer)) {
+        System.out.println("xbis: notifySnapshotInstalled: result: " + result);
         ozoneManager.getOmSnapshotProvider().init();
       }
       break;

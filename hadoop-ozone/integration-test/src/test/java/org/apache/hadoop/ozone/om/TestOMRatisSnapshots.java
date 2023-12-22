@@ -53,6 +53,7 @@ import org.apache.hadoop.ozone.om.snapshot.OmSnapshotUtils;
 import org.apache.hadoop.ozone.recon.scm.ReconStorageContainerManagerFacade;
 import org.apache.ozone.rocksdiff.RocksDBCheckpointDiffer;
 import org.apache.ozone.test.GenericTestUtils;
+import org.apache.ratis.grpc.server.GrpcLogAppender;
 import org.apache.ratis.server.protocol.TermIndex;
 import org.assertj.core.api.Fail;
 import org.junit.Assert;
@@ -601,10 +602,6 @@ public class TestOMRatisSnapshots {
   @Timeout(300)
   public void testInstallIncrementalSnapshotWithFailure() throws Exception {
     System.out.println("xbis: test: start");
-    GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
-        .captureLogs(LoggerFactory.getLogger(
-            RocksDBCheckpointDiffer.class));
-
     // Get the leader OM
     String leaderOMNodeId = OmFailoverProxyUtil
         .getFailoverProxyProvider(objectStore.getClientProxy())
@@ -658,23 +655,36 @@ public class TestOMRatisSnapshots {
 
     System.out.println("xbis: test: followerOM, installed incremental snapshot, getNumDownloaded = 2, stuck by injector");
 
+    System.out.println("xbis: follower candidateDir initCount: " + followerOM.getOmSnapshotProvider().getInitCount());
+
     // Corrupt the mixed checkpoint in the candidate DB dir
     File followerCandidateDir = followerOM.getOmSnapshotProvider().
         getCandidateDir();
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     Assertions.assertTrue(sstList.size() > 0);
-    Collections.shuffle(sstList);
+//    Collections.shuffle(sstList);
     List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
     for (String sst: victimSstList) {
       File victimSst = new File(followerCandidateDir, sst);
       Assertions.assertTrue(victimSst.delete());
     }
 
+    GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
+        .captureLogs(LoggerFactory.getLogger(GrpcLogAppender.class));
+
+    System.out.println("xbis: follower candidateDir initCount: " + followerOM.getOmSnapshotProvider().getInitCount());
     System.out.println("xbis: test: after deleting the SSTs");
 
     // Resume the follower thread, it would download the full snapshot again
     // as the installation will fail for the corruption detected.
     faultInjector.resume();
+
+    GenericTestUtils.waitFor(() -> logCapturer.getOutput().contains("Follower could not install snapshot as it is not available."), 1000, 80000);
+
+    System.out.println("xbis: follower candidateDir initCount: " + followerOM.getOmSnapshotProvider().getInitCount());
+    /** Here it has to repeat the snapshot installation but it doesn't. */
+
+    System.out.println("xbis: follower candidateDir initCount: " + followerOM.getOmSnapshotProvider().getInitCount());
 
     // Get the latest db checkpoint from the leader OM.
     TransactionInfo transactionInfo =
