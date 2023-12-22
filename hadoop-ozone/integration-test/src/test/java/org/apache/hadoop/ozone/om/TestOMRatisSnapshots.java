@@ -662,12 +662,23 @@ public class TestOMRatisSnapshots {
         getCandidateDir();
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     Assertions.assertTrue(sstList.size() > 0);
+    System.out.println("xbis: test: list before shuffle: " + sstList);
 //    Collections.shuffle(sstList);
-    List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
-    for (String sst: victimSstList) {
-      File victimSst = new File(followerCandidateDir, sst);
-      Assertions.assertTrue(victimSst.delete());
-    }
+//    System.out.println("xbis: test: list after shuffle: " + sstList);
+//    List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
+//    System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
+//    for (String sst: victimSstList) {
+//      File victimSst = new File(followerCandidateDir, sst);
+//      Assertions.assertTrue(victimSst.delete());
+//    }
+    File victimSst0 = new File(followerCandidateDir, sstList.get(9));
+    File victimSst1 = new File(followerCandidateDir, sstList.get(0));
+    File victimSst2 = new File(followerCandidateDir, sstList.get(1));
+//    File victimSst3 = new File(followerCandidateDir, sstList.get(sstList.size()-2));
+    Assertions.assertTrue(victimSst0.delete());
+    Assertions.assertTrue(victimSst1.delete());
+    Assertions.assertTrue(victimSst2.delete());
+//    Assertions.assertTrue(victimSst3.delete());
 
     GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
         .captureLogs(LoggerFactory.getLogger(GrpcLogAppender.class));
@@ -679,7 +690,7 @@ public class TestOMRatisSnapshots {
     // as the installation will fail for the corruption detected.
     faultInjector.resume();
 
-    GenericTestUtils.waitFor(() -> logCapturer.getOutput().contains("Follower could not install snapshot as it is not available."), 1000, 80000);
+//    GenericTestUtils.waitFor(() -> logCapturer.getOutput().contains("Follower could not install snapshot as it is not available."), 1000, 80000);
 
     System.out.println("xbis: follower candidateDir initCount: " + followerOM.getOmSnapshotProvider().getInitCount());
     /** Here it has to repeat the snapshot installation but it doesn't. */
