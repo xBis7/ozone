@@ -670,7 +670,15 @@ public class TestOMRatisSnapshots {
     for (String sst: victimSstList) {
       File victimSst = new File(followerCandidateDir, sst);
       Assertions.assertTrue(victimSst.delete());
+      Assertions.assertFalse(victimSst.exists());
     }
+
+//    File sst1 = new File(followerCandidateDir, sstList.get(1));
+//    File sst2 = new File(followerCandidateDir, sstList.get(2));
+//    File sst3 = new File(followerCandidateDir, sstList.get(3));
+//    Assertions.assertTrue(sst1.delete());
+//    Assertions.assertTrue(sst2.delete());
+//    Assertions.assertTrue(sst3.delete());
 
     GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
         .captureLogs(LoggerFactory.getLogger(GrpcLogAppender.class));
