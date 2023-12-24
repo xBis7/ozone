@@ -660,17 +660,18 @@ public class TestOMRatisSnapshots {
     // Corrupt the mixed checkpoint in the candidate DB dir
     File followerCandidateDir = followerOM.getOmSnapshotProvider().
         getCandidateDir();
-    List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
-    Assertions.assertTrue(sstList.size() > 0);
-    System.out.println("xbis: test: list before shuffle: " + sstList);
-    Collections.shuffle(sstList);
-    System.out.println("xbis: test: list after shuffle: " + sstList);
-    List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
-    System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
-    for (String sst: victimSstList) {
-      File victimSst = new File(followerCandidateDir, sst);
-      Assertions.assertTrue(victimSst.delete());
-      Assertions.assertFalse(victimSst.exists());
+    synchronized (this) {
+      List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
+      Assertions.assertTrue(sstList.size() > 0);
+      System.out.println("xbis: test: list before shuffle: " + sstList);
+      Collections.shuffle(sstList);
+      System.out.println("xbis: test: list after shuffle: " + sstList);
+      List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
+      System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
+      for (String sst: victimSstList) {
+        File victimSst = new File(followerCandidateDir, sst);
+        Assertions.assertTrue(victimSst.delete());
+      }
     }
 
 //    File sst1 = new File(followerCandidateDir, sstList.get(1));
