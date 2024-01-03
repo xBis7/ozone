@@ -664,23 +664,26 @@ public class TestOMRatisSnapshots {
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     Assertions.assertTrue(sstList.size() > 0);
     System.out.println("xbis: test: list before shuffle: " + sstList);
-//      Collections.shuffle(sstList);
+    Collections.shuffle(sstList);
     System.out.println("xbis: test: list after shuffle: " + sstList);
     List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
     System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
     for (String sst: victimSstList) {
-//        File victimSst = new File(followerCandidateDir, sst);
-//        Assertions.assertTrue(victimSst.delete());
+      System.out.println("xbis: test: list: before new file");
+        File victimSst = new File(followerCandidateDir, sst);
+      System.out.println("xbis: test: list: before delete");
+        Assertions.assertTrue(victimSst.delete());
     }
+    System.out.println("xbis: test: list: before getting sst files again");
     sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     System.out.println("xbis: test: list after delete: " + sstList);
 
-    File sst1 = new File(followerCandidateDir, sstList.get(1));
-    File sst2 = new File(followerCandidateDir, sstList.get(3));
-    File sst3 = new File(followerCandidateDir, sstList.get(4));
-    Assertions.assertTrue(sst1.delete());
-    Assertions.assertTrue(sst2.delete());
-    Assertions.assertTrue(sst3.delete());
+//    File sst1 = new File(followerCandidateDir, sstList.get(1));
+//    File sst2 = new File(followerCandidateDir, sstList.get(3));
+//    File sst3 = new File(followerCandidateDir, sstList.get(4));
+//    Assertions.assertTrue(sst1.delete());
+//    Assertions.assertTrue(sst2.delete());
+//    Assertions.assertTrue(sst3.delete());
 
     GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
         .captureLogs(LoggerFactory.getLogger(GrpcLogAppender.class));
