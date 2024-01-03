@@ -648,12 +648,19 @@ public class TestOMRatisSnapshots {
         getCandidateDir();
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     assertThat(sstList.size()).isGreaterThan(0);
-    Collections.shuffle(sstList);
-    List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
-    for (String sst: victimSstList) {
-      File victimSst = new File(followerCandidateDir, sst);
-      Assertions.assertTrue(victimSst.delete());
-    }
+//    Collections.shuffle(sstList);
+//    List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
+//    for (String sst: victimSstList) {
+//      File victimSst = new File(followerCandidateDir, sst);
+//      Assertions.assertTrue(victimSst.delete());
+//    }
+
+    File sst1 = new File(followerCandidateDir, sstList.get(2));
+    File sst2 = new File(followerCandidateDir, sstList.get(3));
+    File sst3 = new File(followerCandidateDir, sstList.get(sstList.size()-1));
+    Assertions.assertTrue(sst1.delete());
+    Assertions.assertTrue(sst2.delete());
+    Assertions.assertTrue(sst3.delete());
 
     // Resume the follower thread, it would download the full snapshot again
     // as the installation will fail for the corruption detected.
