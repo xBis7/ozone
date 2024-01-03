@@ -647,7 +647,7 @@ public class TestOMRatisSnapshots {
         getCandidateDir();
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     assertThat(sstList.size()).isGreaterThan(0);
-    for (int i = 0; i < sstList.size(); i += 3) {
+    for (int i = 0; i < sstList.size(); i += 2) {
       File victimSst = new File(followerCandidateDir, sstList.get(i));
       Assertions.assertTrue(victimSst.delete());
     }
