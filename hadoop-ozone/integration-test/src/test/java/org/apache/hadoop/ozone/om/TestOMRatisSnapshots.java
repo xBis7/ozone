@@ -74,7 +74,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -648,7 +647,6 @@ public class TestOMRatisSnapshots {
         getCandidateDir();
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     assertThat(sstList.size()).isGreaterThan(0);
-
     for (int i = 0; i < sstList.size(); i += 3) {
       File victimSst = new File(followerCandidateDir, sstList.get(i));
       Assertions.assertTrue(victimSst.delete());
