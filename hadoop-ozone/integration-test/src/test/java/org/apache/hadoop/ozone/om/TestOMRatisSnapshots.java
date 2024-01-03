@@ -655,9 +655,9 @@ public class TestOMRatisSnapshots {
 //      Assertions.assertTrue(victimSst.delete());
 //    }
 
-    File sst1 = new File(followerCandidateDir, sstList.get(2));
-    File sst2 = new File(followerCandidateDir, sstList.get(3));
-    File sst3 = new File(followerCandidateDir, sstList.get(sstList.size()-1));
+    File sst1 = new File(followerCandidateDir, sstList.get(0));
+    File sst2 = new File(followerCandidateDir, sstList.get(sstList.size() / 2));
+    File sst3 = new File(followerCandidateDir, sstList.get(sstList.size() - 1));
     Assertions.assertTrue(sst1.delete());
     Assertions.assertTrue(sst2.delete());
     Assertions.assertTrue(sst3.delete());
