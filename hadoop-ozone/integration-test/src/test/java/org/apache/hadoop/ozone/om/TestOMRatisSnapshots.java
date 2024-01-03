@@ -670,20 +670,20 @@ public class TestOMRatisSnapshots {
     System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
     for (String sst: victimSstList) {
       System.out.println("xbis: test: list: before new file");
-        File victimSst = new File(followerCandidateDir, sst);
+//        File victimSst = new File(followerCandidateDir, sst);
       System.out.println("xbis: test: list: before delete");
-        Assertions.assertTrue(victimSst.delete());
+//        Assertions.assertTrue(victimSst.delete());
     }
     System.out.println("xbis: test: list: before getting sst files again");
     sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     System.out.println("xbis: test: list after delete: " + sstList);
 
-//    File sst1 = new File(followerCandidateDir, sstList.get(1));
-//    File sst2 = new File(followerCandidateDir, sstList.get(3));
-//    File sst3 = new File(followerCandidateDir, sstList.get(4));
-//    Assertions.assertTrue(sst1.delete());
-//    Assertions.assertTrue(sst2.delete());
-//    Assertions.assertTrue(sst3.delete());
+    File sst1 = new File(followerCandidateDir, sstList.get(2));
+    File sst2 = new File(followerCandidateDir, sstList.get(3));
+    File sst3 = new File(followerCandidateDir, sstList.get(sstList.size()-1));
+    Assertions.assertTrue(sst1.delete());
+    Assertions.assertTrue(sst2.delete());
+    Assertions.assertTrue(sst3.delete());
 
     GenericTestUtils.LogCapturer logCapturer = GenericTestUtils.LogCapturer
         .captureLogs(LoggerFactory.getLogger(GrpcLogAppender.class));
