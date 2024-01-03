@@ -664,7 +664,7 @@ public class TestOMRatisSnapshots {
     List<String> sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
     Assertions.assertTrue(sstList.size() > 0);
     System.out.println("xbis: test: list before shuffle: " + sstList);
-    Collections.shuffle(sstList);
+//    Collections.shuffle(sstList);
     System.out.println("xbis: test: list after shuffle: " + sstList);
     List<String> victimSstList = sstList.subList(0, sstList.size() / 3);
     System.out.println("xbis: test: victimList after shuffle: " + victimSstList);
