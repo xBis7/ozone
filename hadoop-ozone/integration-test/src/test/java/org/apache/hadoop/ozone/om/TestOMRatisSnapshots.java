@@ -655,9 +655,9 @@ public class TestOMRatisSnapshots {
 //      Assertions.assertTrue(victimSst.delete());
 //    }
 
-    File sst1 = new File(followerCandidateDir, sstList.get(0));
-    File sst2 = new File(followerCandidateDir, sstList.get(sstList.size() / 2));
-    File sst3 = new File(followerCandidateDir, sstList.get(sstList.size() - 1));
+    File sst1 = new File(followerCandidateDir, sstList.get(2));
+    File sst2 = new File(followerCandidateDir, sstList.get(3));
+    File sst3 = new File(followerCandidateDir, sstList.get(sstList.size()-1));
     Assertions.assertTrue(sst1.delete());
     Assertions.assertTrue(sst2.delete());
     Assertions.assertTrue(sst3.delete());
@@ -675,7 +675,7 @@ public class TestOMRatisSnapshots {
     long leaderOMSnapshotIndex = leaderOMTermIndex.getIndex();
 
     // Wait & for follower to update transactions to leader snapshot index.
-    // Timeout error if follower does not load update within 10s
+    // Timeout error if follower does not load update within 30s
     GenericTestUtils.waitFor(() -> {
       return followerOM.getOmRatisServer().getLastAppliedTermIndex().getIndex()
           >= leaderOMSnapshotIndex - 1;
@@ -701,7 +701,6 @@ public class TestOMRatisSnapshots {
     }
 
     // Verify the metrics
-    /* HDDS-8876
     GenericTestUtils.waitFor(() -> {
       DBCheckpointMetrics dbMetrics =
           leaderOM.getMetrics().getDBCheckpointMetrics();
@@ -719,12 +718,9 @@ public class TestOMRatisSnapshots {
           leaderOM.getMetrics().getDBCheckpointMetrics();
       return dbMetrics.getNumCheckpoints() >= 3;
     }, 100, 30_000);
-    */
 
     // Verify RPC server is running
-    GenericTestUtils.waitFor(() -> {
-      return followerOM.isOmRpcServerRunning();
-    }, 100, 30_000);
+    GenericTestUtils.waitFor(followerOM::isOmRpcServerRunning, 100, 30_000);
 
     // Read & Write after snapshot installed.
     List<String> newKeys = writeKeys(1);
