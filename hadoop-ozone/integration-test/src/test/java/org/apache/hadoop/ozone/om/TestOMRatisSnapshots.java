@@ -672,6 +672,8 @@ public class TestOMRatisSnapshots {
         File victimSst = new File(followerCandidateDir, sst);
         Assertions.assertTrue(victimSst.delete());
       }
+      sstList = HAUtils.getExistingSstFiles(followerCandidateDir);
+      System.out.println("xbis: test: list after delete: " + sstList);
     }
 
 //    File sst1 = new File(followerCandidateDir, sstList.get(1));
