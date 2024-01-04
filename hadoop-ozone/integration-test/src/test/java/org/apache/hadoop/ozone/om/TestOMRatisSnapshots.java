@@ -91,8 +91,7 @@ import java.util.stream.Stream;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_DB_NAME;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_RATIS_SNAPSHOT_MAX_TOTAL_SST_SIZE_KEY;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_SNAPSHOT_SST_FILTERING_SERVICE_INTERVAL;
-import static org.apache.hadoop.ozone.om.OmSnapshotManager.OM_HARDLINK_FILE;
-import static org.apache.hadoop.ozone.om.OmSnapshotManager.getSnapshotPath;
+import static org.apache.hadoop.ozone.om.OmSnapshotManager.*;
 import static org.apache.hadoop.ozone.om.TestOzoneManagerHAWithStoppedNodes.createKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -343,6 +342,24 @@ public class TestOMRatisSnapshots {
     Path followerActiveDir = Paths.get(followerMetaDir.toString(), OM_DB_NAME);
     Path followerSnapshotDir =
         Paths.get(getSnapshotPath(followerOM.getConfiguration(), snapshotInfo));
+
+    try (Stream<Path> paths = Files.walk(followerActiveDir)) {
+      paths.filter(Files::isRegularFile)
+          .forEach(f -> System.out.println("xbis: followerActiveDir: " + f));
+    } catch (IOException e) {
+      LOG.error("xbis: e:" + e);
+    }
+
+    System.out.println();
+    System.out.println();
+
+    try (Stream<Path> paths = Files.walk(followerSnapshotDir)) {
+      paths.filter(Files::isRegularFile)
+          .forEach(f -> System.out.println("xbis: followerSnapshotDir: " + f));
+    } catch (IOException e) {
+      LOG.error("xbis: e:" + e);
+    }
+
     File leaderMetaDir = OMStorage.getOmDbDir(leaderOM.getConfiguration());
     Path leaderActiveDir = Paths.get(leaderMetaDir.toString(), OM_DB_NAME);
     Path leaderSnapshotDir =
