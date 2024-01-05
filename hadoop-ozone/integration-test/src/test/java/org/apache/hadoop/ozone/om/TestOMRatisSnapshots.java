@@ -70,16 +70,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -308,6 +302,9 @@ public class TestOMRatisSnapshots {
         volumeName, bucketName, newKeys.get(0))));
      */
 
+    System.out.println("\n\n\nxbis: waiting\n\n\n");
+//    Thread.sleep(20000);
+
     checkSnapshot(leaderOM, followerOM, snapshotName, keys, snapshotInfo);
     int sstFileCount = 0;
     Set<String> sstFileUnion = new HashSet<>();
@@ -343,9 +340,17 @@ public class TestOMRatisSnapshots {
     Path followerSnapshotDir =
         Paths.get(getSnapshotPath(followerOM.getConfiguration(), snapshotInfo));
 
+    // START: Follower directories
+    System.out.println();
+    System.out.println();
+
+    List<Path> followerActiveDirFiles = new LinkedList<>();
     try (Stream<Path> paths = Files.walk(followerActiveDir)) {
       paths.filter(Files::isRegularFile)
-          .forEach(f -> System.out.println("xbis: followerActiveDir: " + f));
+          .forEach(f -> {
+            followerActiveDirFiles.add(f);
+            System.out.println("xbis: followerActiveDir: " + f);
+          });
     } catch (IOException e) {
       LOG.error("xbis: e:" + e);
     }
@@ -353,17 +358,117 @@ public class TestOMRatisSnapshots {
     System.out.println();
     System.out.println();
 
+    List<Path> followerSnapshotDirFiles = new LinkedList<>();
     try (Stream<Path> paths = Files.walk(followerSnapshotDir)) {
       paths.filter(Files::isRegularFile)
-          .forEach(f -> System.out.println("xbis: followerSnapshotDir: " + f));
+          .forEach(f -> {
+            followerSnapshotDirFiles.add(f);
+            System.out.println("xbis: followerSnapshotDir: " + f);
+          });
     } catch (IOException e) {
       LOG.error("xbis: e:" + e);
     }
+
+    System.out.println();
+    System.out.println();
+    // END
 
     File leaderMetaDir = OMStorage.getOmDbDir(leaderOM.getConfiguration());
     Path leaderActiveDir = Paths.get(leaderMetaDir.toString(), OM_DB_NAME);
     Path leaderSnapshotDir =
         Paths.get(getSnapshotPath(leaderOM.getConfiguration(), snapshotInfo));
+
+    // START: Leader directories
+    System.out.println();
+    System.out.println();
+
+    List<Path> leaderActiveDirFiles = new LinkedList<>();
+    try (Stream<Path> paths = Files.walk(leaderActiveDir)) {
+      paths.filter(Files::isRegularFile)
+          .forEach(f -> {
+            leaderActiveDirFiles.add(f);
+            System.out.println("xbis: leaderActiveDir: " + f);
+          });
+    } catch (IOException e) {
+      LOG.error("xbis: e:" + e);
+    }
+
+    System.out.println();
+    System.out.println();
+
+    List<Path> leaderSnapshotDirFiles = new LinkedList<>();
+    try (Stream<Path> paths = Files.walk(leaderSnapshotDir)) {
+      paths.filter(Files::isRegularFile)
+          .forEach(f -> {
+            leaderSnapshotDirFiles.add(f);
+            System.out.println("xbis: leaderSnapshotDir: " + f);
+          });
+    } catch (IOException e) {
+      LOG.error("xbis: e:" + e);
+    }
+
+    System.out.println();
+    System.out.println();
+    // END
+
+//    // Active dir
+//    if (followerActiveDirFiles.equals(leaderActiveDirFiles)) {
+//      System.out.println("xbis: active dir on the follower has the same files as the leader");
+//    } else {
+//      List<Path> diff = new LinkedList<>();
+//      if (followerActiveDirFiles.size() > leaderActiveDirFiles.size()) {
+//        for (Path p : followerActiveDirFiles) {
+//          if (!leaderActiveDirFiles.contains(p)) {
+//            diff.add(p);
+//          }
+//        }
+//        System.out.println("xbis: active dir on the follower doesn't have the same files as the leader." +
+//            "\nFollower number of files: " + followerActiveDirFiles.size() +
+//            "\nLeader number of files: " + leaderActiveDirFiles.size() +
+//            "\nFollower has " + diff.size() + " more files than the leader.");
+//      } else {
+//        for (Path p : leaderActiveDirFiles) {
+//          if (!followerActiveDirFiles.contains(p)) {
+//            diff.add(p);
+//          }
+//        }
+//        System.out.println("xbis: active dir on the follower doesn't have the same files as the leader." +
+//            "\nFollower number of files: " + followerActiveDirFiles.size() +
+//            "\nLeader number of files: " + leaderActiveDirFiles.size() +
+//            "\nLeader has " + diff.size() + " more files than the follower.");
+//      }
+//      for (Path p : diff) {
+//        System.out.println("xbis: " + p);
+//      }
+//    }
+//
+//    // Snapshot dir
+//    if (followerSnapshotDirFiles.equals(leaderSnapshotDirFiles)) {
+//      System.out.println("xbis: snapshot dir on the follower has the same files as the leader");
+//    } else {
+//      List<Path> diff = new LinkedList<>();
+//      if (followerSnapshotDirFiles.size() > leaderSnapshotDirFiles.size()) {
+//
+//        for (Path p : followerSnapshotDirFiles) {
+//          if (!leaderSnapshotDirFiles.contains(p)) {
+//            diff.add(p);
+//          }
+//        }
+//        System.out.println("xbis: snapshot dir on the follower doesn't have the same files as the leader." +
+//            "\nFollower has more files than the leader." +
+//            "\nExtra files: " + diff);
+//      } else {
+//        for (Path p : leaderSnapshotDirFiles) {
+//          if (!followerSnapshotDirFiles.contains(p)) {
+//            diff.add(p);
+//          }
+//        }
+//        System.out.println("xbis: snapshot dir on the follower doesn't have the same files as the leader." +
+//            "\nLeader has more files than the follower." +
+//            "\nExtra files: " + diff);
+//      }
+//    }
+
     // Get the list of hardlinks from the leader.  Then confirm those links
     //  are on the follower
     int hardLinkCount = 0;
@@ -386,6 +491,21 @@ public class TestOMRatisSnapshots {
                 Paths.get(followerSnapshotDir.toString(), fileName);
             Path followerActiveSST =
                 Paths.get(followerActiveDir.toString(), fileName);
+            try {
+              if (!OmSnapshotUtils.getINode(followerActiveSST)
+                  .equals(OmSnapshotUtils.getINode(followerSnapshotSST))) {
+                System.out.println("xbis: sst: getINode for active and snapshot, not equals");
+              } else {
+                System.out.println("Snapshot sst file is supposed to be a hard link");
+              }
+            } catch (NoSuchFileException e) {
+              System.out.println("xbis: sst doesn't exist: " +
+                  "\nfollowerActiveSST exists: " + followerActiveDirFiles.contains(followerActiveSST) +
+                  "\nfollowerActiveSST path: " + followerActiveSST +
+                  "\nfollowerSnapshotSST exists: " + followerSnapshotDirFiles.contains(followerSnapshotSST) +
+                  "\nfollowerSnapshotSST path: " + followerSnapshotSST);
+              LOG.error("xbis: Exception: " + e);
+            }
             Assertions.assertEquals(
                 OmSnapshotUtils.getINode(followerActiveSST),
                 OmSnapshotUtils.getINode(followerSnapshotSST),

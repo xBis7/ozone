@@ -489,7 +489,7 @@ public class RocksDBCheckpointDiffer implements AutoCloseable,
             return;
           }
         }
-
+System.out.println("xbis: onCompactionBegin");
         for (String file : compactionJobInfo.inputFiles()) {
           createLink(Paths.get(sstBackupDir, new File(file).getName()),
               Paths.get(file));
@@ -540,7 +540,7 @@ public class RocksDBCheckpointDiffer implements AutoCloseable,
           if (isSnapshotInfoTableEmpty(db)) {
             return;
           }
-
+System.out.println("xbis: newCompactionCompletedListener: before waitForTarballCreation");
           waitForTarballCreation();
 
           // Add the compaction log entry to Compaction log table.
