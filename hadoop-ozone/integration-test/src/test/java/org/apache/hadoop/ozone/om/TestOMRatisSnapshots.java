@@ -481,11 +481,11 @@ public class TestOMRatisSnapshots {
     // Get the list of hardlinks from the leader.  Then confirm those links
     //  are on the follower
     int hardLinkCount = 0;
-    try (Stream<Path>list = Files.list(leaderSnapshotDir)) {
+    try (Stream<Path> list = Files.list(leaderSnapshotDir)) {
 
       LinkedList<Path> nonExistentHardLinks = new LinkedList<>();
 
-      for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
+      for (Path leaderSnapshotSST : list.collect(Collectors.toList())) {
         String fileName = leaderSnapshotSST.getFileName().toString();
         if (fileName.toLowerCase().endsWith(".sst")) {
 
@@ -509,7 +509,7 @@ public class TestOMRatisSnapshots {
                   .equals(OmSnapshotUtils.getINode(followerSnapshotSST))) {
                 System.out.println("xbis: sst: getINode for active and snapshot, not equals");
               } else {
-                System.out.println("Snapshot sst file is supposed to be a hard link");
+                System.out.println("Snapshot sst file is a hard link");
               }
             } catch (NoSuchFileException e) {
               System.out.println("xbis: sst doesn't exist: " +
@@ -533,8 +533,12 @@ public class TestOMRatisSnapshots {
           System.out.println("xbis: path: " + path);
         }
         System.out.println();
+      } else {
+        System.out.println("xbis: not existing hard links: [empty]");
       }
+    }
 
+    try (Stream<Path>list = Files.list(leaderSnapshotDir)) {
       for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
         String fileName = leaderSnapshotSST.getFileName().toString();
         if (fileName.toLowerCase().endsWith(".sst")) {
