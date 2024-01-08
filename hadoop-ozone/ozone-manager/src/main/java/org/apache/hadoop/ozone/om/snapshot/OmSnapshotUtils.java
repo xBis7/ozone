@@ -108,7 +108,7 @@ public final class OmSnapshotUtils {
       System.out.println("xbis: Thread: " + Thread.currentThread().getName());
       // Create a link for each line.
       for (String l : lines) {
-        System.out.println("xbis: hardlink file, line: " + l);
+        System.out.println("xbis: create hardlink file, line: " + l);
       }
     }
 
@@ -130,7 +130,7 @@ public final class OmSnapshotUtils {
 
         // Create a link for each line.
         for (String l : lines) {
-          System.out.println("xbis: hardlink file, line: " + l);
+          System.out.println("xbis: create hardlinks, line: " + l);
           String from = l.split("\t")[1];
           String to = l.split("\t")[0];
           Path fullFromPath = Paths.get(dbPath.toString(), from);
