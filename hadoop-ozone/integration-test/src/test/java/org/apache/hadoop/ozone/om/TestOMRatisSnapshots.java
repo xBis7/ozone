@@ -73,7 +73,15 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -85,7 +93,8 @@ import java.util.stream.Stream;
 import static org.apache.hadoop.ozone.OzoneConsts.OM_DB_NAME;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_OM_RATIS_SNAPSHOT_MAX_TOTAL_SST_SIZE_KEY;
 import static org.apache.hadoop.ozone.om.OMConfigKeys.OZONE_SNAPSHOT_SST_FILTERING_SERVICE_INTERVAL;
-import static org.apache.hadoop.ozone.om.OmSnapshotManager.*;
+import static org.apache.hadoop.ozone.om.OmSnapshotManager.OM_HARDLINK_FILE;
+import static org.apache.hadoop.ozone.om.OmSnapshotManager.getSnapshotPath;
 import static org.apache.hadoop.ozone.om.TestOzoneManagerHAWithStoppedNodes.createKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -352,7 +361,7 @@ public class TestOMRatisSnapshots {
             System.out.println("xbis: followerActiveDir: " + f);
           });
     } catch (IOException e) {
-      LOG.error("xbis: e:" + e);
+      System.out.println("xbis: e:" + e);
     }
 
     System.out.println();
@@ -366,7 +375,7 @@ public class TestOMRatisSnapshots {
             System.out.println("xbis: followerSnapshotDir: " + f);
           });
     } catch (IOException e) {
-      LOG.error("xbis: e:" + e);
+      System.out.println("xbis: e:" + e);
     }
 
     System.out.println();
@@ -390,7 +399,7 @@ public class TestOMRatisSnapshots {
             System.out.println("xbis: leaderActiveDir: " + f);
           });
     } catch (IOException e) {
-      LOG.error("xbis: e:" + e);
+      System.out.println("xbis: e:" + e);
     }
 
     System.out.println();
@@ -404,7 +413,7 @@ public class TestOMRatisSnapshots {
             System.out.println("xbis: leaderSnapshotDir: " + f);
           });
     } catch (IOException e) {
-      LOG.error("xbis: e:" + e);
+      System.out.println("xbis: e:" + e);
     }
 
     System.out.println();
@@ -473,6 +482,9 @@ public class TestOMRatisSnapshots {
     //  are on the follower
     int hardLinkCount = 0;
     try (Stream<Path>list = Files.list(leaderSnapshotDir)) {
+
+      LinkedList<Path> nonExistentHardLinks = new LinkedList<>();
+
       for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
         String fileName = leaderSnapshotSST.getFileName().toString();
         if (fileName.toLowerCase().endsWith(".sst")) {
@@ -491,6 +503,7 @@ public class TestOMRatisSnapshots {
                 Paths.get(followerSnapshotDir.toString(), fileName);
             Path followerActiveSST =
                 Paths.get(followerActiveDir.toString(), fileName);
+
             try {
               if (!OmSnapshotUtils.getINode(followerActiveSST)
                   .equals(OmSnapshotUtils.getINode(followerSnapshotSST))) {
@@ -504,8 +517,38 @@ public class TestOMRatisSnapshots {
                   "\nfollowerActiveSST path: " + followerActiveSST +
                   "\nfollowerSnapshotSST exists: " + followerSnapshotDirFiles.contains(followerSnapshotSST) +
                   "\nfollowerSnapshotSST path: " + followerSnapshotSST);
-              LOG.error("xbis: Exception: " + e);
+
+              nonExistentHardLinks.add(followerActiveSST);
+
+              System.out.println("xbis: Exception: " + e);
             }
+            hardLinkCount++;
+          }
+        }
+      }
+
+      if (nonExistentHardLinks.size() > 0) {
+        System.out.println("xbis: not existing hard links: \n" + nonExistentHardLinks);
+      }
+
+      for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
+        String fileName = leaderSnapshotSST.getFileName().toString();
+        if (fileName.toLowerCase().endsWith(".sst")) {
+
+          Path leaderActiveSST =
+              Paths.get(leaderActiveDir.toString(), fileName);
+          // Skip if not hard link on the leader
+          if (!leaderActiveSST.toFile().exists()) {
+            continue;
+          }
+          // If it is a hard link on the leader, it should be a hard
+          // link on the follower
+          if (OmSnapshotUtils.getINode(leaderActiveSST)
+              .equals(OmSnapshotUtils.getINode(leaderSnapshotSST))) {
+            Path followerSnapshotSST =
+                Paths.get(followerSnapshotDir.toString(), fileName);
+            Path followerActiveSST =
+                Paths.get(followerActiveDir.toString(), fileName);
             Assertions.assertEquals(
                 OmSnapshotUtils.getINode(followerActiveSST),
                 OmSnapshotUtils.getINode(followerSnapshotSST),
