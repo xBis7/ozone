@@ -98,6 +98,20 @@ public final class OmSnapshotUtils {
           .append(fixedFile).append("\n");
     }
     Files.write(data, sb.toString().getBytes(StandardCharsets.UTF_8));
+
+    // Read all the data and print the thread.
+    File hardLinkFile = data.toFile();
+    // Read file.
+    try (Stream<String> s = Files.lines(hardLinkFile.toPath())) {
+      List<String> lines = s.collect(Collectors.toList());
+
+      System.out.println("xbis: Thread: " + Thread.currentThread().getName());
+      // Create a link for each line.
+      for (String l : lines) {
+        System.out.println("xbis: hardlink file, line: " + l);
+      }
+    }
+
     return data;
   }
 
@@ -116,6 +130,7 @@ public final class OmSnapshotUtils {
 
         // Create a link for each line.
         for (String l : lines) {
+          System.out.println("xbis: hardlink file, line: " + l);
           String from = l.split("\t")[1];
           String to = l.split("\t")[0];
           Path fullFromPath = Paths.get(dbPath.toString(), from);
