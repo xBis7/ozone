@@ -528,7 +528,11 @@ public class TestOMRatisSnapshots {
       }
 
       if (nonExistentHardLinks.size() > 0) {
-        System.out.println("xbis: not existing hard links: \n" + nonExistentHardLinks);
+        System.out.println("xbis: not existing hard links");
+        for (Path path : nonExistentHardLinks) {
+          System.out.println("xbis: path: " + path);
+        }
+        System.out.println();
       }
 
       for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
