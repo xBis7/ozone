@@ -130,7 +130,7 @@ public final class OmSnapshotUtils {
         long counter = 0;
         List<String> lines_partial_copy = lines.subList(3, lines.size() - 2);
         // Create a link for each line.
-        for (String l : lines) {
+        for (String l : lines_partial_copy) {
           System.out.println("xbis: Thread: " + Thread.currentThread().getName() + " | create hardlinks, line: " + l);
           String from = l.split("\t")[1];
           String to = l.split("\t")[0];
