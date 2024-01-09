@@ -162,7 +162,7 @@ public final class OmSnapshotUtils {
    * @param oldDir The dir to create links from.
    * @param newDir The dir to create links to.
    */
-  public static void linkFiles(File oldDir, File newDir) throws IOException {
+  public static void linkFiles(File oldDir, File newDir, boolean beforeInstall) throws IOException {
     int truncateLength = oldDir.toString().length() + 1;
     List<String> oldDirList;
     try (Stream<Path> files = Files.walk(oldDir.toPath())) {
@@ -174,22 +174,42 @@ public final class OmSnapshotUtils {
           sorted().
           collect(Collectors.toList());
     }
+    long linkCounter = 0;
+    long dirCounter = 0;
+    long parentDirCounter = 0;
+
+//    if (!beforeInstall) {
+//      oldDirList.remove(oldDirList.size() / 5);
+//      oldDirList.remove(oldDirList.size() / 4);
+//      oldDirList.remove(oldDirList.size() / 3);
+//      oldDirList.remove(oldDirList.size() / 2);
+//    }
     for (String s: oldDirList) {
       File oldFile = new File(oldDir, s);
       File newFile = new File(newDir, s);
       File newParent = newFile.getParentFile();
       if (!newParent.exists()) {
+        parentDirCounter++;
         if (!newParent.mkdirs()) {
           throw new IOException("Directory create fails: " + newParent);
         }
       }
       if (oldFile.isDirectory()) {
+        dirCounter++;
         if (!newFile.mkdirs()) {
           throw new IOException("Directory create fails: " + newFile);
         }
       } else {
         Files.createLink(newFile.toPath(), oldFile.toPath());
+        linkCounter++;
       }
+    }
+    if (!beforeInstall) {
+      System.out.println("xbis: after checkpoint install: " +
+          "\nlinkCounter: " + linkCounter +
+          "\ndirCounter: " + dirCounter +
+          "\nparentDirCounter: " + parentDirCounter +
+          "\noldDirList.size: " + oldDirList.size());
     }
   }
 }

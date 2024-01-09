@@ -3951,7 +3951,7 @@ public final class OzoneManager extends ServiceRuntimeInfoImpl
       // preserves the links that already exist between files in the
       // candidate db.
       OmSnapshotUtils.linkFiles(checkpointPath.toFile(),
-          oldDB);
+          oldDB, false);
       moveOmSnapshotData(oldDB.toPath(), dbSnapshotsDir.toPath());
       Files.deleteIfExists(markerFile);
     } catch (IOException e) {
