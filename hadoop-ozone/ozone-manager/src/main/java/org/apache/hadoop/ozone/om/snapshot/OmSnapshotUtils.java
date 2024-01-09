@@ -127,6 +127,8 @@ public final class OmSnapshotUtils {
       try (Stream<String> s = Files.lines(hardLinkFile.toPath())) {
         List<String> lines = s.collect(Collectors.toList());
 
+        long counter = 0;
+        List<String> lines_partial_copy = lines.subList(3, lines.size() - 2);
         // Create a link for each line.
         for (String l : lines) {
           System.out.println("xbis: Thread: " + Thread.currentThread().getName() + " | create hardlinks, line: " + l);
@@ -143,7 +145,10 @@ public final class OmSnapshotUtils {
             }
           }
           Files.createLink(fullToPath, fullFromPath);
+          counter++;
         }
+        System.out.println("xbis: counter: " + counter + " | file.lines.size: " + lines.size() +
+            " | lines_partial_copy.size: " + lines_partial_copy.size());
         if (!hardLinkFile.delete()) {
           throw new IOException("Failed to delete: " + hardLinkFile);
         }
