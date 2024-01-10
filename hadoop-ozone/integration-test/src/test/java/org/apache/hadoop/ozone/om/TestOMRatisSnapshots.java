@@ -70,7 +70,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -311,9 +310,6 @@ public class TestOMRatisSnapshots {
         volumeName, bucketName, newKeys.get(0))));
      */
 
-    System.out.println("\n\n\nxbis: waiting\n\n\n");
-//    Thread.sleep(20000);
-
     checkSnapshot(leaderOM, followerOM, snapshotName, keys, snapshotInfo);
     int sstFileCount = 0;
     Set<String> sstFileUnion = new HashSet<>();
@@ -348,195 +344,15 @@ public class TestOMRatisSnapshots {
     Path followerActiveDir = Paths.get(followerMetaDir.toString(), OM_DB_NAME);
     Path followerSnapshotDir =
         Paths.get(getSnapshotPath(followerOM.getConfiguration(), snapshotInfo));
-
-    // START: Follower directories
-    System.out.println();
-    System.out.println();
-
-    List<Path> followerActiveDirFiles = new LinkedList<>();
-    try (Stream<Path> paths = Files.walk(followerActiveDir)) {
-      paths.filter(Files::isRegularFile)
-          .forEach(f -> {
-            followerActiveDirFiles.add(f);
-            System.out.println("xbis: followerActiveDir: " + f);
-          });
-    } catch (IOException e) {
-      System.out.println("xbis: e:" + e);
-    }
-
-    System.out.println();
-    System.out.println();
-
-    List<Path> followerSnapshotDirFiles = new LinkedList<>();
-    try (Stream<Path> paths = Files.walk(followerSnapshotDir)) {
-      paths.filter(Files::isRegularFile)
-          .forEach(f -> {
-            followerSnapshotDirFiles.add(f);
-            System.out.println("xbis: followerSnapshotDir: " + f);
-          });
-    } catch (IOException e) {
-      System.out.println("xbis: e:" + e);
-    }
-
-    System.out.println();
-    System.out.println();
-    // END
-
     File leaderMetaDir = OMStorage.getOmDbDir(leaderOM.getConfiguration());
     Path leaderActiveDir = Paths.get(leaderMetaDir.toString(), OM_DB_NAME);
     Path leaderSnapshotDir =
         Paths.get(getSnapshotPath(leaderOM.getConfiguration(), snapshotInfo));
-
-    // START: Leader directories
-    System.out.println();
-    System.out.println();
-
-    List<Path> leaderActiveDirFiles = new LinkedList<>();
-    try (Stream<Path> paths = Files.walk(leaderActiveDir)) {
-      paths.filter(Files::isRegularFile)
-          .forEach(f -> {
-            leaderActiveDirFiles.add(f);
-            System.out.println("xbis: leaderActiveDir: " + f);
-          });
-    } catch (IOException e) {
-      System.out.println("xbis: e:" + e);
-    }
-
-    System.out.println();
-    System.out.println();
-
-    List<Path> leaderSnapshotDirFiles = new LinkedList<>();
-    try (Stream<Path> paths = Files.walk(leaderSnapshotDir)) {
-      paths.filter(Files::isRegularFile)
-          .forEach(f -> {
-            leaderSnapshotDirFiles.add(f);
-            System.out.println("xbis: leaderSnapshotDir: " + f);
-          });
-    } catch (IOException e) {
-      System.out.println("xbis: e:" + e);
-    }
-
-    System.out.println();
-    System.out.println();
-    // END
-
-//    // Active dir
-//    if (followerActiveDirFiles.equals(leaderActiveDirFiles)) {
-//      System.out.println("xbis: active dir on the follower has the same files as the leader");
-//    } else {
-//      List<Path> diff = new LinkedList<>();
-//      if (followerActiveDirFiles.size() > leaderActiveDirFiles.size()) {
-//        for (Path p : followerActiveDirFiles) {
-//          if (!leaderActiveDirFiles.contains(p)) {
-//            diff.add(p);
-//          }
-//        }
-//        System.out.println("xbis: active dir on the follower doesn't have the same files as the leader." +
-//            "\nFollower number of files: " + followerActiveDirFiles.size() +
-//            "\nLeader number of files: " + leaderActiveDirFiles.size() +
-//            "\nFollower has " + diff.size() + " more files than the leader.");
-//      } else {
-//        for (Path p : leaderActiveDirFiles) {
-//          if (!followerActiveDirFiles.contains(p)) {
-//            diff.add(p);
-//          }
-//        }
-//        System.out.println("xbis: active dir on the follower doesn't have the same files as the leader." +
-//            "\nFollower number of files: " + followerActiveDirFiles.size() +
-//            "\nLeader number of files: " + leaderActiveDirFiles.size() +
-//            "\nLeader has " + diff.size() + " more files than the follower.");
-//      }
-//      for (Path p : diff) {
-//        System.out.println("xbis: " + p);
-//      }
-//    }
-//
-//    // Snapshot dir
-//    if (followerSnapshotDirFiles.equals(leaderSnapshotDirFiles)) {
-//      System.out.println("xbis: snapshot dir on the follower has the same files as the leader");
-//    } else {
-//      List<Path> diff = new LinkedList<>();
-//      if (followerSnapshotDirFiles.size() > leaderSnapshotDirFiles.size()) {
-//
-//        for (Path p : followerSnapshotDirFiles) {
-//          if (!leaderSnapshotDirFiles.contains(p)) {
-//            diff.add(p);
-//          }
-//        }
-//        System.out.println("xbis: snapshot dir on the follower doesn't have the same files as the leader." +
-//            "\nFollower has more files than the leader." +
-//            "\nExtra files: " + diff);
-//      } else {
-//        for (Path p : leaderSnapshotDirFiles) {
-//          if (!followerSnapshotDirFiles.contains(p)) {
-//            diff.add(p);
-//          }
-//        }
-//        System.out.println("xbis: snapshot dir on the follower doesn't have the same files as the leader." +
-//            "\nLeader has more files than the follower." +
-//            "\nExtra files: " + diff);
-//      }
-//    }
-
     // Get the list of hardlinks from the leader.  Then confirm those links
     //  are on the follower
     int hardLinkCount = 0;
-    try (Stream<Path> list = Files.list(leaderSnapshotDir)) {
 
-      LinkedList<Path> nonExistentHardLinks = new LinkedList<>();
-
-      for (Path leaderSnapshotSST : list.collect(Collectors.toList())) {
-        String fileName = leaderSnapshotSST.getFileName().toString();
-        if (fileName.toLowerCase().endsWith(".sst")) {
-
-          Path leaderActiveSST =
-              Paths.get(leaderActiveDir.toString(), fileName);
-          // Skip if not hard link on the leader
-          if (!leaderActiveSST.toFile().exists()) {
-            continue;
-          }
-          // If it is a hard link on the leader, it should be a hard
-          // link on the follower
-          if (OmSnapshotUtils.getINode(leaderActiveSST)
-              .equals(OmSnapshotUtils.getINode(leaderSnapshotSST))) {
-            Path followerSnapshotSST =
-                Paths.get(followerSnapshotDir.toString(), fileName);
-            Path followerActiveSST =
-                Paths.get(followerActiveDir.toString(), fileName);
-
-            try {
-              if (!OmSnapshotUtils.getINode(followerActiveSST)
-                  .equals(OmSnapshotUtils.getINode(followerSnapshotSST))) {
-                System.out.println("xbis: sst: getINode for active and snapshot, not equals");
-              } else {
-                System.out.println("Snapshot sst file is a hard link");
-              }
-            } catch (NoSuchFileException e) {
-              System.out.println("xbis: sst doesn't exist: " +
-                  "\nfollowerActiveSST exists: " + followerActiveDirFiles.contains(followerActiveSST) +
-                  "\nfollowerActiveSST path: " + followerActiveSST +
-                  "\nfollowerSnapshotSST exists: " + followerSnapshotDirFiles.contains(followerSnapshotSST) +
-                  "\nfollowerSnapshotSST path: " + followerSnapshotSST);
-
-              nonExistentHardLinks.add(followerActiveSST);
-
-              System.out.println("xbis: Exception: " + e);
-            }
-            hardLinkCount++;
-          }
-        }
-      }
-
-      if (nonExistentHardLinks.size() > 0) {
-        System.out.println("xbis: not existing hard links");
-        for (Path path : nonExistentHardLinks) {
-          System.out.println("xbis: path: " + path);
-        }
-        System.out.println();
-      } else {
-        System.out.println("xbis: not existing hard links: [empty]");
-      }
-    }
+    printNotExistingFiles(followerActiveDir, followerSnapshotDir, "follower", true);
 
     try (Stream<Path>list = Files.list(leaderSnapshotDir)) {
       for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
@@ -568,6 +384,78 @@ public class TestOMRatisSnapshots {
     }
     assertThat(hardLinkCount).withFailMessage("No hard links were found")
         .isGreaterThan(0);
+  }
+
+  public static void printNotExistingFiles(Path activeDir, Path snapshotDir, String rolePrefix, boolean print) {
+    // START: Get directories
+    System.out.println();
+    System.out.println();
+
+    List<Path> activeDirFiles = new LinkedList<>();
+    try (Stream<Path> paths = Files.walk(activeDir)) {
+      paths.filter(Files::isRegularFile)
+          .forEach(f -> {
+            activeDirFiles.add(f);
+            if (print) {
+              System.out.println("xbis: " + rolePrefix + " ActiveDir: " + f);
+            }
+          });
+    } catch (IOException e) {
+      System.out.println("xbis: e:" + e);
+    }
+
+    System.out.println();
+    System.out.println();
+
+    List<Path> snapshotDirFiles = new LinkedList<>();
+    try (Stream<Path> paths = Files.walk(snapshotDir)) {
+      paths.filter(Files::isRegularFile)
+          .forEach(f -> {
+            snapshotDirFiles.add(f);
+            if (print) {
+              System.out.println("xbis: " + rolePrefix + " SnapshotDir: " + f);
+            }
+          });
+    } catch (IOException e) {
+      System.out.println("xbis: e:" + e);
+    }
+
+    System.out.println();
+    System.out.println();
+    // END
+
+    // Create an empty list.
+    LinkedList<Path> extraHardLinks = new LinkedList<>();
+
+    // Go over all paths in the snapshot dir.
+    for (Path snapshotSST : snapshotDirFiles) {
+
+      // For every file in the snapshot dir
+      String fileName = snapshotSST.getFileName().toString();
+
+      // If it's an sst file
+      if (fileName.toLowerCase().endsWith(".sst")) {
+        // Use the active dir path and the filename, to find if the file exists under the active dir.
+        Path activeSST = Paths.get(activeDir.toString(), fileName);
+        // If it doesn't exist under the active dir, add it to the list.
+        if (!activeSST.toFile().exists()) {
+//          System.out.println("xbis: sst: " +
+//              "\nactiveSST exists: " + activeDirFiles.contains(activeSST) +
+//              "\nactiveSST path: " + activeSST);
+          extraHardLinks.add(activeSST);
+        }
+      }
+    }
+
+    if (extraHardLinks.size() > 0) {
+      System.out.println("xbis: not existing hard links");
+      for (Path path : extraHardLinks) {
+        System.out.println("xbis: path: " + path);
+      }
+      System.out.println();
+    } else {
+      System.out.println("xbis: not existing hard links: [empty]");
+    }
   }
 
   @Test

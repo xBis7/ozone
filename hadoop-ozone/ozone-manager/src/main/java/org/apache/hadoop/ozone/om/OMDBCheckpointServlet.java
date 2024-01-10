@@ -309,7 +309,6 @@ public class OMDBCheckpointServlet extends DBCheckpointServlet {
     AtomicLong copySize = new AtomicLong(0L);
     // Get the active fs files.
     Path dir = checkpoint.getCheckpointLocation();
-    System.out.println("xbis: active fs dir: " + dir.toString());
     if (!processDir(dir, copyFiles, hardLinkFiles, sstFilesToExclude,
         new HashSet<>(), excluded, copySize, null)) {
       return false;
@@ -335,7 +334,6 @@ public class OMDBCheckpointServlet extends DBCheckpointServlet {
     }
 
     // Process the tmp compaction log dir.
-    System.out.println("xbis: compactionLogDir.getTmpDir().toPath(): " + compactionLogDir.getTmpDir().toPath());
     return processDir(compactionLogDir.getTmpDir().toPath(), copyFiles,
         hardLinkFiles, sstFilesToExclude,
         new HashSet<>(), excluded, copySize,
@@ -481,7 +479,6 @@ public class OMDBCheckpointServlet extends DBCheckpointServlet {
     // to the dest dir on the follower.
     if (destDir != null) {
       destFile = Paths.get(destDir.toString(), fileName);
-      System.out.println("xbis: processFile: " + fileName + " follower dest: " + destDir);
     }
     if (sstFilesToExclude.containsKey(file)) {
       excluded.add(destFile.toString());

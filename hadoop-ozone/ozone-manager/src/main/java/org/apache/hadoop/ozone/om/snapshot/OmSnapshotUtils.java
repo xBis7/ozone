@@ -128,9 +128,8 @@ public final class OmSnapshotUtils {
         List<String> lines = s.collect(Collectors.toList());
 
         long counter = 0;
-        List<String> lines_partial_copy = lines.subList(3, lines.size() - 2);
         // Create a link for each line.
-        for (String l : lines_partial_copy) {
+        for (String l : lines) {
           System.out.println("xbis: Thread: " + Thread.currentThread().getName() + " | create hardlinks, line: " + l);
           String from = l.split("\t")[1];
           String to = l.split("\t")[0];
@@ -147,8 +146,7 @@ public final class OmSnapshotUtils {
           Files.createLink(fullToPath, fullFromPath);
           counter++;
         }
-        System.out.println("xbis: counter: " + counter + " | file.lines.size: " + lines.size() +
-            " | lines_partial_copy.size: " + lines_partial_copy.size());
+        System.out.println("xbis: counter: " + counter + " | file.lines.size: " + lines.size());
         if (!hardLinkFile.delete()) {
           throw new IOException("Failed to delete: " + hardLinkFile);
         }
@@ -178,12 +176,10 @@ public final class OmSnapshotUtils {
     long dirCounter = 0;
     long parentDirCounter = 0;
 
-//    if (!beforeInstall) {
-//      oldDirList.remove(oldDirList.size() / 5);
-//      oldDirList.remove(oldDirList.size() / 4);
-//      oldDirList.remove(oldDirList.size() / 3);
-//      oldDirList.remove(oldDirList.size() / 2);
-//    }
+    if (!beforeInstall) {
+//      oldDirList.remove(3);
+      System.out.println("something");
+    }
     for (String s: oldDirList) {
       File oldFile = new File(oldDir, s);
       File newFile = new File(newDir, s);
@@ -209,7 +205,8 @@ public final class OmSnapshotUtils {
           "\nlinkCounter: " + linkCounter +
           "\ndirCounter: " + dirCounter +
           "\nparentDirCounter: " + parentDirCounter +
-          "\noldDirList.size: " + oldDirList.size());
+          "\noldDirList.size: " + oldDirList.size() +
+          "\nlink+dir counter: " + (linkCounter+dirCounter));
     }
   }
 }
