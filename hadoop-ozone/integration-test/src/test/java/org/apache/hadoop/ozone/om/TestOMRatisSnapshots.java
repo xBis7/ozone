@@ -352,6 +352,7 @@ public class TestOMRatisSnapshots {
     //  are on the follower
     int hardLinkCount = 0;
 
+    printNotExistingFiles(leaderActiveDir, leaderSnapshotDir, "leader", true);
     printNotExistingFiles(followerActiveDir, followerSnapshotDir, "follower", true);
 
     try (Stream<Path>list = Files.list(leaderSnapshotDir)) {
@@ -448,7 +449,7 @@ public class TestOMRatisSnapshots {
     }
 
     if (extraHardLinks.size() > 0) {
-      System.out.println("xbis: not existing hard links");
+      System.out.println("xbis: not existing hard links for the '" + rolePrefix + "'");
       for (Path path : extraHardLinks) {
         System.out.println("xbis: path: " + path);
       }
