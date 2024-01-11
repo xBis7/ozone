@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -176,6 +177,7 @@ public final class OmSnapshotUtils {
     long dirCounter = 0;
     long parentDirCounter = 0;
 
+    Map<Path, Path> createdLinks = new HashMap<>();
     if (!beforeInstall) {
 //      oldDirList.remove(3);
       System.out.println("something");
@@ -198,6 +200,9 @@ public final class OmSnapshotUtils {
       } else {
         Files.createLink(newFile.toPath(), oldFile.toPath());
         linkCounter++;
+        if (!beforeInstall) {
+          createdLinks.put(newFile.toPath(), oldFile.toPath());
+        }
       }
     }
     if (!beforeInstall) {
@@ -206,7 +211,8 @@ public final class OmSnapshotUtils {
           "\ndirCounter: " + dirCounter +
           "\nparentDirCounter: " + parentDirCounter +
           "\noldDirList.size: " + oldDirList.size() +
-          "\nlink+dir counter: " + (linkCounter+dirCounter));
+          "\nlink+dir counter: " + (linkCounter+dirCounter) +
+          "\ncreated links [newFile, oldFile]: " + createdLinks);
     }
   }
 }

@@ -448,6 +448,10 @@ public class TestOMRatisSnapshots {
       }
     }
 
+    System.out.println("xbis: " + rolePrefix +
+        "\nactiveDirFiles.size: " + activeDirFiles.size() +
+        "\nsnapshotDirFiles.size: " + snapshotDirFiles.size());
+
     if (extraHardLinks.size() > 0) {
       System.out.println("xbis: not existing hard links for the '" + rolePrefix + "'");
       for (Path path : extraHardLinks) {
