@@ -200,7 +200,9 @@ public final class OmSnapshotUtils {
       } else {
         Files.createLink(newFile.toPath(), oldFile.toPath());
         linkCounter++;
-        if (!beforeInstall) {
+        // Get only the SST files that go to /om.db root
+        if (!beforeInstall &&
+            !newFile.toPath().toString().contains("/om.db/db.snapshots")) {
           createdLinks.put(newFile.toPath(), oldFile.toPath());
         }
       }
