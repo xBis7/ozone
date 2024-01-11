@@ -214,7 +214,8 @@ public final class OmSnapshotUtils {
           "\nparentDirCounter: " + parentDirCounter +
           "\noldDirList.size: " + oldDirList.size() +
           "\nlink+dir counter: " + (linkCounter+dirCounter) +
-          "\ncreated links [newFile, oldFile]: " + createdLinks);
+          "\ncreated links [newFile, oldFile]: " + createdLinks +
+          "\nroot link list size: " + createdLinks.size());
     }
   }
 }

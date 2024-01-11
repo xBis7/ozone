@@ -332,7 +332,7 @@ public class DBCheckpointServlet extends HttpServlet
    * @param excludedList  the files excluded
    *
    */
-  public void writeDbDataToStream(DBCheckpoint checkpoint,
+  public synchronized void writeDbDataToStream(DBCheckpoint checkpoint,
       HttpServletRequest ignoredRequest,
       OutputStream destination,
       List<String> toExcludeList,

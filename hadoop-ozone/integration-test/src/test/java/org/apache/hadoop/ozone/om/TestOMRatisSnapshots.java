@@ -385,6 +385,7 @@ public class TestOMRatisSnapshots {
     }
     assertThat(hardLinkCount).withFailMessage("No hard links were found")
         .isGreaterThan(0);
+    System.out.println("xbis: hardLinkCount: " + hardLinkCount);
   }
 
   public static void printNotExistingFiles(Path activeDir, Path snapshotDir, String rolePrefix, boolean print) {
@@ -394,7 +395,7 @@ public class TestOMRatisSnapshots {
 
     List<Path> activeDirFiles = new LinkedList<>();
     try (Stream<Path> paths = Files.walk(activeDir)) {
-      paths.filter(Files::isRegularFile)
+      paths//.filter(Files::isRegularFile)
           .forEach(f -> {
             activeDirFiles.add(f);
             if (print) {
@@ -410,7 +411,7 @@ public class TestOMRatisSnapshots {
 
     List<Path> snapshotDirFiles = new LinkedList<>();
     try (Stream<Path> paths = Files.walk(snapshotDir)) {
-      paths.filter(Files::isRegularFile)
+      paths//.filter(Files::isRegularFile)
           .forEach(f -> {
             snapshotDirFiles.add(f);
             if (print) {
