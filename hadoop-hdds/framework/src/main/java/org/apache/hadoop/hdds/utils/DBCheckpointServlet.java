@@ -49,10 +49,12 @@ import org.apache.hadoop.hdds.utils.db.DBStore;
 import org.apache.commons.lang3.StringUtils;
 
 import static org.apache.hadoop.hdds.utils.HddsServerUtil.writeDBCheckpointToStream;
+import static org.apache.hadoop.ozone.OzoneConsts.OM_SNAPSHOT_DIR;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_DB_CHECKPOINT_REQUEST_FLUSH;
 import static org.apache.hadoop.ozone.OzoneConsts.OZONE_DB_CHECKPOINT_REQUEST_TO_EXCLUDE_SST;
 import static org.apache.hadoop.ozone.OzoneConsts.ROCKSDB_SST_SUFFIX;
 
+import org.apache.hadoop.ozone.OzoneConsts;
 import org.apache.hadoop.ozone.lock.BootstrapStateHandler;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
@@ -214,9 +216,16 @@ public class DBCheckpointServlet extends HttpServlet
       if (file == null) {
         return;
       }
+      // Walk om.db dir
+      Path dbCheckpoint = checkpoint.getCheckpointLocation().getParent();
+      Path omDb = Paths.get(dbCheckpoint.getParent().toString(), OzoneConsts.OM_DB_NAME);
+      try (Stream<Path> paths = Files.walk(omDb)) {
+        paths.filter(f -> f.toString().endsWith(".sst"))
+            .forEach(f -> System.out.println("xbis: creating the tarball: sst files from om.db: " + f));
+      }
       // Walk the dir to get all sst files
       try (Stream<Path> paths = Files.walk(checkpoint.getCheckpointLocation())) {
-        paths.forEach(f -> System.out.println("xbis: creating the tarball: sstfile: " + f));
+        paths.forEach(f -> System.out.println("xbis: creating the tarball: sst files from checkpointDir: " + f));
       }
       // --
       response.setContentType("application/x-tar");
