@@ -355,23 +355,27 @@ public class TestOMRatisSnapshots {
     printNotExistingFiles(leaderActiveDir, leaderSnapshotDir, "leader", true);
     printNotExistingFiles(followerActiveDir, followerSnapshotDir, "follower", true);
 
-    try (Stream<Path>list = Files.list(leaderSnapshotDir)) {
-      for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
-        String fileName = leaderSnapshotSST.getFileName().toString();
+    // Get the follower snapshot dir sst files.
+    try (Stream<Path>list = Files.list(followerSnapshotDir)) {
+      for (Path followerSnapshotSST: list.collect(Collectors.toList())) {
+        // Filename for the follower snapshot sst
+        String fileName = followerSnapshotSST.getFileName().toString();
         if (fileName.toLowerCase().endsWith(".sst")) {
 
+          // If the file exists on the leader active fs
           Path leaderActiveSST =
               Paths.get(leaderActiveDir.toString(), fileName);
           // Skip if not hard link on the leader
           if (!leaderActiveSST.toFile().exists()) {
             continue;
           }
+          Path leaderSnapshotSST = Paths.get(leaderSnapshotDir.toString(), fileName);
           // If it is a hard link on the leader, it should be a hard
           // link on the follower
           if (OmSnapshotUtils.getINode(leaderActiveSST)
               .equals(OmSnapshotUtils.getINode(leaderSnapshotSST))) {
-            Path followerSnapshotSST =
-                Paths.get(followerSnapshotDir.toString(), fileName);
+//            Path followerSnapshotSST =
+//                Paths.get(followerSnapshotDir.toString(), fileName);
             Path followerActiveSST =
                 Paths.get(followerActiveDir.toString(), fileName);
             Assertions.assertEquals(
