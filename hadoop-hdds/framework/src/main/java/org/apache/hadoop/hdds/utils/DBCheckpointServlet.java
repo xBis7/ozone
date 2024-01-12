@@ -35,6 +35,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
@@ -197,7 +198,9 @@ public class DBCheckpointServlet extends HttpServlet
     try (BootstrapStateHandler.Lock lock = getBootstrapStateLock().lock()) {
       tmpdir = Files.createTempDirectory(bootstrapTempData.toPath(),
           "bootstrap-data-");
+      // xbis: Here we create the checkpoint
       checkpoint = getCheckpoint(tmpdir, flush);
+      // --
       if (checkpoint == null || checkpoint.getCheckpointLocation() == null) {
         LOG.error("Unable to process metadata snapshot request. " +
             "Checkpoint request returned null.");
@@ -211,6 +214,11 @@ public class DBCheckpointServlet extends HttpServlet
       if (file == null) {
         return;
       }
+      // Walk the dir to get all sst files
+      try (Stream<Path> paths = Files.walk(checkpoint.getCheckpointLocation())) {
+        paths.forEach(f -> System.out.println("xbis: creating the tarball: sstfile: " + f));
+      }
+      // --
       response.setContentType("application/x-tar");
       response.setHeader("Content-Disposition",
           "attachment; filename=\"" +
