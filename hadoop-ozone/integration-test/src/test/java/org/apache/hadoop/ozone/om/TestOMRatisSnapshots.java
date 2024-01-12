@@ -362,13 +362,21 @@ public class TestOMRatisSnapshots {
         String fileName = followerSnapshotSST.getFileName().toString();
         if (fileName.toLowerCase().endsWith(".sst")) {
 
+          // Check that it exists on the follower active fs
+          Path followerActiveSST =
+              Paths.get(followerActiveDir.toString(), fileName);
+          // Skip if not hard link on the leader
+          if (!followerActiveSST.toFile().exists()) {
+            continue;
+          }
+          // - -
+
           // If the file exists on the leader active fs
           Path leaderActiveSST =
               Paths.get(leaderActiveDir.toString(), fileName);
           // Skip if not hard link on the leader
-          if (!leaderActiveSST.toFile().exists()) {
-            continue;
-          }
+          Assertions.assertTrue(leaderActiveSST.toFile().exists());
+
           Path leaderSnapshotSST = Paths.get(leaderSnapshotDir.toString(), fileName);
           // If it is a hard link on the leader, it should be a hard
           // link on the follower
@@ -376,8 +384,8 @@ public class TestOMRatisSnapshots {
               .equals(OmSnapshotUtils.getINode(leaderSnapshotSST))) {
 //            Path followerSnapshotSST =
 //                Paths.get(followerSnapshotDir.toString(), fileName);
-            Path followerActiveSST =
-                Paths.get(followerActiveDir.toString(), fileName);
+//            Path followerActiveSST =
+//                Paths.get(followerActiveDir.toString(), fileName);
             Assertions.assertEquals(
                 OmSnapshotUtils.getINode(followerActiveSST),
                 OmSnapshotUtils.getINode(followerSnapshotSST),
