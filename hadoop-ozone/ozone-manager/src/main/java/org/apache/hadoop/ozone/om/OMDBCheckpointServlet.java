@@ -130,7 +130,7 @@ public class OMDBCheckpointServlet extends DBCheckpointServlet {
   }
 
   @Override
-  public void writeDbDataToStream(DBCheckpoint checkpoint,
+  public synchronized void writeDbDataToStream(DBCheckpoint checkpoint,
                                   HttpServletRequest request,
                                   OutputStream destination,
                                   List<String> toExcludeList,
@@ -313,6 +313,11 @@ public class OMDBCheckpointServlet extends DBCheckpointServlet {
         new HashSet<>(), excluded, copySize, null)) {
       return false;
     }
+
+    // Copy files should have only the active fs files.
+    Map<Path, Path> copy = new HashMap<>(copyFiles);
+//    copy.keySet().removeIf(p -> p.toString().contains("db.snapshots"));
+    System.out.println("xbis: before tar: list: " + copy);
 
     if (!includeSnapshotData) {
       return true;
