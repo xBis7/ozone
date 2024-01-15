@@ -351,39 +351,27 @@ public class TestOMRatisSnapshots {
     // Get the list of hardlinks from the leader.  Then confirm those links
     //  are on the follower
     int hardLinkCount = 0;
-
-    printNotExistingFiles(leaderActiveDir, leaderSnapshotDir, "leader", true);
-    printNotExistingFiles(followerActiveDir, followerSnapshotDir, "follower", true);
-
-    // Get the follower snapshot dir sst files.
-    try (Stream<Path>list = Files.list(followerSnapshotDir)) {
-      for (Path followerSnapshotSST: list.collect(Collectors.toList())) {
-        // Filename for the follower snapshot sst
-        String fileName = followerSnapshotSST.getFileName().toString();
+    try (Stream<Path>list = Files.list(leaderSnapshotDir)) {
+      for (Path leaderSnapshotSST: list.collect(Collectors.toList())) {
+        String fileName = leaderSnapshotSST.getFileName().toString();
         if (fileName.toLowerCase().endsWith(".sst")) {
 
-          // Check that it exists on the follower active fs
-          Path followerActiveSST =
-              Paths.get(followerActiveDir.toString(), fileName);
-          // Skip if not hard link on the leader
-          if (!followerActiveSST.toFile().exists()) {
-            continue;
-          }
-          // - -
-
-          // If the file exists on the leader active fs
+          // If the file exists on the leader and the follower active fs
           Path leaderActiveSST =
               Paths.get(leaderActiveDir.toString(), fileName);
-          // Skip if not hard link on the leader
-          Assertions.assertTrue(leaderActiveSST.toFile().exists());
-
-          Path leaderSnapshotSST = Paths.get(leaderSnapshotDir.toString(), fileName);
+          Path followerActiveSST =
+              Paths.get(followerActiveDir.toString(), fileName);
+          // Skip if not hard link on the leader and doesn't exist on both dirs
+          if (!leaderActiveSST.toFile().exists() &&
+              !followerActiveSST.toFile().exists()) {
+            continue;
+          }
           // If it is a hard link on the leader, it should be a hard
           // link on the follower
           if (OmSnapshotUtils.getINode(leaderActiveSST)
               .equals(OmSnapshotUtils.getINode(leaderSnapshotSST))) {
-//            Path followerSnapshotSST =
-//                Paths.get(followerSnapshotDir.toString(), fileName);
+            Path followerSnapshotSST =
+                Paths.get(followerSnapshotDir.toString(), fileName);
 //            Path followerActiveSST =
 //                Paths.get(followerActiveDir.toString(), fileName);
             Assertions.assertEquals(
