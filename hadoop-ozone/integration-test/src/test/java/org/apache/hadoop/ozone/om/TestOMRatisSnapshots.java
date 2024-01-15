@@ -357,8 +357,15 @@ public class TestOMRatisSnapshots {
 
           Path leaderActiveSST =
               Paths.get(leaderActiveDir.toString(), fileName);
-          // Skip if not hard link on the leader
-          if (!leaderActiveSST.toFile().exists()) {
+          Path followerActiveSST =
+              Paths.get(followerActiveDir.toString(), fileName);
+          // Skip if not hard link on the leader.
+          // When getting a RocksDB checkpoint, the majority of the leader sst files
+          // aren't included in the checkpoint. There is a high chance that the sst file
+          // won't exist on the follower active fs. If it exists in the follower as well,
+          // then assert that both the leader and the follower have the same hard links.
+          if (!leaderActiveSST.toFile().exists() &&
+              !followerActiveSST.toFile().exists()) {
             continue;
           }
           // If it is a hard link on the leader, it should be a hard
@@ -367,8 +374,6 @@ public class TestOMRatisSnapshots {
               .equals(OmSnapshotUtils.getINode(leaderSnapshotSST))) {
             Path followerSnapshotSST =
                 Paths.get(followerSnapshotDir.toString(), fileName);
-            Path followerActiveSST =
-                Paths.get(followerActiveDir.toString(), fileName);
             assertEquals(
                 OmSnapshotUtils.getINode(followerActiveSST),
                 OmSnapshotUtils.getINode(followerSnapshotSST),
